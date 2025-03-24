@@ -1,0 +1,26 @@
+a_description_for_the_package: This is an Pythonic API for visualization and analysis
+  of chip firing games and corresponding algorithms.
+classifiers: []
+console_scripts: []
+first_year_of_publication: '2025'
+github_account: DhyeyMavani2003
+github_repo_name: chipfiring
+keywords_describing_the_package: ''
+license: MIT
+package_module_name: chipfiring
+package_name: chipfiring
+package_tagline: Unified interface for visualization and analysis of chip firing games
+  and related algorithms.
+package_title: chipfiring
+readme: .github/README.md
+requires:
+- numpy
+- pandas
+- pytest
+- coverage
+scripts: []
+version: 0.8.0
+your_author_name: Dhyey Dharmendrakumar Mavani
+your_email_address: ddmavani2003@gmail.com
+your_full_name: Dhyey Dharmendrakumar Mavani
+your_name: Dhyey Mavani
