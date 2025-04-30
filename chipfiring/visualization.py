@@ -2,36 +2,36 @@
 Visualization utilities for the chip-firing game.
 """
 
+'''
 import networkx as nx  # type: ignore
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from typing import Dict, Optional, Tuple, Any, List
-from .graph import Graph, Vertex, Direction # Import Direction
-from .divisor import Divisor
+from .CFGraph import CFGraph, Vertex
+from .CFDivisor import CFDivisor
 
 
-def _get_graph_vertices(G: Graph) -> List[Vertex]:
+def _get_graph_vertices(G: CFGraph) -> List[Vertex]:
     """Helper to get a sorted list of vertices from the graph."""
-    return sorted(G._adjacency.keys())
+    return sorted(G.vertices)
 
-def _to_networkx_graph(G: Graph) -> nx.MultiGraph:
+def _to_networkx_graph(G: CFGraph) -> nx.MultiGraph:
     """Convert our Graph instance to an undirected networkx MultiGraph."""
     nx_G = nx.MultiGraph() # Use MultiGraph for multiple edges
     vertices = _get_graph_vertices(G)
     nx_G.add_nodes_from(vertices)
 
     # Add edges based on adjacency, avoiding double counting for undirected
-    seen_edges = set()
     for v1 in vertices:
-        for v2, count in G._adjacency.get(v1, {}).items():
+        for v2, count in G.graph[v1].items():
             # Ensure v1 < v2 to process each edge pair once
-            if v1 < v2:
+            if v1.name < v2.name:
                 for _ in range(count):
                      nx_G.add_edge(v1, v2)
 
     return nx_G
 
-def _to_networkx_digraph(G: Graph) -> nx.MultiDiGraph:
+def _to_networkx_digraph(G: CFGraph) -> nx.MultiDiGraph:
     """Convert our Graph instance to a directed networkx MultiDiGraph based on orientation."""
     nx_G = nx.MultiDiGraph() # Use MultiDiGraph for directed edges
     vertices = _get_graph_vertices(G)
@@ -39,39 +39,29 @@ def _to_networkx_digraph(G: Graph) -> nx.MultiDiGraph:
 
     # Iterate through all potential edges and add based on orientation
     for v1 in vertices:
-        for v2, count in G._adjacency.get(v1, {}).items():
+        for v2, count in G.graph[v1].items():
             if count > 0: # Only consider existing edges
-                direction = G.get_edge_direction(v1, v2)
-                if direction == Direction.OUTGOING:
+                # For now, just add directed edges in one direction since we don't have orientation
+                if v1.name < v2.name:  # Only add edge once for undirected graph
                     for _ in range(count):
                         nx_G.add_edge(v1, v2)
-                elif direction == Direction.UNDIRECTED:
-                     # Represent undirected edge as two directed edges or handle differently?
-                     # For now, add edges in both directions if undirected in a DiGraph context
-                     # This might visually look like an undirected edge if arrows aren't distinct
-                     # Or, could only add v1->v2 if v1 < v2 for undirected
-                     if v1 < v2:
-                         for _ in range(count):
-                              nx_G.add_edge(v1, v2)
-                              nx_G.add_edge(v2, v1)
-                # INCOMING edges are handled when iterating from the other vertex (v2)
+                        nx_G.add_edge(v2, v1)  # Add both directions for undirected
                 
     return nx_G
 
 
 def draw_graph(
-    G: Graph,
-    D: Optional[Divisor] = None,
+    G: CFGraph,
+    D: Optional[CFDivisor] = None,
     title: Optional[str] = None,
     pos: Optional[Dict[Vertex, Tuple[float, float]]] = None,
     node_color: str = "lightblue",
     edge_color: str = "gray",
     node_size: int = 1000,
     font_size: int = 12,
-    use_orientation: bool = False, # New flag to control drawing direction
     **kwargs: Any # Allow passing extra args to nx.draw
 ) -> Tuple[plt.Figure, plt.Axes]:
-    """Draw a graph with optional divisor values and orientation.
+    """Draw a graph with optional divisor values.
 
     Args:
         G: The graph to draw.
@@ -82,7 +72,6 @@ def draw_graph(
         edge_color: Default color for edges.
         node_size: Size of nodes.
         font_size: Size of font for labels.
-        use_orientation: If True, draw directed edges based on G._orientation.
         kwargs: Additional arguments passed to networkx drawing functions.
 
     Returns:
@@ -91,51 +80,42 @@ def draw_graph(
     fig, ax = plt.subplots(figsize=(10, 8))
     graph_vertices = _get_graph_vertices(G)
 
-    # Choose graph type based on orientation flag
-    if use_orientation:
-        nx_G = _to_networkx_digraph(G)
-        is_directed = True
-    else:
-        nx_G = _to_networkx_graph(G)
-        is_directed = False
+    # Convert to networkx graph
+    nx_G = _to_networkx_digraph(G)
 
     # Get vertex positions if not provided
     if pos is None:
-        # spring_layout works for both Graph and DiGraph
         try:
-             pos = nx.spring_layout(nx_G, seed=42) # Use seed for reproducibility
+            pos = nx.spring_layout(nx_G, seed=42) # Use seed for reproducibility
         except nx.NetworkXException: # Handle disconnected graphs if layout fails
-             print("Warning: Graph layout failed (possibly disconnected?). Using random layout.")
-             pos = nx.random_layout(nx_G, seed=42)
+            print("Warning: Graph layout failed (possibly disconnected?). Using random layout.")
+            pos = nx.random_layout(nx_G, seed=42)
 
     # --- Draw Edges --- 
-    # networkx draw functions handle MultiGraph/MultiDiGraph
-    nx.draw_networkx_edges(nx_G, pos, edge_color=edge_color, ax=ax, arrows=is_directed, **kwargs)
+    nx.draw_networkx_edges(nx_G, pos, edge_color=edge_color, ax=ax, arrows=False, **kwargs)
 
     # --- Draw Nodes --- 
     node_colors_to_draw: Any = node_color # Default
     if D is not None:
         # Create a color map based on divisor values
-        values = [D.values.get(v, 0) for v in graph_vertices] # Use .get for safety
+        values = [D.get_degree(v.name) for v in graph_vertices]
         if values: # Ensure there are values to map
-             vmin, vmax = min(values), max(values)
-             # Handle case where all values are the same
-             if vmin == vmax: 
-                  vmin -= 1 
-                  vmax += 1
-             try: 
-                  cmap = cm.get_cmap('RdYlBu')
-                  norm = plt.Normalize(vmin=vmin, vmax=vmax)
-                  node_colors_to_draw = [cmap(norm(val)) for val in values]
-                  
-                  sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-                  sm.set_array([])
-                  plt.colorbar(sm, ax=ax, label="Divisor Value")
-             except Exception as e:
-                  print(f"Warning: Could not create color map for nodes: {e}")
-                  node_colors_to_draw = node_color # Fallback
-        else:
-             node_colors_to_draw = node_color # Fallback if no values
+            vmin, vmax = min(values), max(values)
+            # Handle case where all values are the same
+            if vmin == vmax: 
+                vmin -= 1 
+                vmax += 1
+            try: 
+                cmap = cm.get_cmap('RdYlBu')
+                norm = plt.Normalize(vmin=vmin, vmax=vmax)
+                node_colors_to_draw = [cmap(norm(val)) for val in values]
+                
+                sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+                sm.set_array([])
+                plt.colorbar(sm, ax=ax, label="Divisor Value")
+            except Exception as e:
+                print(f"Warning: Could not create color map for nodes: {e}")
+                node_colors_to_draw = node_color # Fallback
 
     nx.draw_networkx_nodes(
         nx_G, pos, node_color=node_colors_to_draw, node_size=node_size, ax=ax, **kwargs
@@ -143,7 +123,7 @@ def draw_graph(
 
     # --- Draw Labels --- 
     if D is not None:
-        labels = {v: f"{v}\n{D.values.get(v, 0)}" for v in graph_vertices}
+        labels = {v: f"{v}\n{D.get_degree(v.name)}" for v in graph_vertices}
     else:
         labels = {v: str(v) for v in graph_vertices}
 
@@ -201,6 +181,6 @@ def draw_game_state(
         pos=pos,
         node_size=node_size,
         font_size=font_size,
-        use_orientation=use_orientation,
         **kwargs
     )
+'''

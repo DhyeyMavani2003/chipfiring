@@ -1,0 +1,230 @@
+from enum import Enum
+from .CFGraph import CFGraph, Vertex
+
+class OrientationState(Enum):
+    """Represents the possible states of an edge orientation."""
+    NO_ORIENTATION = 0  # Edge exists but has no orientation
+    SOURCE_TO_SINK = 1  # Edge is oriented from source to sink
+    SINK_TO_SOURCE = 2  # Edge is oriented from sink to source
+
+class CFOrientation:
+    """Represents an orientation of edges in a chip-firing graph."""
+    
+    def __init__(self, graph: CFGraph, orientations: list[tuple[str, str]]):
+        """Initialize the orientation with a graph and list of oriented edges.
+        
+        Args:
+            graph: A CFGraph object representing the underlying graph
+            orientations: List of tuples (source_name, sink_name) where source_name and sink_name
+                        are strings representing vertex names. Each tuple indicates that the edge
+                        is oriented from source to sink.
+        
+        Raises:
+            ValueError: If an edge specified in orientations does not exist in the graph
+            ValueError: If multiple orientations are specified for the same edge
+        """
+        self.graph = graph
+        # Initialize orientation dictionary
+        # First level keys are vertices
+        # Second level keys are vertices
+        # Value is an OrientationState enum indicating the orientation state
+        self.orientation: dict[Vertex, dict[Vertex, OrientationState]] = {
+            v: {} for v in graph.vertices
+        }
+        
+        # Initialize in/out degree counters for each vertex
+        self.in_degree: dict[Vertex, int] = {v: 0 for v in graph.vertices}
+        self.out_degree: dict[Vertex, int] = {v: 0 for v in graph.vertices}
+        
+        # Initialize all edges with NO_ORIENTATION
+        for v1 in graph.vertices:
+            for v2, _ in graph.graph[v1].items():
+                if v2 not in self.orientation[v1]:
+                    self.orientation[v1][v2] = OrientationState.NO_ORIENTATION
+                    self.orientation[v2][v1] = OrientationState.NO_ORIENTATION
+        
+        # Process each orientation
+        for source_name, sink_name in orientations:
+            source = Vertex(source_name)
+            sink = Vertex(sink_name)
+            
+            # Check if vertices exist in graph
+            if source not in graph.graph or sink not in graph.graph:
+                raise ValueError(f"Edge {source_name}-{sink_name} not found in graph")
+            
+            # Check if edge exists in graph
+            if sink not in graph.graph[source]:
+                raise ValueError(f"Edge {source_name}-{sink_name} not found in graph")
+            
+            # Check if edge already has an orientation (other than NO_ORIENTATION)
+            if (self.orientation[source][sink] != OrientationState.NO_ORIENTATION or 
+                self.orientation[sink][source] != OrientationState.NO_ORIENTATION):
+                raise ValueError(f"Multiple orientations specified for edge {source_name}-{sink_name}")
+            
+            # Store the orientation and update in/out degrees
+            self._set_orientation(source, sink, OrientationState.SOURCE_TO_SINK)
+    
+    def _set_orientation(self, source: Vertex, sink: Vertex, state: OrientationState) -> None:
+        """Helper method to set orientation and update in/out degrees.
+        
+        Args:
+            source: Source vertex
+            sink: Sink vertex
+            state: New orientation state
+        """
+        old_state = self.orientation[source][sink]
+        valence = self.graph.graph[source][sink]
+        
+        # Remove old orientation's effect on degrees (if any)
+        if old_state == OrientationState.SOURCE_TO_SINK:
+            self.out_degree[source] -= valence
+            self.in_degree[sink] -= valence
+        elif old_state == OrientationState.SINK_TO_SOURCE:
+            self.in_degree[source] -= valence
+            self.out_degree[sink] -= valence
+        
+        # Set new orientation
+        self.orientation[source][sink] = state
+        self.orientation[sink][source] = (
+            OrientationState.NO_ORIENTATION if state == OrientationState.NO_ORIENTATION
+            else OrientationState.SINK_TO_SOURCE if state == OrientationState.SOURCE_TO_SINK
+            else OrientationState.SOURCE_TO_SINK
+        )
+        
+        # Update degrees based on new orientation
+        if state == OrientationState.SOURCE_TO_SINK:
+            self.out_degree[source] += valence
+            self.in_degree[sink] += valence
+        elif state == OrientationState.SINK_TO_SOURCE:
+            self.in_degree[source] += valence
+            self.out_degree[sink] += valence
+    
+    def get_orientation(self, v1_name: str, v2_name: str) -> tuple[str, str] | None:
+        """Get the orientation of an edge between two vertices.
+        
+        Args:
+            v1_name: Name of first vertex
+            v2_name: Name of second vertex
+            
+        Returns:
+            Tuple (source_name, sink_name) indicating the orientation,
+            or None if the edge exists but has no orientation
+            
+        Raises:
+            ValueError: If the edge does not exist
+        """
+        v1 = Vertex(v1_name)
+        v2 = Vertex(v2_name)
+        
+        # Check if vertices exist in graph
+        if v1 not in self.graph.graph or v2 not in self.graph.graph:
+            raise ValueError(f"Edge {v1_name}-{v2_name} not found in graph")
+        
+        # Check if edge exists
+        if v2 not in self.graph.graph[v1]:
+            raise ValueError(f"Edge {v1_name}-{v2_name} not found in graph")
+        
+        state = self.orientation[v1][v2]
+        if state == OrientationState.NO_ORIENTATION:
+            return None
+        elif state == OrientationState.SOURCE_TO_SINK:
+            return v1_name, v2_name
+        else:  # state == OrientationState.SINK_TO_SOURCE
+            return v2_name, v1_name
+    
+    def is_source(self, vertex_name: str, neighbor_name: str) -> bool | None:
+        """Check if a vertex is the source of an oriented edge.
+        
+        Args:
+            vertex_name: Name of the vertex to check
+            neighbor_name: Name of the neighboring vertex
+            
+        Returns:
+            True if the vertex is the source of the edge,
+            False if the vertex is the sink of the edge,
+            None if the edge exists but has no orientation
+            
+        Raises:
+            ValueError: If the edge does not exist
+        """
+        vertex = Vertex(vertex_name)
+        neighbor = Vertex(neighbor_name)
+        
+        # Check if vertices exist in graph
+        if vertex not in self.graph.graph or neighbor not in self.graph.graph:
+            raise ValueError(f"Edge {vertex_name}-{neighbor_name} not found in graph")
+        
+        # Check if edge exists
+        if neighbor not in self.graph.graph[vertex]:
+            raise ValueError(f"Edge {vertex_name}-{neighbor_name} not found in graph")
+        
+        state = self.orientation[vertex][neighbor]
+        if state == OrientationState.NO_ORIENTATION:
+            return None
+        return state == OrientationState.SOURCE_TO_SINK
+    
+    def is_sink(self, vertex_name: str, neighbor_name: str) -> bool | None:
+        """Check if a vertex is the sink of an oriented edge.
+        
+        Args:
+            vertex_name: Name of the vertex to check
+            neighbor_name: Name of the neighboring vertex
+            
+        Returns:
+            True if the vertex is the sink of the edge,
+            False if the vertex is the source of the edge,
+            None if the edge exists but has no orientation
+            
+        Raises:
+            ValueError: If the edge does not exist
+        """
+        vertex = Vertex(vertex_name)
+        neighbor = Vertex(neighbor_name)
+        
+        # Check if vertices exist in graph
+        if vertex not in self.graph.graph or neighbor not in self.graph.graph:
+            raise ValueError(f"Edge {vertex_name}-{neighbor_name} not found in graph")
+        
+        # Check if edge exists
+        if neighbor not in self.graph.graph[vertex]:
+            raise ValueError(f"Edge {vertex_name}-{neighbor_name} not found in graph")
+        
+        state = self.orientation[vertex][neighbor]
+        if state == OrientationState.NO_ORIENTATION:
+            return None
+        return state == OrientationState.SINK_TO_SOURCE
+    
+    def get_in_degree(self, vertex_name: str) -> int:
+        """Get the in-degree of a vertex, which is the sum of valences of edges oriented into the vertex.
+        
+        Args:
+            vertex_name: Name of the vertex to get the in-degree for
+            
+        Returns:
+            The in-degree of the vertex
+            
+        Raises:
+            ValueError: If the vertex name is not found in the graph
+        """
+        vertex = Vertex(vertex_name)
+        if vertex not in self.graph.graph:
+            raise ValueError(f"Vertex {vertex_name} not found in graph")
+        return self.in_degree[vertex]
+    
+    def get_out_degree(self, vertex_name: str) -> int:
+        """Get the out-degree of a vertex, which is the sum of valences of edges oriented out of the vertex.
+        
+        Args:
+            vertex_name: Name of the vertex to get the out-degree for
+            
+        Returns:
+            The out-degree of the vertex
+            
+        Raises:
+            ValueError: If the vertex name is not found in the graph
+        """
+        vertex = Vertex(vertex_name)
+        if vertex not in self.graph.graph:
+            raise ValueError(f"Vertex {vertex_name} not found in graph")
+        return self.out_degree[vertex]
+        

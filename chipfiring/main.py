@@ -8,7 +8,6 @@ def main():
     vB = Vertex('B')
     vC = Vertex('C')
     vE = Vertex('E')
-    vertices = {v.name: v for v in [vA, vB, vC, vE]}
 
     # Create Graph instance
     graph_obj = Graph()
