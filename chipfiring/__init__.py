@@ -2,8 +2,10 @@
 Chip firing package for simulating graph-based chip firing games.
 """
 
-from .graph import Graph, Vertex, Edge
+from .graph import Graph, Vertex, Direction
 from .divisor import Divisor
+from .orientation import Orientation
+from .laplacian import Laplacian
 from .dollar_game import DollarGame
 from .dhar import (
     find_legal_firing_set,
@@ -17,8 +19,10 @@ from .visualization import draw_graph, draw_game_state
 __all__ = [
     "Graph",
     "Vertex",
-    "Edge",
+    "Direction",
     "Divisor",
+    "Orientation",
+    "Laplacian",
     "DollarGame",
     "find_legal_firing_set",
     "is_q_reduced",
