@@ -96,6 +96,12 @@ class CFGraph:
         if edges:
             self.add_edges(edges)
     
+    def is_loopless(self, v1_name: str, v2_name: str) -> bool:
+        """Check if an edge connects a vertex to itself."""
+        return v1_name != v2_name
+
+    # TODO: If the user adds an edge and one or both vertices are not in the graph, 
+    # we should add them to the graph.
     def add_edges(self, edges: list[tuple[str, str, int]]) -> None:
         """Add multiple edges to the graph.
         
@@ -120,6 +126,8 @@ class CFGraph:
             v2_name: Name of second vertex
             valence: Number of edges to add between the vertices
         """
+        if not self.is_loopless(v1_name, v2_name):
+            raise ValueError(f"Self-loops are not allowed: attempted to add edge {v1_name}-{v2_name}")
         if valence <= 0:
             raise ValueError("Number of edges must be positive")
         

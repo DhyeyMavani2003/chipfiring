@@ -1,5 +1,6 @@
 from .CFGraph import CFGraph, Vertex
 
+# TODO: Implement 0-divisors and 1-divisors
 class CFDivisor:
     """Represents a divisor (chip configuration) on a chip-firing graph."""
     

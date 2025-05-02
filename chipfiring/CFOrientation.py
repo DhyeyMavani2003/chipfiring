@@ -1,5 +1,6 @@
 from enum import Enum
 from .CFGraph import CFGraph, Vertex
+from .CFDivisor import CFDivisor
 
 class OrientationState(Enum):
     """Represents the possible states of an edge orientation."""
@@ -36,6 +37,10 @@ class CFOrientation:
         self.in_degree: dict[Vertex, int] = {v: 0 for v in graph.vertices}
         self.out_degree: dict[Vertex, int] = {v: 0 for v in graph.vertices}
         
+        # Flag to track if all edges have an orientation
+        self.is_full: bool = False
+        self.is_full_checked: bool = False # Flag to track if is_full is up to date
+        
         # Initialize all edges with NO_ORIENTATION
         for v1 in graph.vertices:
             for v2, _ in graph.graph[v1].items():
@@ -63,6 +68,22 @@ class CFOrientation:
             
             # Store the orientation and update in/out degrees
             self._set_orientation(source, sink, OrientationState.SOURCE_TO_SINK)
+        
+        # Check if the orientation is full after initialization
+        self._check_fullness()
+    
+    def _check_fullness(self) -> None:
+        """Check if all edges have an orientation and update is_full."""
+        for v1 in self.graph.vertices:
+            for v2 in self.graph.graph[v1]:
+                # Only check each edge once (where v1 < v2)
+                if v1 < v2:
+                    if self.orientation[v1][v2] == OrientationState.NO_ORIENTATION:
+                        self.is_full = False
+                        self.is_full_checked = True
+                        return  # Found an unoriented edge
+        self.is_full = True # All edges checked and oriented
+        self.is_full_checked = True
     
     def _set_orientation(self, source: Vertex, sink: Vertex, state: OrientationState) -> None:
         """Helper method to set orientation and update in/out degrees.
@@ -98,6 +119,14 @@ class CFOrientation:
         elif state == OrientationState.SINK_TO_SOURCE:
             self.in_degree[source] += valence
             self.out_degree[sink] += valence
+        
+        # If we set an edge to NO_ORIENTATION, the orientation is no longer full
+        if state == OrientationState.NO_ORIENTATION:
+            self.is_full = False
+            self.is_full_checked = True
+        
+        if old_state == OrientationState.NO_ORIENTATION and state != OrientationState.NO_ORIENTATION:
+            self.is_full_checked = False
     
     def get_orientation(self, v1_name: str, v2_name: str) -> tuple[str, str] | None:
         """Get the orientation of an edge between two vertices.
@@ -227,4 +256,69 @@ class CFOrientation:
         if vertex not in self.graph.graph:
             raise ValueError(f"Vertex {vertex_name} not found in graph")
         return self.out_degree[vertex]
+        
+    def reverse(self) -> 'CFOrientation':
+        """Return a new CFOrientation object with all edge orientations reversed.
+        
+        Raises:
+            RuntimeError: If the current orientation is not full (i.e., contains unoriented edges).
+        
+        Returns:
+            A new CFOrientation object representing the reversed orientation.
+        """
+        # Ensure the fullness status is up-to-date
+        if not self.is_full_checked:
+            self._check_fullness()
+            
+        # Check if the orientation is full
+        if not self.is_full:
+            raise RuntimeError("Cannot reverse a not full orientation. All edges must be oriented.")
+            
+        reversed_orientations = []
+        processed_edges = set()
+        
+        for v1 in self.graph.vertices:
+            for v2 in self.graph.graph[v1]:
+                # Process each edge only once
+                edge = tuple(sorted((v1, v2)))
+                if edge not in processed_edges:
+                    processed_edges.add(edge)
+                    
+                    state = self.orientation[v1][v2]
+                    if state == OrientationState.SOURCE_TO_SINK: # v1 -> v2
+                        reversed_orientations.append((v2.name, v1.name))
+                    elif state == OrientationState.SINK_TO_SOURCE: # v1 <- v2
+                        reversed_orientations.append((v1.name, v2.name))
+                    # No need to handle NO_ORIENTATION as we checked for fullness
+                        
+        # Create and return the new orientation object
+        return CFOrientation(self.graph, reversed_orientations)
+
+    def divisor(self) -> CFDivisor:
+        """Returns the divisor associated with the orientation; by definition, for each vertex v,
+        the degree of v in the divisor is the in-degree of v in the orientation minus 1.
+
+        Raises:
+            RuntimeError: If the current orientation is not full (i.e., contains unoriented edges).
+
+        Returns:
+            A new CFDivisor object representing the calculated divisor.
+        """
+        # Ensure the fullness status is up-to-date
+        if not self.is_full_checked:
+            self._check_fullness()
+
+        # Check if the orientation is full
+        if not self.is_full:
+            raise RuntimeError(
+                "Cannot create divisor: Orientation is not full. All edges must be oriented."
+            )
+
+        divisor_degrees = []
+        for vertex in self.graph.vertices:
+            degree = self.in_degree[vertex] - 1
+            divisor_degrees.append((vertex.name, degree))
+
+        # Create and return the new divisor object
+        return CFDivisor(self.graph, divisor_degrees)
         
