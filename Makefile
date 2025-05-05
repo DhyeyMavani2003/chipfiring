@@ -7,7 +7,7 @@ NC=\033[0m
 
 # test envs
 
-PYTHON_VERSIONS ?= 3.13.0
+PYTHON_VERSIONS ?= 3.13.3
 RUFF_PYTHON_VERSION ?= py313
 
 PROJECT=$(shell basename $(CURDIR))
