@@ -1,3 +1,4 @@
+from __future__ import annotations
 from .CFGraph import CFGraph, Vertex
 
 # TODO: Implement 0-divisors and 1-divisors
