@@ -1,11 +1,12 @@
 from __future__ import annotations
+from typing import List, Tuple, Dict, Set
 from .CFGraph import CFGraph, Vertex
 
 # TODO: Implement 0-divisors and 1-divisors
 class CFDivisor:
     """Represents a divisor (chip configuration) on a chip-firing graph."""
     
-    def __init__(self, graph: CFGraph, degrees: list[tuple[str, int]]):
+    def __init__(self, graph: CFGraph, degrees: List[Tuple[str, int]]):
         """Initialize the divisor with a graph and list of vertex degrees.
         
         Args:
@@ -19,7 +20,7 @@ class CFDivisor:
         """
         self.graph = graph
         # Initialize the degrees dictionary with all vertices having degree 0
-        self.degrees: dict[Vertex, int] = {v: 0 for v in graph.vertices}
+        self.degrees: Dict[Vertex, int] = {v: 0 for v in graph.vertices}
         self.total_degree: int = 0
         
         # Check for duplicate vertex names in degrees
@@ -144,7 +145,7 @@ class CFDivisor:
         
         # Total degree remains unchanged: -amount + amount = 0
     
-    def set_fire(self, vertex_names: set[str]) -> None:
+    def set_fire(self, vertex_names: Set[str]) -> None:
         """Perform a set firing operation.
 
         For each vertex v in the specified set `vertex_names`, and for each 

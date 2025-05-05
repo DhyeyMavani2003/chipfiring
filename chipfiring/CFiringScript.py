@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Dict
 from chipfiring.CFGraph import CFGraph, Vertex
 
 class CFiringScript:
@@ -8,7 +10,7 @@ class CFiringScript:
     indicate borrowing.
     """
 
-    def __init__(self, graph: CFGraph, script: dict[str, int]):
+    def __init__(self, graph: CFGraph, script: Dict[str, int]):
         """Initialize the firing script.
 
         Args:
