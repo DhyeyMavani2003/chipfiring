@@ -32,7 +32,7 @@ def main():
     graph = CFGraph(vertices, edges)
     print("Graph Created:")
     print(f"Vertices: {[v.name for v in sorted(graph.vertices)]}")
-    print(f"Edges (with valence): A-B(1), B-C(1), C-E(1), A-E(2), A-C(1)")
+    print("Edges (with valence): A-B(1), B-C(1), C-E(1), A-E(2), A-C(1)")
     print("Valences: A={}, B={}, C={}, E={}".format(
         graph.get_valence("Alice"),
         graph.get_valence("Bob"),

@@ -143,13 +143,38 @@ def test_laplacian_equivalent_set_fire_sequence(sequence_test_graph, sequence_te
     # This net firing script should yield the same result as the
     # set_fire sequence: fire({A,E,C}), fire({A,E,C}), fire({B,C})
     # Calculated equivalent script: A=0, B=-1, C=1, E=0
-    script_dict = {"Bob": -1, "Charlie": 1}
+    script_dict = {"Alice": 2, "Bob": 1, "Charlie": 3, "Elise": 2}
     firing_script = CFiringScript(graph, script_dict)
 
     # Apply the script via the Laplacian
     result_divisor = laplacian.apply(initial_divisor, firing_script)
 
     # Expected final state from test_set_fire_sequence: A=2, B=0, C=0, E=0
+    assert result_divisor.get_degree("Alice") == 2
+    assert result_divisor.get_degree("Bob") == 0
+    assert result_divisor.get_degree("Charlie") == 0
+    assert result_divisor.get_degree("Elise") == 0
+    assert result_divisor.get_total_degree() == initial_divisor.get_total_degree()
+
+def test_laplacian_apply_specific_script(sequence_test_graph, sequence_test_initial_divisor):
+    """Test applying the Laplacian with a specific firing script."""
+    graph = sequence_test_graph
+    initial_divisor = sequence_test_initial_divisor
+    laplacian = CFLaplacian(graph)
+
+    # Specific script to test
+    script_dict = {"Alice": -1, "Bob": -2, "Charlie": 0, "Elise": -1}
+    firing_script = CFiringScript(graph, script_dict)
+
+    # Apply the script via the Laplacian
+    # D' = D0 - L*s
+    # D0 = (A=2, B=-3, C=4, E=-1)
+    # s = (A=-1, B=-2, C=0, E=-1)
+    # L*s = (A=0, B=-3, C=4, E=-1)  (Calculated separately)
+    # D' = D0 - L*s = (A=2-0, B=-3-(-3), C=4-4, E=-1-(-1)) = (A=2, B=0, C=0, E=0)
+    result_divisor = laplacian.apply(initial_divisor, firing_script)
+
+    # Expected final state
     assert result_divisor.get_degree("Alice") == 2
     assert result_divisor.get_degree("Bob") == 0
     assert result_divisor.get_degree("Charlie") == 0
