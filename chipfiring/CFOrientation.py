@@ -1,6 +1,7 @@
 from enum import Enum
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
+from typing import Optional
 
 class OrientationState(Enum):
     """Represents the possible states of an edge orientation."""
@@ -130,7 +131,7 @@ class CFOrientation:
         if old_state == OrientationState.NO_ORIENTATION and state != OrientationState.NO_ORIENTATION:
             self.is_full_checked = False
     
-    def get_orientation(self, v1_name: str, v2_name: str) -> tuple[str, str] | None:
+    def get_orientation(self, v1_name: str, v2_name: str) -> Optional[tuple[str, str]]:
         """Get the orientation of an edge between two vertices.
         
         Args:

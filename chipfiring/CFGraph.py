@@ -1,4 +1,5 @@
 import warnings
+import typing
 
 class Vertex:
     """Represents a vertex in the graph."""
@@ -65,7 +66,7 @@ class Edge:
 class CFGraph:
     """Represents a chip-firing graph with multiple edges possible between vertices."""
     
-    def __init__(self, vertices: set[str], edges: list[tuple[str, str, int]]):
+    def __init__(self, vertices: typing.Set[str], edges: typing.List[typing.Tuple[str, str, int]]):
         """Initialize the graph with a set of vertex names and a list of edge tuples.
         
         Args:
@@ -83,8 +84,8 @@ class CFGraph:
             
         # Create Vertex objects and initialize graph
         self.vertices = {Vertex(name) for name in vertices}
-        self.graph: dict[Vertex, dict[Vertex, int]] = {}
-        self.vertex_total_valence: dict[Vertex, int] = {}
+        self.graph: typing.Dict[Vertex, typing.Dict[Vertex, int]] = {}
+        self.vertex_total_valence: typing.Dict[Vertex, int] = {}
         self.total_valence: int = 0
         
         # Add all vertices to the graph
@@ -102,7 +103,7 @@ class CFGraph:
 
     # TODO: If the user adds an edge and one or both vertices are not in the graph, 
     # we should add them to the graph.
-    def add_edges(self, edges: list[tuple[str, str, int]]) -> None:
+    def add_edges(self, edges: typing.List[typing.Tuple[str, str, int]]) -> None:
         """Add multiple edges to the graph.
         
         Args:
