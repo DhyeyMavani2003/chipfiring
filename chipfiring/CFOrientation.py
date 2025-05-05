@@ -64,7 +64,9 @@ class CFOrientation:
             # Check if edge already has an orientation (other than NO_ORIENTATION)
             if (self.orientation[source][sink] != OrientationState.NO_ORIENTATION or 
                 self.orientation[sink][source] != OrientationState.NO_ORIENTATION):
-                raise ValueError(f"Multiple orientations specified for edge {source_name}-{sink_name}")
+                # Sort names for consistent error message
+                v1_name, v2_name = sorted([source_name, sink_name])
+                raise ValueError(f"Multiple orientations specified for edge {v1_name}-{v2_name}")
             
             # Store the orientation and update in/out degrees
             self._set_orientation(source, sink, OrientationState.SOURCE_TO_SINK)
