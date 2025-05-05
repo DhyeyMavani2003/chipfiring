@@ -321,4 +321,21 @@ class CFOrientation:
 
         # Create and return the new divisor object
         return CFDivisor(self.graph, divisor_degrees)
+
+    def canonical_divisor(self) -> CFDivisor:
+        """Returns the canonical divisor associated with the graph; by definition, the canonical divisor of an orientation is 
+        equal to the divisor of the orientation plus the divisor of the reverse of the orientation. After simlifying, we get thatfor each vertex v,
+        the degree of v in the canonical divisor is the valence of v minus 2.
+
+        Returns:
+            A new CFDivisor object representing the canonical divisor.
+        """
+        canonical_degrees = []
+        for vertex in self.graph.vertices:
+            valence = self.graph.get_valence(vertex.name)
+            degree = valence - 2
+            canonical_degrees.append((vertex.name, degree))
+
+        # Create and return the new divisor object
+        return CFDivisor(self.graph, canonical_degrees)
         
