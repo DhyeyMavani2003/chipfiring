@@ -132,7 +132,7 @@ class CFOrientation:
         if old_state == OrientationState.NO_ORIENTATION and state != OrientationState.NO_ORIENTATION:
             self.is_full_checked = False
     
-    def get_orientation(self, v1_name: str, v2_name: str) -> Optional[tuple[str, str]]:
+    def get_orientation(self, v1_name: str, v2_name: str) -> typing.Optional[typing.Tuple[str, str]]:
         """Get the orientation of an edge between two vertices.
         
         Args:
