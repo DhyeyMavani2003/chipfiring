@@ -1,6 +1,7 @@
 from enum import Enum
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
+import typing
 from typing import Optional
 
 class OrientationState(Enum):
@@ -12,7 +13,7 @@ class OrientationState(Enum):
 class CFOrientation:
     """Represents an orientation of edges in a chip-firing graph."""
     
-    def __init__(self, graph: CFGraph, orientations: list[tuple[str, str]]):
+    def __init__(self, graph: CFGraph, orientations: typing.List[typing.Tuple[str, str]]):
         """Initialize the orientation with a graph and list of oriented edges.
         
         Args:
@@ -30,13 +31,13 @@ class CFOrientation:
         # First level keys are vertices
         # Second level keys are vertices
         # Value is an OrientationState enum indicating the orientation state
-        self.orientation: dict[Vertex, dict[Vertex, OrientationState]] = {
+        self.orientation: typing.Dict[Vertex, typing.Dict[Vertex, OrientationState]] = {
             v: {} for v in graph.vertices
         }
         
         # Initialize in/out degree counters for each vertex
-        self.in_degree: dict[Vertex, int] = {v: 0 for v in graph.vertices}
-        self.out_degree: dict[Vertex, int] = {v: 0 for v in graph.vertices}
+        self.in_degree: typing.Dict[Vertex, int] = {v: 0 for v in graph.vertices}
+        self.out_degree: typing.Dict[Vertex, int] = {v: 0 for v in graph.vertices}
         
         # Flag to track if all edges have an orientation
         self.is_full: bool = False

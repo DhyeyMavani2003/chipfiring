@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict
+import typing
 from chipfiring.CFGraph import CFGraph, Vertex
 
 class CFiringScript:
@@ -10,7 +10,7 @@ class CFiringScript:
     indicate borrowing.
     """
 
-    def __init__(self, graph: CFGraph, script: Dict[str, int]):
+    def __init__(self, graph: CFGraph, script: typing.Dict[str, int]):
         """Initialize the firing script.
 
         Args:
@@ -24,7 +24,7 @@ class CFiringScript:
             ValueError: If any vertex name in the script is not present in the graph.
         """
         self.graph = graph
-        self._script: dict[Vertex, int] = {}
+        self._script: typing.Dict[Vertex, int] = {}
 
         # Validate and store the script using Vertex objects
         for vertex_name, firings in script.items():
@@ -53,6 +53,6 @@ class CFiringScript:
         return self._script.get(vertex, 0)
 
     @property
-    def script(self) -> dict[str, int]:
+    def script(self) -> typing.Dict[str, int]:
         """Return the script as a dictionary mapping vertex names to firings."""
         return {vertex.name: firings for vertex, firings in self._script.items()}

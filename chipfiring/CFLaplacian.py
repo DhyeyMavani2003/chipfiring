@@ -1,3 +1,4 @@
+import typing
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
 from .CFiringScript import CFiringScript
@@ -15,7 +16,7 @@ class CFLaplacian:
         """
         self.graph = graph
 
-    def _construct_matrix(self) -> dict[Vertex, dict[Vertex, int]]:
+    def _construct_matrix(self) -> typing.Dict[Vertex, typing.Dict[Vertex, int]]:
         """
         Construct the Laplacian matrix representation for the graph.
 
@@ -26,7 +27,7 @@ class CFLaplacian:
             negative edge valence, and the vertex itself maps to its total valence.
         """
 
-        laplacian: dict[Vertex, dict[Vertex, int]] = {}
+        laplacian: typing.Dict[Vertex, typing.Dict[Vertex, int]] = {}
         vertices = self.graph.vertices
 
         for v in vertices:
@@ -58,7 +59,7 @@ class CFLaplacian:
         """
         laplacian = self._construct_matrix()
         # Start with the initial chip counts from the divisor
-        resulting_degrees: dict[Vertex, int] = divisor.degrees.copy()
+        resulting_degrees: typing.Dict[Vertex, int] = divisor.degrees.copy()
         vertices = self.graph.vertices
 
         # Calculate the change in chips: -L * s
