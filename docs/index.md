@@ -66,11 +66,15 @@ print(f"Is winnable? {game.is_winnable()}")
 ## Contents
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
+:caption: Documentation
+
 whats-in-the-box.md
 getting-started.md
 contributing.md
-code.md
+api/index
 ```
 
+## API Documentation
 
+The complete API documentation for the chipfiring package can be found in the [API Documentation](api/index) section.
