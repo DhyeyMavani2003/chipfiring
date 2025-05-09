@@ -1,6 +1,8 @@
 from __future__ import annotations
 import typing
+from typing import Optional
 from chipfiring.CFGraph import CFGraph, Vertex
+
 
 class CFiringScript:
     """Represents a chip-firing script for a given graph.
@@ -10,7 +12,7 @@ class CFiringScript:
     indicate borrowing.
     """
 
-    def __init__(self, graph: CFGraph, script: typing.Dict[str, int] = None):
+    def __init__(self, graph: CFGraph, script: Optional[typing.Dict[str, int]] = None):
         """Initialize the firing script.
 
         Args:
@@ -32,7 +34,9 @@ class CFiringScript:
             for vertex_name, firings in script.items():
                 vertex = Vertex(vertex_name)
                 if vertex not in self.graph.vertices:
-                    raise ValueError(f"Vertex '{vertex_name}' in the script is not present in the graph.")
+                    raise ValueError(
+                        f"Vertex '{vertex_name}' in the script is not present in the graph."
+                    )
                 self._script[vertex] = firings
 
     def get_firings(self, vertex_name: str) -> int:

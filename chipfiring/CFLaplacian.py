@@ -4,6 +4,7 @@ from .CFDivisor import CFDivisor
 from .CFiringScript import CFiringScript
 from collections import defaultdict
 
+
 class CFLaplacian:
     """Represents the Laplacian operator for a chip-firing graph."""
 
@@ -31,13 +32,13 @@ class CFLaplacian:
         vertices = self.graph.vertices
 
         for v in vertices:
-            laplacian[v] = defaultdict(int) # Initialize row for vertex v
+            laplacian[v] = defaultdict(int)  # Initialize row for vertex v
             # Diagonal entry: total valence of vertex v
             degree = self.graph.get_valence(v.name)
             laplacian[v][v] = degree
             # Off-diagonal entries: negative valence for neighbors
-            if v in self.graph.graph: # Check if vertex has neighbors
-                 for w, valence in self.graph.graph[v].items():
+            if v in self.graph.graph:  # Check if vertex has neighbors
+                for w, valence in self.graph.graph[v].items():
                     laplacian[v][w] = -valence
 
         return laplacian
@@ -69,14 +70,16 @@ class CFLaplacian:
             # Iterate through each column w of the Laplacian row for v
             for w in vertices:
                 laplacian_vw = laplacian[v][w]
-                firings_w = firing_script.get_firings(w.name) # s[w]
+                firings_w = firing_script.get_firings(w.name)  # s[w]
                 change_at_v += laplacian_vw * firings_w
 
             # Update the degree at vertex v: D'[v] = D[v] - change_at_v
             resulting_degrees[v] -= change_at_v
 
         # Convert the resulting degrees dict back to the list format for CFDivisor constructor
-        final_degrees_list = [(vertex.name, degree) for vertex, degree in resulting_degrees.items()]
+        final_degrees_list = [
+            (vertex.name, degree) for vertex, degree in resulting_degrees.items()
+        ]
 
         # Create and return the new divisor
         return CFDivisor(self.graph, final_degrees_list)
@@ -98,8 +101,10 @@ class CFLaplacian:
         v = Vertex(v_name)
         w = Vertex(w_name)
         if v not in self.graph.vertices or w not in self.graph.vertices:
-             raise ValueError("Both vertex names must correspond to vertices in the graph.")
+            raise ValueError(
+                "Both vertex names must correspond to vertices in the graph."
+            )
 
         matrix = self._construct_matrix()
         # Return L[v][w], defaulting to 0 if w is not a neighbor of v (or if v=w and v has no neighbors)
-        return matrix.get(v, {}).get(w, 0) 
+        return matrix.get(v, {}).get(w, 0)

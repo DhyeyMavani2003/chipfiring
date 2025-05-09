@@ -2,12 +2,14 @@ import pytest
 from chipfiring import CFGraph, CFDivisor, CFiringScript, CFLaplacian, Vertex
 from collections import defaultdict
 
+
 @pytest.fixture
 def simple_graph():
     """Provides a simple graph K3 with single edges for testing."""
     vertices = {"v1", "v2", "v3"}
     edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
     return CFGraph(vertices, edges)
+
 
 @pytest.fixture
 def graph_with_multi_edges():
@@ -16,17 +18,20 @@ def graph_with_multi_edges():
     edges = [("a", "b", 2), ("b", "c", 3)]
     return CFGraph(vertices, edges)
 
+
 @pytest.fixture
 def initial_divisor_simple(simple_graph):
     """Provides an initial divisor for the simple graph."""
     degrees = [("v1", 5), ("v2", 0), ("v3", -2)]
     return CFDivisor(simple_graph, degrees)
 
+
 @pytest.fixture
 def firing_script_simple(simple_graph):
     """Provides a firing script for the simple graph."""
-    script = {"v1": 1, "v2": -1} # v1 fires once, v2 borrows once
+    script = {"v1": 1, "v2": -1}  # v1 fires once, v2 borrows once
     return CFiringScript(simple_graph, script)
+
 
 @pytest.fixture
 def sequence_test_graph():
@@ -37,9 +42,10 @@ def sequence_test_graph():
         ("Bob", "Charlie", 1),
         ("Charlie", "Elise", 1),
         ("Alice", "Elise", 2),
-        ("Alice", "Charlie", 1)
+        ("Alice", "Charlie", 1),
     ]
     return CFGraph(vertices, edges)
+
 
 @pytest.fixture
 def sequence_test_initial_divisor(sequence_test_graph):
@@ -48,13 +54,15 @@ def sequence_test_initial_divisor(sequence_test_graph):
     initial_degrees = [("Alice", 2), ("Bob", -3), ("Charlie", 4), ("Elise", -1)]
     return CFDivisor(sequence_test_graph, initial_degrees)
 
+
 # --- Test CFLaplacian Initialization ---
 def test_cflaplacian_init(simple_graph):
     """Test CFLaplacian initialization."""
     laplacian = CFLaplacian(simple_graph)
     assert laplacian.graph == simple_graph
 
-# --- Test _construct_matrix --- 
+
+# --- Test _construct_matrix ---
 def test_construct_matrix_simple(simple_graph):
     """Test the _construct_matrix method for a simple K3 graph."""
     laplacian = CFLaplacian(simple_graph)
@@ -73,6 +81,7 @@ def test_construct_matrix_simple(simple_graph):
     }
     assert matrix == expected
 
+
 def test_construct_matrix_multi_edge(graph_with_multi_edges):
     """Test _construct_matrix with multiple edges."""
     laplacian = CFLaplacian(graph_with_multi_edges)
@@ -87,22 +96,30 @@ def test_construct_matrix_multi_edge(graph_with_multi_edges):
     vertices = {a, b, c}
     # Expected Laplacian values:
     expected_values = {
-        (a, a): 2, (a, b): -2, (a, c): 0,
-        (b, a): -2, (b, b): 5, (b, c): -3,
-        (c, a): 0, (c, b): -3, (c, c): 3,
+        (a, a): 2,
+        (a, b): -2,
+        (a, c): 0,
+        (b, a): -2,
+        (b, b): 5,
+        (b, c): -3,
+        (c, a): 0,
+        (c, b): -3,
+        (c, c): 3,
     }
 
-    assert len(matrix) == len(vertices) # Check if all vertices are keys
+    assert len(matrix) == len(vertices)  # Check if all vertices are keys
 
     for v_row in vertices:
         assert v_row in matrix
         assert isinstance(matrix[v_row], defaultdict)
         for v_col in vertices:
             # Accessing matrix[v_row][v_col] uses the defaultdict behavior
-            assert matrix[v_row][v_col] == expected_values[(v_row, v_col)], \
-                   f"Mismatch at ({v_row.name}, {v_col.name}): Expected {expected_values[(v_row, v_col)]}, got {matrix[v_row][v_col]}"
+            assert (
+                matrix[v_row][v_col] == expected_values[(v_row, v_col)]
+            ), f"Mismatch at ({v_row.name}, {v_col.name}): Expected {expected_values[(v_row, v_col)]}, got {matrix[v_row][v_col]}"
 
-# --- Test apply method --- 
+
+# --- Test apply method ---
 def test_apply_laplacian(simple_graph, initial_divisor_simple, firing_script_simple):
     """Test applying the Laplacian with a firing script."""
     laplacian = CFLaplacian(simple_graph)
@@ -120,7 +137,10 @@ def test_apply_laplacian(simple_graph, initial_divisor_simple, firing_script_sim
     assert result_divisor.get_degree("v1") == 2
     assert result_divisor.get_degree("v2") == 3
     assert result_divisor.get_degree("v3") == -2
-    assert result_divisor.get_total_degree() == initial_divisor_simple.get_total_degree()
+    assert (
+        result_divisor.get_total_degree() == initial_divisor_simple.get_total_degree()
+    )
+
 
 def test_apply_laplacian_zero_script(simple_graph, initial_divisor_simple):
     """Test apply with a zero firing script."""
@@ -132,9 +152,14 @@ def test_apply_laplacian_zero_script(simple_graph, initial_divisor_simple):
     assert result_divisor.get_degree("v1") == 5
     assert result_divisor.get_degree("v2") == 0
     assert result_divisor.get_degree("v3") == -2
-    assert result_divisor.get_total_degree() == initial_divisor_simple.get_total_degree()
+    assert (
+        result_divisor.get_total_degree() == initial_divisor_simple.get_total_degree()
+    )
 
-def test_laplacian_equivalent_set_fire_sequence(sequence_test_graph, sequence_test_initial_divisor):
+
+def test_laplacian_equivalent_set_fire_sequence(
+    sequence_test_graph, sequence_test_initial_divisor
+):
     """Test that applying the Laplacian with a net script achieves the same result as a sequence of set_fire calls."""
     graph = sequence_test_graph
     initial_divisor = sequence_test_initial_divisor
@@ -156,7 +181,10 @@ def test_laplacian_equivalent_set_fire_sequence(sequence_test_graph, sequence_te
     assert result_divisor.get_degree("Elise") == 0
     assert result_divisor.get_total_degree() == initial_divisor.get_total_degree()
 
-def test_laplacian_apply_specific_script(sequence_test_graph, sequence_test_initial_divisor):
+
+def test_laplacian_apply_specific_script(
+    sequence_test_graph, sequence_test_initial_divisor
+):
     """Test applying the Laplacian with a specific firing script."""
     graph = sequence_test_graph
     initial_divisor = sequence_test_initial_divisor
@@ -181,7 +209,8 @@ def test_laplacian_apply_specific_script(sequence_test_graph, sequence_test_init
     assert result_divisor.get_degree("Elise") == 0
     assert result_divisor.get_total_degree() == initial_divisor.get_total_degree()
 
-# --- Test get_matrix_entry --- 
+
+# --- Test get_matrix_entry ---
 def test_get_matrix_entry_simple(simple_graph):
     """Test get_matrix_entry for the simple K3 graph."""
     laplacian = CFLaplacian(simple_graph)
@@ -197,11 +226,14 @@ def test_get_matrix_entry_simple(simple_graph):
     assert laplacian.get_matrix_entry("v1", "v3") == -1
     assert laplacian.get_matrix_entry("v3", "v1") == -1
 
+
 def test_get_matrix_entry_multi_edge(graph_with_multi_edges):
     """Test get_matrix_entry with multiple edges."""
     laplacian = CFLaplacian(graph_with_multi_edges)
     assert laplacian.get_matrix_entry("a", "a") == 2
-    assert laplacian.get_matrix_entry("b", "b") == 5 # valence(a,b) + valence(b,c) = 2 + 3
+    assert (
+        laplacian.get_matrix_entry("b", "b") == 5
+    )  # valence(a,b) + valence(b,c) = 2 + 3
     assert laplacian.get_matrix_entry("c", "c") == 3
     assert laplacian.get_matrix_entry("a", "b") == -2
     assert laplacian.get_matrix_entry("b", "a") == -2
@@ -211,12 +243,19 @@ def test_get_matrix_entry_multi_edge(graph_with_multi_edges):
     assert laplacian.get_matrix_entry("a", "c") == 0
     assert laplacian.get_matrix_entry("c", "a") == 0
 
+
 def test_get_matrix_entry_invalid_vertex(simple_graph):
     """Test get_matrix_entry with non-existent vertices."""
     laplacian = CFLaplacian(simple_graph)
-    with pytest.raises(ValueError, match="Both vertex names must correspond to vertices in the graph."):
+    with pytest.raises(
+        ValueError, match="Both vertex names must correspond to vertices in the graph."
+    ):
         laplacian.get_matrix_entry("v1", "v4")
-    with pytest.raises(ValueError, match="Both vertex names must correspond to vertices in the graph."):
+    with pytest.raises(
+        ValueError, match="Both vertex names must correspond to vertices in the graph."
+    ):
         laplacian.get_matrix_entry("v4", "v1")
-    with pytest.raises(ValueError, match="Both vertex names must correspond to vertices in the graph."):
-        laplacian.get_matrix_entry("v4", "v5") 
+    with pytest.raises(
+        ValueError, match="Both vertex names must correspond to vertices in the graph."
+    ):
+        laplacian.get_matrix_entry("v4", "v5")

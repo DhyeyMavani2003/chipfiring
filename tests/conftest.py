@@ -52,5 +52,7 @@ def random_graph():
 def random_divisor(random_graph):
     """Create a random divisor for testing."""
     G, vertices = random_graph
-    degrees = [(v.name, np.random.randint(-2, 3)) for v in vertices]  # Random values between -2 and 2
+    degrees = [
+        (v.name, np.random.randint(-2, 3)) for v in vertices
+    ]  # Random values between -2 and 2
     return CFDivisor(G, degrees)

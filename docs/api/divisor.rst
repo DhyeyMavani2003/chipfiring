@@ -1,5 +1,5 @@
 Divisor Module
-=============
+==============
 
 .. automodule:: chipfiring.CFDivisor
    :members:
