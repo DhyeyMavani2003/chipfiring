@@ -12,3 +12,4 @@ This section contains the complete API documentation for the chipfiring package.
    laplacian
    orientation
    firing_script
+   algo

@@ -1,5 +1,5 @@
 Laplacian Module
-===============
+================
 
 .. automodule:: chipfiring.CFLaplacian
    :members:

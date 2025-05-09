@@ -238,5 +238,59 @@ class CFDivisor:
         
         return True
 
+    def __add__(self, other: 'CFDivisor') -> 'CFDivisor':
+        """Perform vertex-wise addition of two divisors.
+        
+        Both divisors must be defined on graphs with the same set of vertices.
+        The resulting divisor will be on the graph of the left operand (self).
+        
+        Args:
+            other: Another CFDivisor object to add.
+            
+        Returns:
+            A new CFDivisor representing the sum.
+            
+        Raises:
+            TypeError: If 'other' is not a CFDivisor.
+            ValueError: If the divisors are not on compatible graphs (different vertex sets).
+        """
+        if self.graph.vertices != other.graph.vertices:
+             raise ValueError("Divisors must be on graphs with the same set of vertices for addition.")
+
+        new_degrees_list = []
+        for v_obj in self.graph.vertices: # Iterate over vertices of self.graph
+            deg1 = self.degrees.get(v_obj, 0)
+            deg2 = other.degrees.get(v_obj, 0) # other.degrees also uses Vertex objects keyed by name
+            new_degrees_list.append((v_obj.name, deg1 + deg2))
+            
+        return CFDivisor(self.graph, new_degrees_list)
+
+    def __sub__(self, other: 'CFDivisor') -> 'CFDivisor':
+        """Perform vertex-wise subtraction of two divisors.
+        
+        Both divisors must be defined on graphs with the same set of vertices.
+        The resulting divisor will be on the graph of the left operand (self).
+        
+        Args:
+            other: Another CFDivisor object to subtract.
+            
+        Returns:
+            A new CFDivisor representing the difference.
+            
+        Raises:
+            TypeError: If 'other' is not a CFDivisor.
+            ValueError: If the divisors are not on compatible graphs (different vertex sets).
+        """
+        if self.graph.vertices != other.graph.vertices:
+             raise ValueError("Divisors must be on graphs with the same set of vertices for subtraction.")
+
+        new_degrees_list = []
+        for v_obj in self.graph.vertices: # Iterate over vertices of self.graph
+            deg1 = self.degrees.get(v_obj, 0)
+            deg2 = other.degrees.get(v_obj, 0)
+            new_degrees_list.append((v_obj.name, deg1 - deg2))
+            
+        return CFDivisor(self.graph, new_degrees_list)
+    
     
     

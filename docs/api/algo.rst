@@ -1,7 +1,7 @@
-Orientation Module
-==================
+Algorithm Module
+================
 
-.. automodule:: chipfiring.CFOrientation
+.. automodule:: chipfiring.algo
    :members:
    :undoc-members:
    :show-inheritance:
