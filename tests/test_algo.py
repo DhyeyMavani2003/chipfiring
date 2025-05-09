@@ -1,7 +1,7 @@
 import pytest
 from chipfiring.CFGraph import CFGraph
 from chipfiring.CFDivisor import CFDivisor
-from chipfiring.algo import EWD, linear_equivalence, is_winnable
+from chipfiring.algo import EWD, linear_equivalence, is_winnable, q_reduction, is_q_reduced
 
 
 @pytest.fixture
@@ -17,7 +17,6 @@ def sequence_test_graph():
     ]
     return CFGraph(vertices, edges)
 
-
 @pytest.fixture
 def sequence_test_initial_divisor(sequence_test_graph):
     """Initial divisor for the sequence tests."""
@@ -31,7 +30,19 @@ def test_ewd_example(sequence_test_graph, sequence_test_initial_divisor):
     Test the EWD function with the example provided in algo.py.
     """
     expected_result = True
-    assert EWD(sequence_test_graph, sequence_test_initial_divisor) == expected_result
+    expected_q_reduced_divisor = CFDivisor(sequence_test_graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)])
+    assert EWD(sequence_test_graph, sequence_test_initial_divisor)[0] == expected_result
+    assert EWD(sequence_test_graph, sequence_test_initial_divisor)[1] == expected_q_reduced_divisor
+
+def test_q_reduction(sequence_test_graph, sequence_test_initial_divisor):
+    """Test the q_reduction function."""
+    expected_q_reduced_divisor = CFDivisor(sequence_test_graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)])
+    assert q_reduction(sequence_test_initial_divisor) == expected_q_reduced_divisor
+    
+def test_is_q_reduced(sequence_test_graph, sequence_test_initial_divisor):
+    """Test the is_q_reduced function."""
+    expected_result = True
+    assert is_q_reduced(sequence_test_initial_divisor) == expected_result
 
 
 @pytest.fixture

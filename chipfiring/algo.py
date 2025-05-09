@@ -1,9 +1,9 @@
 from .CFGraph import CFGraph
 from .CFDivisor import CFDivisor
 from .CFDhar import DharAlgorithm
+from typing import Tuple, Optional
 
-
-def EWD(graph: CFGraph, divisor: CFDivisor) -> bool:
+def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor]]:
     """
     Determine if a given chip-firing configuration is winnable using the Efficient Winnability Detection (EWD) algorithm.
 
@@ -54,11 +54,13 @@ def EWD(graph: CFGraph, divisor: CFDivisor) -> bool:
     deg_q = divisor.get_total_degree() - (
         dhar.configuration.get_total_degree() - dhar.configuration.get_degree(q.name)
     )
+    dhar.configuration.degrees[q] = deg_q
+    q_reduced_divisor = dhar.configuration
 
     if deg_q >= 0:
-        return True
+        return True, q_reduced_divisor 
     else:
-        return False
+        return False, q_reduced_divisor
 
 
 def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
@@ -74,7 +76,7 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
         divisor2: The second CFDivisor object.
 
     Returns:
-        True if the divisors are linearly equivalent, False otherwise.
+        A tuple containing a boolean indicating if the divisors are linearly equivalent, and the q-reduced divisor if they are.
     """
     # Condition 1: Divisors must be on the same graph (if not, return False)
     if divisor1.graph != divisor2.graph:
@@ -92,9 +94,10 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
 
     # Condition 4: Check winnability of the difference divisor.
     difference_divisor = divisor1 - divisor2
+    
+    is_linearly_equivalent, _ = EWD(graph, difference_divisor)
 
-    return EWD(graph, difference_divisor)
-
+    return is_linearly_equivalent
 
 def is_winnable(divisor: CFDivisor) -> bool:
     """Check if a given chip-firing configuration is winnable.
@@ -108,4 +111,32 @@ def is_winnable(divisor: CFDivisor) -> bool:
     Returns:
         True if the configuration is winnable, False otherwise.
     """
-    return EWD(divisor.graph, divisor)
+    is_winnable, _ = EWD(divisor.graph, divisor)
+    return is_winnable
+
+def q_reduction(divisor: CFDivisor) -> CFDivisor:
+    """
+    Perform a q-reduction on the given divisor.
+
+    Args:
+        divisor: The initial chip distribution (CFDivisor instance).
+
+    Returns:
+        The q-reduced divisor.
+    """
+    _, q_reduced_divisor = EWD(divisor.graph, divisor)
+    return q_reduced_divisor
+
+def is_q_reduced(divisor: CFDivisor) -> bool:
+    """
+    Check if the given divisor is q-reduced.
+
+    Args:
+        divisor: The initial chip distribution (CFDivisor instance).
+
+    Returns:
+        True if the divisor is q-reduced, False otherwise.
+    """
+    _, q_reduced_divisor = EWD(divisor.graph, divisor)
+    return q_reduced_divisor == divisor
+
