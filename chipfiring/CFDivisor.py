@@ -71,16 +71,13 @@ class CFDivisor:
         vertex = Vertex(vertex_name)
         if vertex not in self.graph.graph:
             raise ValueError(f"Vertex {vertex_name} not found in graph")
-
-        valence = self.graph.get_valence(vertex_name)
+        
         neighbors = self.graph.graph[vertex]
 
-        # Update the degree of the vertex
-        self.degrees[vertex] -= valence
-
-        # Update the degrees of the neighbors
         for neighbor in neighbors:
-            self.degrees[neighbor] += 1
+            valence = neighbors[neighbor]
+            self.degrees[neighbor] += valence
+            self.degrees[vertex] -= valence
         
         # Total degree remains unchanged: -valence + len(neighbors) = -valence + valence = 0
 
@@ -102,15 +99,12 @@ class CFDivisor:
         if vertex not in self.graph.graph:
             raise ValueError(f"Vertex {vertex_name} not found in graph")
 
-        valence = self.graph.get_valence(vertex_name)
         neighbors = self.graph.graph[vertex]
 
-        # Update the degree of the vertex
-        self.degrees[vertex] += valence
-
-        # Update the degrees of the neighbors
         for neighbor in neighbors:
-            self.degrees[neighbor] -= 1
+            valence = neighbors[neighbor]
+            self.degrees[neighbor] -= valence
+            self.degrees[vertex] += valence
             
         # Total degree remains unchanged: +valence - len(neighbors) = +valence - valence = 0
     
@@ -173,4 +167,76 @@ class CFDivisor:
                 if neighbor_vertex not in firing_set_vertices:
                     # Transfer 'valence' chips from vertex to neighbor_vertex
                     self.chip_transfer(vertex.name, neighbor_vertex.name, amount=valence)
+
+    
+    
+    def remove_vertex(self, vertex_name: str) -> 'CFDivisor':
+        """Create a copy of the divisor without the specified vertex.
+        
+        Creates a new graph without the specified vertex and returns a new divisor
+        with the remaining vertices and their degrees.
+        
+        Args:
+            vertex_name: The name of the vertex to remove
+            
+        Returns:
+            A new CFDivisor object without the specified vertex
+            
+        Raises:
+            ValueError: If the vertex name is not found in the graph
+        """
+        vertex = Vertex(vertex_name)
+        if vertex not in self.graph.graph:
+            raise ValueError(f"Vertex {vertex_name} not found in graph")
+            
+        # Create new graph without the vertex
+        new_graph = self.graph.remove_vertex(vertex_name)
+        
+        # Create new divisor with remaining vertices and their degrees
+        remaining_degrees = [(v.name, self.degrees[v]) 
+                           for v in new_graph.vertices]
+        
+        return CFDivisor(new_graph, remaining_degrees)
+
+    def __eq__(self, other) -> bool:
+        """Check if two divisors are equal.
+        
+        Two divisors are equal if they have the same underlying graph structure and
+        the same distribution of chips across vertices.
+        
+        Args:
+            other: Another object to compare with
+            
+        Returns:
+            True if the divisors are equal, False otherwise
+        """
+        if not isinstance(other, CFDivisor):
+            return False
+        
+        # Check if the vertex sets are the same
+        if set(self.degrees.keys()) != set(other.degrees.keys()):
+            return False
+            
+        # Check if all vertex degrees match
+        for vertex, degree in self.degrees.items():
+            if other.degrees[vertex] != degree:
+                return False
+                
+        # Check if the graph structures are identical (vertices and edges)
+        if set(self.graph.vertices) != set(other.graph.vertices):
+            return False
+            
+        # Compare edges and their weights
+        for v in self.graph.vertices:
+            if v not in other.graph.graph:
+                return False
+            if set(self.graph.graph[v].keys()) != set(other.graph.graph[v].keys()):
+                return False
+            for neighbor, weight in self.graph.graph[v].items():
+                if other.graph.graph[v][neighbor] != weight:
+                    return False
+        
+        return True
+
+    
     

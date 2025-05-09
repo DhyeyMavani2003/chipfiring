@@ -12,7 +12,7 @@ def test_cfiringscript_init_valid(sample_graph):
     """Test CFiringScript initialization with a valid script."""
     script_dict = {"v1": 2, "v3": -1}
     firing_script = CFiringScript(sample_graph, script_dict)
-    assert firing_script.script == {"v1": 2, "v3": -1}
+    assert firing_script.script == {"v1": 2, "v3": -1, "v2": 0}
     assert firing_script.get_firings("v1") == 2
     assert firing_script.get_firings("v2") == 0 # Not in script
     assert firing_script.get_firings("v3") == -1
@@ -43,7 +43,7 @@ def test_cfiringscript_property(sample_graph):
     script_dict = {"v2": 10, "v3": -5}
     firing_script = CFiringScript(sample_graph, script_dict)
     # The property should return the original mapping, including only specified vertices
-    expected_script = {"v2": 10, "v3": -5}
+    expected_script = {"v2": 10, "v3": -5, "v1": 0}
     assert firing_script.script == expected_script
 
 def test_cfiringscript_empty_script(sample_graph):
@@ -52,4 +52,4 @@ def test_cfiringscript_empty_script(sample_graph):
     assert firing_script.get_firings("v1") == 0
     assert firing_script.get_firings("v2") == 0
     assert firing_script.get_firings("v3") == 0
-    assert firing_script.script == {} 
+    assert firing_script.script == {'v1': 0, 'v2': 0, 'v3': 0}

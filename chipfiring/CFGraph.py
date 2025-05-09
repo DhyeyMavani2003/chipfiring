@@ -170,3 +170,38 @@ class CFGraph:
     def get_genus(self) -> int:
         """Get the genus of the graph, which is defined as |E| - |V| + 1."""
         return self.total_valence - len(self.graph) + 1
+
+    def remove_vertex(self, vertex_name: str) -> 'CFGraph':
+        """Create a copy of the graph without the specified vertex.
+        
+        Args:
+            vertex_name: The name of the vertex to remove
+            
+        Returns:
+            A new CFGraph object without the specified vertex
+            
+        Raises:
+            ValueError: If the vertex name is not found in the graph
+        """
+        vertex = Vertex(vertex_name)
+        if vertex not in self.graph:
+            raise ValueError(f"Vertex {vertex_name} not found in graph")
+            
+        # Create new vertex set without the removed vertex
+        remaining_vertices = {v.name for v in self.vertices if v != vertex}
+        
+        # Collect edges between remaining vertices
+        remaining_edges = []
+        processed_edges = set()
+        
+        for v1 in self.vertices:
+            if v1 != vertex:
+                for v2, valence in self.graph[v1].items():
+                    if v2 != vertex:
+                        edge = tuple(sorted((v1.name, v2.name)))
+                        if edge not in processed_edges:
+                            remaining_edges.append((v1.name, v2.name, valence))
+                            processed_edges.add(edge)
+        
+        # Create new graph with remaining vertices and edges
+        return CFGraph(remaining_vertices, remaining_edges)
