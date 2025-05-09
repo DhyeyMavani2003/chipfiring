@@ -167,4 +167,34 @@ class CFDivisor:
                 if neighbor_vertex not in firing_set_vertices:
                     # Transfer 'valence' chips from vertex to neighbor_vertex
                     self.chip_transfer(vertex.name, neighbor_vertex.name, amount=valence)
+
+    def remove_vertex(self, vertex_name: str) -> 'CFDivisor':
+        """Create a copy of the divisor without the specified vertex.
+        
+        Creates a new graph without the specified vertex and returns a new divisor
+        with the remaining vertices and their degrees.
+        
+        Args:
+            vertex_name: The name of the vertex to remove
+            
+        Returns:
+            A new CFDivisor object without the specified vertex
+            
+        Raises:
+            ValueError: If the vertex name is not found in the graph
+        """
+        vertex = Vertex(vertex_name)
+        if vertex not in self.graph.graph:
+            raise ValueError(f"Vertex {vertex_name} not found in graph")
+            
+        # Create new graph without the vertex
+        new_graph = self.graph.remove_vertex(vertex_name)
+        
+        # Create new divisor with remaining vertices and their degrees
+        remaining_degrees = [(v.name, self.degrees[v]) 
+                           for v in new_graph.vertices]
+        
+        return CFDivisor(new_graph, remaining_degrees)
+
+    
     

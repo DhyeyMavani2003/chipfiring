@@ -13,7 +13,7 @@ class GreedyAlgorithm:
             divisor: A CFDivisor object representing the initial chip configuration.
         """
         self.graph = graph
-        self.divisor = divisor
+        self.divisor = divisor.deepcopy()
         # Initialize firing script with all vertices at 0
         self.firing_script = CFiringScript(graph)
 
