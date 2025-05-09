@@ -71,16 +71,13 @@ class CFDivisor:
         vertex = Vertex(vertex_name)
         if vertex not in self.graph.graph:
             raise ValueError(f"Vertex {vertex_name} not found in graph")
-
-        valence = self.graph.get_valence(vertex_name)
+        
         neighbors = self.graph.graph[vertex]
 
-        # Update the degree of the vertex
-        self.degrees[vertex] -= valence
-
-        # Update the degrees of the neighbors
         for neighbor in neighbors:
-            self.degrees[neighbor] += 1
+            valence = neighbors[neighbor]
+            self.degrees[neighbor] += valence
+            self.degrees[vertex] -= valence
         
         # Total degree remains unchanged: -valence + len(neighbors) = -valence + valence = 0
 
@@ -102,15 +99,12 @@ class CFDivisor:
         if vertex not in self.graph.graph:
             raise ValueError(f"Vertex {vertex_name} not found in graph")
 
-        valence = self.graph.get_valence(vertex_name)
         neighbors = self.graph.graph[vertex]
 
-        # Update the degree of the vertex
-        self.degrees[vertex] += valence
-
-        # Update the degrees of the neighbors
         for neighbor in neighbors:
-            self.degrees[neighbor] -= 1
+            valence = neighbors[neighbor]
+            self.degrees[neighbor] -= valence
+            self.degrees[vertex] += valence
             
         # Total degree remains unchanged: +valence - len(neighbors) = +valence - valence = 0
     
