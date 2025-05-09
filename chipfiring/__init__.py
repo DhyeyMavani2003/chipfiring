@@ -7,7 +7,9 @@ from .CFDivisor import CFDivisor
 from .CFLaplacian import CFLaplacian
 from .CFOrientation import CFOrientation, OrientationState
 from .CFiringScript import CFiringScript
-
+from .CFGreedyAlgorithm import GreedyAlgorithm
+from .CFDhar import DharAlgorithm
+from .algo import EWD
 __all__ = [
     "CFGraph",
     "Vertex",
@@ -16,5 +18,8 @@ __all__ = [
     "CFiringScript",
     "CFLaplacian",
     "OrientationState",
+    "GreedyAlgorithm",
+    "DharAlgorithm",
+    "EWD"
 ]
-__version__ = "0.0.3"
+__version__ = "0.1.0"

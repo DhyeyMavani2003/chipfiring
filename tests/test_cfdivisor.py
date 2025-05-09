@@ -145,10 +145,10 @@ def test_lending_move_multi_edge(graph_with_multi_edges):
     # b degree decreases by 5
     assert divisor.get_degree("b") == 5 - 5 # 0
     # Neighbors a and c increase by 1 (even with multi-edges)
-    assert divisor.get_degree("a") == 10 + 1 # 11
-    assert divisor.get_degree("c") == 0 + 1 # 1
+    assert divisor.get_degree("a") == 10 + 2 # 12
+    assert divisor.get_degree("c") == 0 + 3 # 3
     # Total degree should remain the same
-    assert divisor.get_total_degree() == initial_total # 11 + 0 + 1 = 12
+    assert divisor.get_total_degree() == initial_total # 12 + 0 + 3 = 15
 
 def test_lending_move_invalid_vertex(initial_divisor):
     """Test lending_move with a vertex not in the graph."""

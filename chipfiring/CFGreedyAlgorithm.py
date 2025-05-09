@@ -2,6 +2,7 @@ from .CFGraph import CFGraph
 from .CFDivisor import CFDivisor
 from .CFiringScript import CFiringScript
 import typing
+import copy
 
 class GreedyAlgorithm:
     def __init__(self, graph: CFGraph, divisor: CFDivisor):
@@ -13,7 +14,7 @@ class GreedyAlgorithm:
             divisor: A CFDivisor object representing the initial chip configuration.
         """
         self.graph = graph
-        self.divisor = divisor.deepcopy()
+        self.divisor = copy.deepcopy(divisor)
         # Initialize firing script with all vertices at 0
         self.firing_script = CFiringScript(graph)
 

@@ -168,6 +168,8 @@ class CFDivisor:
                     # Transfer 'valence' chips from vertex to neighbor_vertex
                     self.chip_transfer(vertex.name, neighbor_vertex.name, amount=valence)
 
+    
+    
     def remove_vertex(self, vertex_name: str) -> 'CFDivisor':
         """Create a copy of the divisor without the specified vertex.
         
@@ -195,6 +197,46 @@ class CFDivisor:
                            for v in new_graph.vertices]
         
         return CFDivisor(new_graph, remaining_degrees)
+
+    def __eq__(self, other) -> bool:
+        """Check if two divisors are equal.
+        
+        Two divisors are equal if they have the same underlying graph structure and
+        the same distribution of chips across vertices.
+        
+        Args:
+            other: Another object to compare with
+            
+        Returns:
+            True if the divisors are equal, False otherwise
+        """
+        if not isinstance(other, CFDivisor):
+            return False
+        
+        # Check if the vertex sets are the same
+        if set(self.degrees.keys()) != set(other.degrees.keys()):
+            return False
+            
+        # Check if all vertex degrees match
+        for vertex, degree in self.degrees.items():
+            if other.degrees[vertex] != degree:
+                return False
+                
+        # Check if the graph structures are identical (vertices and edges)
+        if set(self.graph.vertices) != set(other.graph.vertices):
+            return False
+            
+        # Compare edges and their weights
+        for v in self.graph.vertices:
+            if v not in other.graph.graph:
+                return False
+            if set(self.graph.graph[v].keys()) != set(other.graph.graph[v].keys()):
+                return False
+            for neighbor, weight in self.graph.graph[v].items():
+                if other.graph.graph[v][neighbor] != weight:
+                    return False
+        
+        return True
 
     
     

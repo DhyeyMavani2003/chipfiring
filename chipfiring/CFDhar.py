@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Set
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
-from .CFiringScript import CFiringScript
+
 class DharAlgorithm:
     def __init__(self, graph: CFGraph, configuration: CFDivisor, q_name: str):
         """
@@ -21,11 +21,12 @@ class DharAlgorithm:
         if self.q not in self.graph.vertices:
             raise ValueError(f"Distinguished vertex {q_name} not found in graph")
             
-        # Store a copy of the full configuration
-        self.full_configuration = configuration.deepcopy()
+        self.full_configuration = configuration
         # For convenience, store a separate configuration excluding q
-        self.configuration = self.full_configuration.remove_vertex(q_name)
-        self.unburnt_vertices = set(self.configuration.vertices)
+        # NOTE: This creates a new CFGraph object internally in the remove_vertex method, which is wasteful
+        self.configuration = configuration
+
+        self.unburnt_vertices = set(self.graph.vertices) - {self.q}
     
     def outdegree_S(self, vertex: Vertex, S: Set[Vertex]) -> int:
         """
@@ -68,17 +69,17 @@ class DharAlgorithm:
         
         for v in vertices_to_process:
             # While v is in debt, borrow
-            while self.configuration[v] < 0:
+            while self.configuration.get_degree(v.name) < 0:
                 # Perform a borrowing move at v
-                vertex_degree = sum(self.graph.graph[v].values())
-                self.configuration[v] += vertex_degree
+                vertex_degree = self.graph.get_valence(v.name)
+                self.configuration.degrees[v] += vertex_degree
                 
                 # Update neighbors based on edge counts
                 for neighbor, edge_count in self.graph.graph[v].items():
-                    if neighbor in self.configuration:
-                        self.configuration[neighbor] -= edge_count
+                    if neighbor in self.configuration.degrees.keys():
+                        self.configuration.degrees[neighbor] -= edge_count
     
-    def run(self) -> CFiringScript:
+    def run(self) -> Set[Vertex]:
         """
         Run Dhar's Algorithm to find a maximal legal firing set.
         
@@ -88,7 +89,7 @@ class DharAlgorithm:
         3. Vertices that never burn form a legal firing set
         
         Returns:
-            A CFiringScript object representing the maximal legal firing set
+            A set of unburnt vertices (excluding q) representing the maximal legal firing set
         """
         # First, ensure all non-q vertices are out of debt
         self.send_debt_to_q()
@@ -110,10 +111,23 @@ class DharAlgorithm:
                                    if neighbor in burnt)
                 
                 # A vertex burns if it has fewer chips than edges to burnt vertices
-                if v in self.configuration and self.configuration[v] < edges_to_burnt:
+                if v in self.configuration.degrees.keys() and self.configuration.get_degree(v.name) < edges_to_burnt:
                     burnt.add(v)
                     unburnt.remove(v)
                     changed = True
         
         # Return unburnt vertices (excluding q) as the maximal firing set
-        return CFiringScript(self.graph, {v.name: self.configuration[v] for v in unburnt - {self.q}})
+        return unburnt - {self.q}
+
+    def legal_set_fire(self, unburnt_vertices: Set[Vertex]):
+        divisor = self.full_configuration
+        for v in self.full_configuration.degrees.keys():
+            if v == self.q:
+                divisor.degrees[v] = self.full_configuration.get_total_degree() - (self.configuration.get_total_degree() - self.configuration.get_degree(self.q.name))
+            else:
+                divisor.degrees[v] = self.configuration.get_degree(v.name)
+
+        divisor.set_fire({v.name for v in unburnt_vertices})
+
+        for v in self.configuration.degrees.keys():
+            self.configuration.degrees[v] = divisor.get_degree(v.name)

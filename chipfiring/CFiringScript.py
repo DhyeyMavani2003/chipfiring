@@ -85,4 +85,7 @@ class CFiringScript:
     @property
     def script(self) -> typing.Dict[str, int]:
         """Return the script as a dictionary mapping vertex names to firings."""
-        return {vertex.name: firings for vertex, firings in self._script.items()}
+        to_return = {}
+        for vertex in self.graph.vertices:
+            to_return[vertex.name] = self.get_firings(vertex.name)
+        return to_return
