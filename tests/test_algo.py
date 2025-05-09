@@ -42,7 +42,8 @@ def test_linear_equivalence_identical_divisors(simple_graph):
     degrees1 = [("v1", 2), ("v2", 0), ("v3", -1)]
     divisor1 = CFDivisor(simple_graph, degrees1)
     divisor2 = CFDivisor(simple_graph, degrees1) # Identical
-    assert linear_equivalence(divisor1, divisor2) == True
+    expected_result = True
+    assert linear_equivalence(divisor1, divisor2) == expected_result
 
 def test_linear_equivalence_different_total_degree(simple_graph):
     """Test linear equivalence with divisors having different total degrees."""
@@ -50,7 +51,8 @@ def test_linear_equivalence_different_total_degree(simple_graph):
     divisor1 = CFDivisor(simple_graph, degrees1)
     degrees2 = [("v1", 1), ("v2", 1), ("v3", 0)]  # Total degree 2
     divisor2 = CFDivisor(simple_graph, degrees2)
-    assert linear_equivalence(divisor1, divisor2) == False
+    expected_result = False
+    assert linear_equivalence(divisor1, divisor2) == expected_result
 
 def test_linear_equivalence_equivalent_by_firing(simple_graph):
     """Test linear equivalence where one divisor is reachable by a firing move."""
@@ -58,14 +60,16 @@ def test_linear_equivalence_equivalent_by_firing(simple_graph):
     divisor1 = CFDivisor(simple_graph, degrees1)
     degrees2 = [("v1", 1), ("v2", 2), ("v3", 1)] # Obtained by firing v1 from divisor1
     divisor2 = CFDivisor(simple_graph, degrees2)
-    assert linear_equivalence(divisor1, divisor2) == True
-    assert linear_equivalence(divisor2, divisor1) == True # Symmetric
+    expected_result = True
+    assert linear_equivalence(divisor1, divisor2) == expected_result
+    assert linear_equivalence(divisor2, divisor1) == expected_result # Symmetric
 
 def test_linear_equivalence_cycle_graph_equivalent(simple_graph):
     """ Test linear equivalence on a cycle graph (K3 is C3) - known equivalent divisors """
     d1 = CFDivisor(simple_graph, [("v1", 2), ("v2", 0), ("v3", 0)])
     d2 = CFDivisor(simple_graph, [("v1", 0), ("v2", 1), ("v3", 1)])
-    assert linear_equivalence(d1, d2) == True
+    expected_result = True
+    assert linear_equivalence(d1, d2) == expected_result
 
 def test_linear_equivalence_path_graph_not_equivalent():
     """ Test linear equivalence on a path graph P3 - known non-equivalent divisors. """
@@ -74,7 +78,8 @@ def test_linear_equivalence_path_graph_not_equivalent():
     p3_graph = CFGraph(vertices, edges)
     d1 = CFDivisor(p3_graph, [("p1", 1), ("p2", 0), ("p3", 0)])
     d2 = CFDivisor(p3_graph, [("p1", 0), ("p2", 0), ("p3", 1)])
-    assert linear_equivalence(d1, d2) == True
+    expected_result = True
+    assert linear_equivalence(d1, d2) == expected_result
 
 def test_linear_equivalence_on_ABCE(sequence_test_graph):
     """Test linear equivalence on the Alice, Bob, Charlie, Elise graph."""
@@ -83,5 +88,6 @@ def test_linear_equivalence_on_ABCE(sequence_test_graph):
     divisor1 = CFDivisor(sequence_test_graph, initial_degrees1)
     initial_degrees2 = [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)]
     divisor2 = CFDivisor(sequence_test_graph, initial_degrees2)
-    assert linear_equivalence(divisor1, divisor2) == True
+    expected_result = True
+    assert linear_equivalence(divisor1, divisor2) == expected_result
 
