@@ -2,6 +2,8 @@ import pytest
 from chipfiring.CFOrientation import CFOrientation
 from chipfiring.CFGraph import CFGraph
 from chipfiring import CFDivisor
+from chipfiring.CFDhar import DharAlgorithm
+from chipfiring.algo import EWD
 
 
 @pytest.fixture
@@ -396,3 +398,187 @@ def test_canonical_divisor(simple_graph_k3, graph_with_multi_edges):
     )  # 3 - 2 = 1
     assert canonical_multi.get_total_degree() == 0 + 3 + 1  # 4
     # Check against 2g-2: g = |E|-|V|+1 = (2+3)-3+1 = 3. 2g-2 = 2*3-2 = 4. Matches.
+
+# Add tests for orientation tracking in Dhar's algorithm
+@pytest.fixture
+def dhar_test_graph():
+    """Create a simple graph for testing orientation tracking."""
+    G = CFGraph({"A", "B", "C", "D"}, [])
+    G.add_edge("A", "B", 1)
+    G.add_edge("B", "C", 1)
+    G.add_edge("C", "D", 1)
+    G.add_edge("D", "A", 1)
+    G.add_edge("A", "C", 1)
+    return G
+
+
+def test_dhar_with_orientation_tracking(dhar_test_graph):
+    """Test that Dhar's algorithm correctly tracks orientations."""
+    # Create a configuration where some vertices should burn
+    config = CFDivisor(dhar_test_graph, [("A", 2), ("B", 0), ("C", 0), ("D", 0)])
+    
+    # Run Dhar's algorithm with orientation tracking
+    dhar = DharAlgorithm(dhar_test_graph, config, "B")
+    _, orientation = dhar.run()
+    
+    assert orientation.get_orientation("A", "B") == ("B", "A")
+    assert orientation.get_orientation("B", "C") == ("B", "C")
+    assert orientation.get_orientation("C", "D") == ("C", "D")
+    assert orientation.get_orientation("D", "A") == ("D", "A")
+    assert orientation.get_orientation("A", "C") == ("C", "A")
+
+def test_ewd_with_orientation_tracking(dhar_test_graph):
+    """Test that EWD returns a full orientation."""
+    # Create a configuration that should be winnable
+    config = CFDivisor(dhar_test_graph, [("A", 3), ("B", -1), ("C", 0), ("D", 0)])
+    
+    # Run EWD
+    is_winnable, q_reduced, orientation = EWD(dhar_test_graph, config)
+    
+    # Check that the orientation is full
+    assert orientation.check_fullness()
+    
+    # Check that orientations follow our burning process expectations
+    assert orientation.get_orientation("A", "B") == ("B", "A")
+    assert orientation.get_orientation("A", "C") == ("A", "C")
+    assert orientation.get_orientation("A", "D") == ("A", "D")
+    assert orientation.get_orientation("B", "C") == ("B", "C")
+    assert orientation.get_orientation("C", "D") == ("C", "D")
+    
+    # Every edge should have an orientation
+    for v1 in dhar_test_graph.vertices:
+        for v2 in dhar_test_graph.graph[v1]:
+            if v1 < v2:  # Check each edge only once
+                assert orientation.get_orientation(v1.name, v2.name) is not None
+
+
+def test_ewd_orientation_fire_spread(dhar_test_graph):
+    """Test that orientation follows the fire spread direction."""
+    # B will be fire source
+    config = CFDivisor(dhar_test_graph, [("A", 2), ("B", 0), ("C", 1), ("D", 2)])
+    
+    # Run EWD
+    _, _, orientation = EWD(dhar_test_graph, config)
+    
+    assert orientation.get_orientation("A", "B") == ("B", "A")
+    assert orientation.get_orientation("A", "C") == ("C", "A")
+    assert orientation.get_orientation("A", "D") == ("D", "A")
+    assert orientation.get_orientation("B", "C") == ("B", "C")
+    assert orientation.get_orientation("C", "D") == ("C", "D")
+    
+
+def test_set_orientation_directly(sample_graph):
+    """Test the set_orientation method directly to ensure proper state transitions."""
+    from chipfiring.CFOrientation import OrientationState, Vertex
+    
+    orientation = CFOrientation(sample_graph, [])
+    v_a = Vertex("A")
+    v_b = Vertex("B")
+    
+    # Verify initial state
+    assert orientation.orientation[v_a][v_b] == OrientationState.NO_ORIENTATION
+    assert orientation.get_in_degree("A") == 0
+    assert orientation.get_out_degree("A") == 0
+    
+    # Set orientation from NO_ORIENTATION to SOURCE_TO_SINK
+    orientation.set_orientation(v_a, v_b, OrientationState.SOURCE_TO_SINK)
+    assert orientation.orientation[v_a][v_b] == OrientationState.SOURCE_TO_SINK
+    assert orientation.orientation[v_b][v_a] == OrientationState.SINK_TO_SOURCE
+    assert orientation.get_out_degree("A") == 2  # A-B edge has valence 2
+    assert orientation.get_in_degree("B") == 2
+    
+    # Change orientation from SOURCE_TO_SINK to SINK_TO_SOURCE
+    orientation.set_orientation(v_a, v_b, OrientationState.SINK_TO_SOURCE)
+    assert orientation.orientation[v_a][v_b] == OrientationState.SINK_TO_SOURCE
+    assert orientation.orientation[v_b][v_a] == OrientationState.SOURCE_TO_SINK
+    assert orientation.get_in_degree("A") == 2
+    assert orientation.get_out_degree("A") == 0
+    assert orientation.get_out_degree("B") == 2
+    assert orientation.get_in_degree("B") == 0
+    
+    # Change back to NO_ORIENTATION
+    orientation.set_orientation(v_a, v_b, OrientationState.NO_ORIENTATION)
+    assert orientation.orientation[v_a][v_b] == OrientationState.NO_ORIENTATION
+    assert orientation.orientation[v_b][v_a] == OrientationState.NO_ORIENTATION
+    assert orientation.get_in_degree("A") == 0
+    assert orientation.get_out_degree("A") == 0
+    assert orientation.get_in_degree("B") == 0
+    assert orientation.get_out_degree("B") == 0
+    assert orientation.is_full is False
+
+
+def test_check_fullness_directly(simple_graph_k3):
+    """Test the check_fullness method directly."""
+    from chipfiring.CFOrientation import OrientationState, Vertex
+    
+    # Create a partially oriented graph
+    orientation = CFOrientation(simple_graph_k3, [("v1", "v2")])
+    
+    # Verify initial state
+    assert not orientation.is_full
+    assert orientation.is_full_checked  # Should be set during initialization
+    
+    # Reset the flag to test if check_fullness updates it
+    orientation.is_full_checked = False
+    result = orientation.check_fullness()
+    assert result is False
+    assert orientation.is_full is False
+    assert orientation.is_full_checked is True
+    
+    # Complete the orientation
+    v2 = Vertex("v2")
+    v3 = Vertex("v3")
+    orientation.set_orientation(v2, v3, OrientationState.SOURCE_TO_SINK)
+    
+    v1 = Vertex("v1")
+    orientation.set_orientation(v1, v3, OrientationState.SOURCE_TO_SINK)
+    
+    # Reset flag and test again
+    orientation.is_full_checked = False
+    result = orientation.check_fullness()
+    assert result is True
+    assert orientation.is_full is True
+    assert orientation.is_full_checked is True
+
+
+def test_is_full_updates(simple_graph_k3):
+    """Test that the is_full flag is properly updated when edges are oriented."""
+    from chipfiring.CFOrientation import OrientationState, Vertex
+    
+    # Create empty orientation
+    orientation = CFOrientation(simple_graph_k3, [])
+    assert not orientation.is_full
+    
+    # Orient all edges
+    v1 = Vertex("v1")
+    v2 = Vertex("v2")
+    v3 = Vertex("v3")
+    
+    orientation.set_orientation(v1, v2, OrientationState.SOURCE_TO_SINK)
+    # After setting one edge, is_full_checked should be False
+    assert orientation.is_full_checked is False
+    
+    orientation.set_orientation(v2, v3, OrientationState.SOURCE_TO_SINK)
+    orientation.set_orientation(v1, v3, OrientationState.SOURCE_TO_SINK)
+    
+    # Check if it's full now
+    assert orientation.check_fullness() is True
+    assert orientation.is_full is True
+    
+    # Now remove an orientation
+    orientation.set_orientation(v1, v2, OrientationState.NO_ORIENTATION)
+    # Setting to NO_ORIENTATION should directly set is_full to False
+    assert orientation.is_full is False
+    assert orientation.is_full_checked is True
+
+
+def test_reverse_updates_fullness_check(fully_oriented_k3):
+    """Test that the reverse method properly checks and maintains fullness."""
+    reversed_orientation = fully_oriented_k3.reverse()
+    
+    # The reversed orientation should be full and have the flag set
+    assert reversed_orientation.is_full is True
+    assert reversed_orientation.is_full_checked is True
+
+
+    
