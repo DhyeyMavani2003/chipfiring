@@ -2,6 +2,7 @@ import pytest
 from chipfiring.CFGraph import CFGraph, Vertex
 from chipfiring.CFDivisor import CFDivisor
 from chipfiring.CFDhar import DharAlgorithm
+from chipfiring.CFOrientation import CFOrientation
 import copy
 
 
@@ -101,11 +102,11 @@ class TestDharAlgorithm:
         config = CFDivisor(simple_graph, [("A", 3), ("B", 2), ("C", 1), ("D", 2)])
         dhar = DharAlgorithm(simple_graph, config, "A")
 
-        unburnt_vertices = dhar.run()
+        unburnt_vertices, orientation = dhar.run()
 
         # Verify the result is a set of vertices
         assert isinstance(unburnt_vertices, set)
-
+        assert isinstance(orientation, CFOrientation)
         # In this case, some vertices should remain unburnt
         # Convert to vertex names for easier checking
         unburnt_names = {v.name for v in unburnt_vertices}
@@ -118,7 +119,7 @@ class TestDharAlgorithm:
         config = CFDivisor(simple_graph, [("A", 3), ("B", -1), ("C", 1), ("D", 2)])
         dhar = DharAlgorithm(simple_graph, config, "A")
 
-        unburnt_vertices = dhar.run()
+        unburnt_vertices, orientation = dhar.run()
 
         # Verify debt has been removed
         assert all(
@@ -128,19 +129,20 @@ class TestDharAlgorithm:
 
         # Check if the result is valid
         assert isinstance(unburnt_vertices, set)
-
+        assert isinstance(orientation, CFOrientation)
     def test_run_cycle(self, cycle_graph):
         """Test the Dhar algorithm on a cycle graph."""
         # In a cycle graph with these specific values, we expect certain burning behavior
         config = CFDivisor(cycle_graph, [("A", 2), ("B", 0), ("C", 1), ("D", 0)])
         dhar = DharAlgorithm(cycle_graph, config, "A")
 
-        unburnt_vertices = dhar.run()
+        unburnt_vertices, orientation = dhar.run()
 
         # In this configuration, B should burn (0 chips, 1 edge to burnt A)
         # Then C might burn depending on the burning propagation
         # Verify the result is a set of vertices
         assert isinstance(unburnt_vertices, set)
+        assert isinstance(orientation, CFOrientation)
 
     def test_run_weighted(self, weighted_graph):
         """Test the Dhar algorithm on a weighted graph."""
@@ -148,11 +150,11 @@ class TestDharAlgorithm:
         config = CFDivisor(weighted_graph, [("A", 4), ("B", 3), ("C", 2), ("D", 3)])
         dhar = DharAlgorithm(weighted_graph, config, "A")
 
-        unburnt_vertices = dhar.run()
+        unburnt_vertices, orientation = dhar.run()
 
         # Verify the result is a set of vertices
         assert isinstance(unburnt_vertices, set)
-
+        assert isinstance(orientation, CFOrientation)
         # Convert unburnt vertices to a firing script for comparison
         firing_script = {v.name: 1 for v in unburnt_vertices}
         assert len(firing_script) <= 3  # A is excluded as distinguished vertex
@@ -163,7 +165,7 @@ class TestDharAlgorithm:
         config = CFDivisor(simple_graph, [("A", 2), ("B", 2), ("C", 2), ("D", 2)])
         dhar = DharAlgorithm(simple_graph, config, "A")
 
-        unburnt_vertices = dhar.run()
+        unburnt_vertices, _ = dhar.run()
 
         # Create a firing script from unburnt vertices
         firing_script = {v.name: 1 for v in unburnt_vertices}
@@ -193,7 +195,7 @@ class TestDharAlgorithm:
         dhar = DharAlgorithm(sequence_test_graph, divisor, "Bob")
 
         # Run the algorithm
-        unburnt_vertices = dhar.run()
+        unburnt_vertices, orientation = dhar.run()
 
         # Check that debt has been properly concentrated at q (Bob)
         for v in dhar.configuration.degrees.keys():
@@ -202,7 +204,7 @@ class TestDharAlgorithm:
 
         # Verify the result is a set of vertices
         assert isinstance(unburnt_vertices, set)
-
+        assert isinstance(orientation, CFOrientation)
         assert unburnt_vertices == {Vertex("Charlie"), Vertex("Elise")}
 
     def test_debt_concentration_with_bob_as_q_alt(self, sequence_test_graph):
@@ -217,7 +219,7 @@ class TestDharAlgorithm:
         dhar = DharAlgorithm(sequence_test_graph, divisor, "Bob")
 
         # Run the algorithm
-        unburnt_vertices = dhar.run()
+        unburnt_vertices, orientation = dhar.run()
 
         # Check that debt has been properly concentrated at q (Bob)
         for v in dhar.configuration.degrees.keys():
@@ -226,5 +228,6 @@ class TestDharAlgorithm:
 
         # Verify the result is a set of vertices
         assert isinstance(unburnt_vertices, set)
+        assert isinstance(orientation, CFOrientation)
 
         assert unburnt_vertices == {Vertex("Alice"), Vertex("Charlie"), Vertex("Elise")}

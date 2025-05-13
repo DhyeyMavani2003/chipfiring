@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import Set
+from typing import Set, Tuple
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
+from .CFOrientation import CFOrientation, OrientationState
 
 
 class DharAlgorithm:
@@ -84,7 +85,7 @@ class DharAlgorithm:
                     if neighbor in self.configuration.degrees.keys():
                         self.configuration.degrees[neighbor] -= edge_count
 
-    def run(self) -> Set[Vertex]:
+    def run(self) -> Tuple[Set[Vertex], CFOrientation]:
         """
         Run Dhar's Algorithm to find a maximal legal firing set.
 
@@ -94,7 +95,9 @@ class DharAlgorithm:
         3. Vertices that never burn form a legal firing set
 
         Returns:
-            A set of unburnt vertices (excluding q) representing the maximal legal firing set
+            A tuple containing:
+            - A set of unburnt vertices (excluding q) representing the maximal legal firing set
+            - A CFOrientation object tracking the burning directions
         """
         # First, ensure all non-q vertices are out of debt
         self.send_debt_to_q()
@@ -103,31 +106,52 @@ class DharAlgorithm:
         burnt = {self.q}
         unburnt = set(self.graph.vertices) - burnt
 
+        # Initialize a new orientation object
+        orientation = CFOrientation(self.graph, [])
+
         # Continue until no new vertices burn
         changed = True
         while changed:
             changed = False
 
-            # Check each unburnt vertex to see if it should burn
-            for v in list(unburnt):
+            # Check each unburnt vertex to see if it should burn;
+            # Sort unburnt vertices by name to ensure consistent behavior
+            for v in sorted(list(unburnt), key=lambda x: x.name):
                 # Count edges from v to burnt vertices
-                edges_to_burnt = sum(
-                    self.graph.graph[v][neighbor]
-                    for neighbor in self.graph.graph[v]
-                    if neighbor in burnt
-                )
+                edges_to_burnt = 0
+                burnt_neighbors = []
+                
+                for neighbor in self.graph.graph[v]:
+                    if neighbor in burnt:
+                        edges_to_burnt += self.graph.graph[v][neighbor]
+                        burnt_neighbors.append(neighbor)
 
                 # A vertex burns if it has fewer chips than edges to burnt vertices
                 if (
                     v in self.configuration.degrees.keys()
                     and self.configuration.get_degree(v.name) < edges_to_burnt
                 ):
+                    # Record orientations from burnt neighbors to the newly burning vertex
+                    for burnt_neighbor in burnt_neighbors:
+                        # Add orientation from burnt neighbor (source) to v (sink)
+                        current = orientation.get_orientation(burnt_neighbor.name, v.name)
+                        if current is None:
+                            # Orientation doesn't exist yet, add it
+                            orientation.set_orientation(
+                                Vertex(burnt_neighbor.name), 
+                                Vertex(v.name), 
+                                OrientationState.SOURCE_TO_SINK
+                            )
+                        else:
+                            # If orientation exists, raise error
+                            raise ValueError(f"Conflicting orientation for edge {burnt_neighbor.name}-{v.name}")
+                    
                     burnt.add(v)
                     unburnt.remove(v)
                     changed = True
 
-        # Return unburnt vertices (excluding q) as the maximal firing set
-        return unburnt - {self.q}
+        # Return unburnt vertices (excluding q) as the maximal firing set, along with the orientation
+        return unburnt - {self.q}, orientation
 
     def legal_set_fire(self, unburnt_vertices: Set[Vertex]):
         divisor = self.full_configuration

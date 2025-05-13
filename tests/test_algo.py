@@ -2,6 +2,7 @@ import pytest
 from chipfiring.CFGraph import CFGraph
 from chipfiring.CFDivisor import CFDivisor
 from chipfiring.algo import EWD, linear_equivalence, is_winnable, q_reduction, is_q_reduced
+from chipfiring.CFOrientation import CFOrientation
 
 
 @pytest.fixture
@@ -31,8 +32,10 @@ def test_ewd_example(sequence_test_graph, sequence_test_initial_divisor):
     """
     expected_result = True
     expected_q_reduced_divisor = CFDivisor(sequence_test_graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)])
-    assert EWD(sequence_test_graph, sequence_test_initial_divisor)[0] == expected_result
-    assert EWD(sequence_test_graph, sequence_test_initial_divisor)[1] == expected_q_reduced_divisor
+    is_win, reduced_div, orientation = EWD(sequence_test_graph, sequence_test_initial_divisor)
+    assert is_win == expected_result
+    assert reduced_div == expected_q_reduced_divisor
+    assert isinstance(orientation, CFOrientation)
 
 def test_q_reduction(sequence_test_graph, sequence_test_initial_divisor):
     """Test the q_reduction function."""

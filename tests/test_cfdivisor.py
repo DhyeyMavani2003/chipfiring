@@ -463,3 +463,66 @@ def test_divisor_op_compatible_graphs_different_structure():
     # Test that the result uses self.graph
     assert sum_div.graph == graph_a
     assert diff_div.graph == graph_a
+
+
+def test_remove_vertex(sample_graph):
+    """Test the remove_vertex method."""
+    # Create a divisor with some degrees
+    divisor = CFDivisor(sample_graph, [("A", 3), ("B", -1), ("C", 2)])
+    
+    # Remove vertex B
+    new_divisor = divisor.remove_vertex("B")
+    
+    # Check the new divisor has one less vertex
+    assert "B" not in [v.name for v in new_divisor.graph.vertices]
+    assert len(new_divisor.graph.vertices) == 2
+    
+    # Check degrees are preserved for remaining vertices
+    assert new_divisor.get_degree("A") == 3
+    assert new_divisor.get_degree("C") == 2
+    
+    # Check total degree is updated
+    assert new_divisor.get_total_degree() == 5  # 3 + 2 = 5
+
+
+def test_remove_vertex_invalid(sample_graph):
+    """Test remove_vertex with a non-existent vertex."""
+    divisor = CFDivisor(sample_graph, [("A", 1), ("B", 1), ("C", 1)])
+    
+    with pytest.raises(ValueError, match="Vertex D not found in graph"):
+        divisor.remove_vertex("D")
+
+
+def test_divisor_equality(simple_graph):
+    """Test equality comparison between divisors."""
+    # Create two identical divisors
+    div1 = CFDivisor(simple_graph, [("v1", 1), ("v2", 2), ("v3", 3)])
+    div2 = CFDivisor(simple_graph, [("v1", 1), ("v2", 2), ("v3", 3)])
+    
+    # They should be equal
+    assert div1 == div2
+    
+    # Create a divisor with different degrees
+    div3 = CFDivisor(simple_graph, [("v1", 5), ("v2", 2), ("v3", 3)])
+    assert div1 != div3
+    
+    # Create a divisor with same degrees but different graph structure
+    different_graph = CFGraph({"v1", "v2", "v3"}, [("v1", "v2", 2), ("v2", "v3", 2), ("v1", "v3", 2)])
+    div4 = CFDivisor(different_graph, [("v1", 1), ("v2", 2), ("v3", 3)])
+    assert div1 != div4
+    
+    # Test comparison with non-CFDivisor object
+    assert div1 != "not a divisor"
+
+
+def test_divisor_equality_different_vertices():
+    """Test equality comparison between divisors with different vertex sets."""
+    # Create graphs with different vertex sets
+    g1 = CFGraph({"A", "B"}, [("A", "B", 1)])
+    g2 = CFGraph({"A", "B", "C"}, [("A", "B", 1), ("B", "C", 1)])
+    
+    div1 = CFDivisor(g1, [("A", 1), ("B", 2)])
+    div2 = CFDivisor(g2, [("A", 1), ("B", 2), ("C", 3)])
+    
+    # Different vertex sets should make the divisors unequal
+    assert div1 != div2

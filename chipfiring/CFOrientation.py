@@ -80,12 +80,12 @@ class CFOrientation:
                 )
 
             # Store the orientation and update in/out degrees
-            self._set_orientation(source, sink, OrientationState.SOURCE_TO_SINK)
+            self.set_orientation(source, sink, OrientationState.SOURCE_TO_SINK)
 
         # Check if the orientation is full after initialization
-        self._check_fullness()
+        self.check_fullness()
 
-    def _check_fullness(self) -> None:
+    def check_fullness(self) -> bool:
         """Check if all edges have an orientation and update is_full."""
         for v1 in self.graph.vertices:
             for v2 in self.graph.graph[v1]:
@@ -94,11 +94,12 @@ class CFOrientation:
                     if self.orientation[v1][v2] == OrientationState.NO_ORIENTATION:
                         self.is_full = False
                         self.is_full_checked = True
-                        return  # Found an unoriented edge
+                        return False  # Found an unoriented edge
         self.is_full = True  # All edges checked and oriented
         self.is_full_checked = True
-
-    def _set_orientation(
+        return True
+    
+    def set_orientation(
         self, source: Vertex, sink: Vertex, state: OrientationState
     ) -> None:
         """Helper method to set orientation and update in/out degrees.
@@ -292,7 +293,7 @@ class CFOrientation:
         """
         # Ensure the fullness status is up-to-date
         if not self.is_full_checked:
-            self._check_fullness()
+            self.check_fullness()
 
         # Check if the orientation is full
         if not self.is_full:
@@ -332,7 +333,7 @@ class CFOrientation:
         """
         # Ensure the fullness status is up-to-date
         if not self.is_full_checked:
-            self._check_fullness()
+            self.check_fullness()
 
         # Check if the orientation is full
         if not self.is_full:

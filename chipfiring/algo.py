@@ -1,9 +1,10 @@
 from .CFGraph import CFGraph
 from .CFDivisor import CFDivisor
 from .CFDhar import DharAlgorithm
+from .CFOrientation import CFOrientation
 from typing import Tuple, Optional
 
-def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor]]:
+def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor], Optional[CFOrientation]]:
     """
     Determine if a given chip-firing configuration is winnable using the Efficient Winnability Detection (EWD) algorithm.
 
@@ -19,11 +20,15 @@ def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor]]:
         divisor: The initial chip distribution (CFDivisor instance).
 
     Returns:
-        True if the configuration is winnable, False otherwise.
+        A tuple containing:
+        - Boolean indicating if the configuration is winnable
+        - The q-reduced divisor (or None if not applicable)
+        - The final orientation of edges tracking fire spread (or None if not applicable)
 
     Raises:
         ValueError: If the divisor has no degrees mapping, making it impossible
                     to determine the initial vertex 'q'.
+        RuntimeError: If the final orientation is not full (some edges remain unoriented).
     """
 
     # 1. Find the vertex 'q' with the minimum degree (most debt)
@@ -37,18 +42,42 @@ def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor]]:
     # - [0] extracts the Vertex object (the first element) from the (Vertex, degree) tuple
     #   that corresponds to the minimum degree.
     q = min(divisor.degrees.items(), key=lambda item: item[1])[0]
-
-    # 2. Run Dhar's algorithm to find the maximal legal firing set
+    
+    # Create a DharAlgorithm instance
     dhar = DharAlgorithm(graph, divisor, q.name)
-    # Initially run Dhar's to get the set of unburnt vertices (those not in the maximal legal firing set S_D(q)).
-    unburnt_vertices = dhar.run()
+    
+    # Initially run Dhar's to get the set of unburnt vertices and orientation
+    unburnt_vertices, orientation = dhar.run()
+    for v in unburnt_vertices:
+        print(v.name, dhar.configuration.get_degree(v.name))
+    print("--------------------------------")
 
     # 3. Iteratively fire maximal legal sets until q-reduced or no more sets can be fired.
     # The loop continues as long as Dhar's algorithm identifies a non-empty set of unburnt vertices.
     # This means there are still vertices that can be part of a legal firing sequence originating from q.
     while len(unburnt_vertices) > 0:
-        unburnt_vertices = dhar.run()
         dhar.legal_set_fire(unburnt_vertices)
+
+        for v in unburnt_vertices:
+            print(v.name, dhar.configuration.get_degree(v.name))
+        print("\n")
+
+        unburnt_vertices, new_orientation = dhar.run()
+        # Update orientation with new orientations
+        orientation = new_orientation
+
+        for v in unburnt_vertices:
+            print(v.name, dhar.configuration.get_degree(v.name))
+        print("--------------------------------")
+
+    print("--------------------------------")
+    print("--------------------------------")
+    print("--------------------------------")
+    print("--------------------------------")
+    print("--------------------------------")
+    print("--------------------------------")
+    
+
 
     # 4. If the degree of q is non-negative, then the graph is winnable
     deg_q = divisor.get_total_degree() - (
@@ -57,10 +86,14 @@ def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor]]:
     dhar.configuration.degrees[q] = deg_q
     q_reduced_divisor = dhar.configuration
 
+    # Check if the orientation is full
+    if not orientation.check_fullness():
+        raise RuntimeError("The final orientation is not full. Some edges remain unoriented.")
+
     if deg_q >= 0:
-        return True, q_reduced_divisor 
+        return True, q_reduced_divisor, orientation
     else:
-        return False, q_reduced_divisor
+        return False, q_reduced_divisor, orientation
 
 
 def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
@@ -95,7 +128,7 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
     # Condition 4: Check winnability of the difference divisor.
     difference_divisor = divisor1 - divisor2
     
-    is_linearly_equivalent, _ = EWD(graph, difference_divisor)
+    is_linearly_equivalent, _, _ = EWD(graph, difference_divisor)
 
     return is_linearly_equivalent
 
@@ -111,7 +144,7 @@ def is_winnable(divisor: CFDivisor) -> bool:
     Returns:
         True if the configuration is winnable, False otherwise.
     """
-    is_winnable, _ = EWD(divisor.graph, divisor)
+    is_winnable, _, _ = EWD(divisor.graph, divisor)
     return is_winnable
 
 def q_reduction(divisor: CFDivisor) -> CFDivisor:
@@ -124,7 +157,7 @@ def q_reduction(divisor: CFDivisor) -> CFDivisor:
     Returns:
         The q-reduced divisor.
     """
-    _, q_reduced_divisor = EWD(divisor.graph, divisor)
+    _, q_reduced_divisor, _ = EWD(divisor.graph, divisor)
     return q_reduced_divisor
 
 def is_q_reduced(divisor: CFDivisor) -> bool:
@@ -137,6 +170,6 @@ def is_q_reduced(divisor: CFDivisor) -> bool:
     Returns:
         True if the divisor is q-reduced, False otherwise.
     """
-    _, q_reduced_divisor = EWD(divisor.graph, divisor)
+    _, q_reduced_divisor, _ = EWD(divisor.graph, divisor)
     return q_reduced_divisor == divisor
 
