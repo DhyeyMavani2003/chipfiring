@@ -50,7 +50,6 @@ def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor], 
     unburnt_vertices, orientation = dhar.run()
     for v in unburnt_vertices:
         print(v.name, dhar.configuration.get_degree(v.name))
-    print("--------------------------------")
 
     # 3. Iteratively fire maximal legal sets until q-reduced or no more sets can be fired.
     # The loop continues as long as Dhar's algorithm identifies a non-empty set of unburnt vertices.
@@ -68,16 +67,6 @@ def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor], 
 
         for v in unburnt_vertices:
             print(v.name, dhar.configuration.get_degree(v.name))
-        print("--------------------------------")
-
-    print("--------------------------------")
-    print("--------------------------------")
-    print("--------------------------------")
-    print("--------------------------------")
-    print("--------------------------------")
-    print("--------------------------------")
-    
-
 
     # 4. If the degree of q is non-negative, then the graph is winnable
     deg_q = divisor.get_total_degree() - (
