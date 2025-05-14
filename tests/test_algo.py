@@ -37,6 +37,20 @@ def test_ewd_example(sequence_test_graph, sequence_test_initial_divisor):
     assert reduced_div == expected_q_reduced_divisor
     assert isinstance(orientation, CFOrientation)
 
+def test_ewd_optimized_example(sequence_test_graph):
+    """Test the EWD function with the example provided in algo.py."""
+    expected_result1, expected_result2 = False, True
+    extremal_divisor1 = CFDivisor(sequence_test_graph, [("Alice", -2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)])
+    extremal_divisor2 = CFDivisor(sequence_test_graph, [("Alice", 4), ("Bob", -3), ("Charlie", 4), ("Elise", -1)])
+    is_win1, reduced_div1, orientation1 = EWD(sequence_test_graph, extremal_divisor1, optimized=True)
+    is_win2, reduced_div2, orientation2 = EWD(sequence_test_graph, extremal_divisor2, optimized=True)
+    assert is_win1 == expected_result1
+    assert is_win2 == expected_result2
+    assert reduced_div1 is None
+    assert reduced_div2 is None
+    assert orientation1 is None
+    assert orientation2 is None
+
 def test_q_reduction(sequence_test_graph, sequence_test_initial_divisor):
     """Test the q_reduction function."""
     expected_q_reduced_divisor = CFDivisor(sequence_test_graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)])
@@ -192,6 +206,16 @@ def test_rank_1_k2_graph(k2_graph):
     # k=2: (-1,1) winnable, (1,-1) winnable. 
     # k=3: (-2,1) unwinnable, (1,-2) unwinnable. Returns k-1 = 2.
     assert rank(d) == 2
+    
+def test_rank_1_k2_graph_riemann_roch_theorem(k2_graph):
+    """Test rank for D=(1,1) on K2 using Riemann-Roch theorem."""
+    D = CFDivisor(k2_graph, [("v1", 1), ("v2", 1)]) # Total 2    
+    orientation = CFOrientation(k2_graph, [])
+    K = orientation.canonical_divisor()
+    K_minus_D = K - D
+
+    # Check if Riemann-Roch theorem holds
+    assert rank(K_minus_D) == rank(D) - 1 - D.get_total_degree() + k2_graph.get_genus()
 
 def test_rank_0_k2_graph_asymmetric(k2_graph):
     """Test rank for D=(2,0) on K2."""
@@ -201,6 +225,16 @@ def test_rank_0_k2_graph_asymmetric(k2_graph):
     # k=2: (-1,1) winnable, (1,-1) winnable.
     # k=3: (-2,1) unwinnable, (1,-2) unwinnable. Returns k-1 = 2.
     assert rank(d) == 2
+    
+def test_rank_0_k2_graph_asymmetric_riemann_roch_theorem(k2_graph):
+    """Test rank for D=(2,0) on K2 using Riemann-Roch theorem."""
+    D = CFDivisor(k2_graph, [("v1", 2), ("v2", 0)]) # Total 2
+    orientation = CFOrientation(k2_graph, [])
+    K = orientation.canonical_divisor()
+    K_minus_D = K - D
+    
+    # Check if Riemann-Roch theorem holds
+    assert rank(K_minus_D) == rank(D) - 1 - D.get_total_degree() + k2_graph.get_genus()
 
 def test_rank_k3_slightly_more_chips(simple_graph):
     """Test rank for a divisor with more chips on K3."""
@@ -218,6 +252,16 @@ def test_rank_k3_slightly_more_chips(simple_graph):
     # (0,0,0) -> winnable
     # (0,1,-1) -> unwinnable (checked by EWD). Returns k-1 = 1.
     assert rank(divisor) == 1
+    
+def test_rank_k3_slightly_more_chips_riemann_roch_theorem(simple_graph):
+    """Test rank for (1,1,0) on K3 using Riemann-Roch theorem."""
+    D = CFDivisor(simple_graph, [("v1", 1), ("v2", 1), ("v3", 0)]) # Total 2
+    orientation = CFOrientation(simple_graph, [])
+    K = orientation.canonical_divisor()
+    K_minus_D = K - D
+    
+    # Check if Riemann-Roch theorem holds
+    assert rank(K_minus_D) == rank(D) - 1 - D.get_total_degree() + simple_graph.get_genus()
 
 def test_rank_k3_even_more_chips(simple_graph):
     """Test rank for (1,1,1) on K3."""
@@ -238,6 +282,16 @@ def test_rank_k3_even_more_chips(simple_graph):
     # (0,1,-1) -> unwinnable (checked by EWD). Returns k-1 = 2.
     assert rank(divisor) == 2
     
+def test_rank_k3_even_more_chips_riemann_roch_theorem(simple_graph):
+    """Test rank for (1,1,1) on K3 using Riemann-Roch theorem."""
+    D = CFDivisor(simple_graph, [("v1", 1), ("v2", 1), ("v3", 1)]) # Total 3
+    orientation = CFOrientation(simple_graph, [])
+    K = orientation.canonical_divisor()
+    K_minus_D = K - D
+    
+    # Check if Riemann-Roch theorem holds
+    assert rank(K_minus_D) == rank(D) - 1 - D.get_total_degree() + simple_graph.get_genus()
+    
 def test_rank_sequence_test_graph(sequence_test_initial_divisor):
     """Test rank for the sequence test graph."""
     # D = (A:2, B:-3, C:4, E:-1) on sequence_test_graph.
@@ -245,3 +299,13 @@ def test_rank_sequence_test_graph(sequence_test_initial_divisor):
     
     # k=1: (1,-3,4,-1) unwinnable as checked by EWD.
     assert rank(sequence_test_initial_divisor) == 0
+
+def test_rank_sequence_test_graph_riemann_roch_theorem(sequence_test_graph, sequence_test_initial_divisor):
+    """Test rank for the sequence test graph using Riemann-Roch theorem."""
+    D = sequence_test_initial_divisor
+    orientation = CFOrientation(sequence_test_graph, [])
+    K = orientation.canonical_divisor()
+    K_minus_D = K - D
+    
+    # Check if Riemann-Roch theorem holds
+    assert rank(K_minus_D) == rank(D) - 1 - D.get_total_degree() + sequence_test_graph.get_genus()

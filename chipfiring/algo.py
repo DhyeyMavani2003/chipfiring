@@ -7,7 +7,7 @@ from typing import Tuple, Optional, List, Dict
 import itertools
 from multiprocessing import Pool
 
-def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor], Optional[CFOrientation]]:
+def EWD(graph: CFGraph, divisor: CFDivisor, optimized: bool = False) -> Tuple[bool, Optional[CFDivisor], Optional[CFOrientation]]:
     """
     Determine if a given chip-firing configuration is winnable using the Efficient Winnability Detection (EWD) algorithm.
 
@@ -21,6 +21,7 @@ def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor], 
     Args:
         graph: The chip-firing graph (CFGraph instance).
         divisor: The initial chip distribution (CFDivisor instance).
+        optimized: Whether to run EWD in optimized mode. (default: False). Note: if you choose to run in optimized mode, you might not get the associated induced orientation and q-reduced divisor because of the shortcuts taken by the algorithm to determine winnability.
 
     Returns:
         A tuple containing:
@@ -33,16 +34,19 @@ def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor], 
                     to determine the initial vertex 'q'.
         RuntimeError: If the final orientation is not full (some edges remain unoriented).
     """
-
-    # 0. If total degree is negative, return False
-    if divisor.get_total_degree() < 0:
-        return False, None, None
+    # Run EWD in optimized mode if requested. 
+    # With this mode, we use theorems, lemmas, and properties to determine winnability if possible.
+    if optimized:
+        # If total degree is negative, return False
+        if divisor.get_total_degree() < 0:
+            return False, None, None
+        
+        # Apply Proposition 4.1.14 (2) from Dhyey Mavani's thesis if possible:
+        #   If D is a maximal unwinnable divisor, then deg(D) = g − 1. Thus, deg(D) ≥ g implies D is winnable
+        if divisor.get_total_degree() >= graph.get_genus():
+            return True, None, None
     
-    # 1. Find the vertex 'q' with the minimum degree (most debt)
-    if not divisor.degrees:
-        raise ValueError("Cannot determine 'q': divisor has no degrees mapping.")
-
-    # q is the Vertex object with the minimum degree.
+    # 1. q is the Vertex object with the minimum degree.
     # min() is applied to (Vertex, degree) pairs from divisor.degrees.items().
     # - divisor.degrees.items() yields (Vertex, int) tuples.
     # - key=lambda item: item[1] tells min to compare items based on their second element (the degree).
@@ -53,7 +57,7 @@ def EWD(graph: CFGraph, divisor: CFDivisor) -> Tuple[bool, Optional[CFDivisor], 
     # Create a DharAlgorithm instance
     dhar = DharAlgorithm(graph, divisor, q.name)
     
-    # Initially run Dhar's to get the set of unburnt vertices and orientation
+    # 2. Initially run Dhar's to get the set of unburnt vertices and orientation
     unburnt_vertices, orientation = dhar.run()
 
     # 3. Iteratively fire maximal legal sets until q-reduced or no more sets can be fired.
@@ -115,7 +119,7 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
     # Condition 4: Check winnability of the difference divisor.
     difference_divisor = divisor1 - divisor2
     
-    is_linearly_equivalent, _, _ = EWD(graph, difference_divisor)
+    is_linearly_equivalent, _, _ = EWD(graph, difference_divisor, optimized=True)
 
     return is_linearly_equivalent
 
@@ -131,7 +135,7 @@ def is_winnable(divisor: CFDivisor) -> bool:
     Returns:
         True if the configuration is winnable, False otherwise.
     """
-    is_winnable, _, _ = EWD(divisor.graph, divisor)
+    is_winnable, _, _ = EWD(divisor.graph, divisor, optimized=True)
     return is_winnable
 
 def q_reduction(divisor: CFDivisor) -> CFDivisor:
@@ -186,7 +190,7 @@ def rank(divisor: CFDivisor) -> int:
 
     # 1. Call EWD on the divisor; if unwinnable, return -1
     print("Step 1: Checking initial winnability through EWD algorithm...")
-    initial_winnable, _, _ = EWD(graph, divisor)
+    initial_winnable, _, _ = EWD(graph, divisor, optimized=True)
     if not initial_winnable:
         print("Initial divisor is not winnable. So, rank: -1")
         return -1
@@ -256,7 +260,7 @@ def rank(divisor: CFDivisor) -> int:
             print(f"  Starting sequential processing for k={k}...")
             for sub_divisor in generate_valid_test_divisors_for_current_k():
                 num_divisors_processed_for_k += 1
-                winnable_res, _, _ = EWD(sub_divisor.graph, sub_divisor)
+                winnable_res, _, _ = EWD(sub_divisor.graph, sub_divisor, optimized=True)
                 print(f"    Processed (k={k}, item {num_divisors_processed_for_k}): Divisor {sub_divisor.degrees_to_str()} -> Winnable: {winnable_res}")
                 if not winnable_res:
                     any_unwinnable_found_for_k = True
