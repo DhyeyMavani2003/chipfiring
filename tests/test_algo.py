@@ -189,15 +189,18 @@ def test_rank_1_k2_graph(k2_graph):
     d = CFDivisor(k2_graph, [("v1", 1), ("v2", 1)]) # Total 2
     assert is_winnable(d)
     # k=1: (0,1) winnable, (1,0) winnable.
-    # k=2: (-1,1) unwinnable. Returns k-1 = 1.
-    assert rank(d) == 1
+    # k=2: (-1,1) winnable, (1,-1) winnable. 
+    # k=3: (-2,1) unwinnable, (1,-2) unwinnable. Returns k-1 = 2.
+    assert rank(d) == 2
 
 def test_rank_0_k2_graph_asymmetric(k2_graph):
     """Test rank for D=(2,0) on K2."""
     d = CFDivisor(k2_graph, [("v1", 2), ("v2", 0)]) # Total 2
     assert is_winnable(d)
-    # k=1: (1,0) winnable. (2,-1) unwinnable. Returns k-1 = 0.
-    assert rank(d) == 0
+    # k=1: (1,0) winnable. (2,-1) winnable.
+    # k=2: (-1,1) winnable, (1,-1) winnable.
+    # k=3: (-2,1) unwinnable, (1,-2) unwinnable. Returns k-1 = 2.
+    assert rank(d) == 2
 
 def test_rank_k3_slightly_more_chips(simple_graph):
     """Test rank for a divisor with more chips on K3."""
@@ -210,9 +213,11 @@ def test_rank_k3_slightly_more_chips(simple_graph):
     # k=1:
     # rem v1: (0,1,0) -> winnable
     # rem v2: (1,0,0) -> winnable
-    # rem v3: (1,1,-1) -> unwinnable (q=v3, deg_q=-1)
-    # Since (1,1,-1) is unwinnable, rank should be k-1 = 0.
-    assert rank(divisor) == 0
+    # rem v3: (1,1,-1) -> winnable (q=v3, deg_q=1 at the end of EWD)
+    # k = 2: 
+    # (0,0,0) -> winnable
+    # (0,1,-1) -> unwinnable (checked by EWD). Returns k-1 = 1.
+    assert rank(divisor) == 1
 
 def test_rank_k3_even_more_chips(simple_graph):
     """Test rank for (1,1,1) on K3."""
@@ -226,6 +231,17 @@ def test_rank_k3_even_more_chips(simple_graph):
     # All k=1 subtractions are winnable.
 
     # k=2:
-    # Try removing v1,v1: (-1,1,1) -> Total 1. EWD q=v1, deg_q=-1. Unwinnable.
-    # Since removing 2 chips can lead to an unwinnable state, rank is 1.
-    assert rank(divisor) == 1
+    # All k=2 subtractions are winnable.
+    
+    # k=3:
+    # (0,0,0) -> winnable
+    # (0,1,-1) -> unwinnable (checked by EWD). Returns k-1 = 2.
+    assert rank(divisor) == 2
+    
+def test_rank_sequence_test_graph(sequence_test_initial_divisor):
+    """Test rank for the sequence test graph."""
+    # D = (A:2, B:-3, C:4, E:-1) on sequence_test_graph.
+    # Total degree = 2. Winnable as checked by EWD.
+    
+    # k=1: (1,-3,4,-1) unwinnable as checked by EWD.
+    assert rank(sequence_test_initial_divisor) == 0

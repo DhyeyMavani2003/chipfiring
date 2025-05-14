@@ -185,13 +185,14 @@ def rank(divisor: CFDivisor) -> int:
     graph = divisor.graph
 
     # 1. Call EWD on the divisor; if unwinnable, return -1
-    print("Step 1: Checking initial winnability...")
+    print("Step 1: Checking initial winnability through EWD algorithm...")
     initial_winnable, _, _ = EWD(graph, divisor)
     if not initial_winnable:
-        print("Initial divisor is not winnable. Rank: -1")
+        print("Initial divisor is not winnable. So, rank: -1")
         return -1
-    print("Initial divisor is winnable.")
+    print("Initial divisor is winnable. Proceeding to step 2.")
 
+    # 2. Sort the vertices by name
     sorted_vertices = sorted(list(graph.vertices), key=lambda v: v.name)
 
     k = 1
