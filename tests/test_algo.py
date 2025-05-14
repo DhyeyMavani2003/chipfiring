@@ -1,7 +1,7 @@
 import pytest
 from chipfiring.CFGraph import CFGraph
 from chipfiring.CFDivisor import CFDivisor
-from chipfiring.algo import EWD, linear_equivalence, is_winnable, q_reduction, is_q_reduced
+from chipfiring.algo import EWD, linear_equivalence, is_winnable, q_reduction, is_q_reduced, rank
 from chipfiring.CFOrientation import CFOrientation
 
 
@@ -138,3 +138,94 @@ def test_is_winnable_simple_graph_all_zero(simple_graph):
     divisor = CFDivisor(simple_graph, all_zero_degrees)
     expected_result = True
     assert is_winnable(divisor) == expected_result
+
+
+# Tests for rank function
+def test_rank_initially_unwinnable(simple_graph):
+    """Test rank returns -1 for an initially unwinnable divisor."""
+    # D = (v1:0, v2:0, v3:-2) on K3 is unwinnable
+    unwinnable_degrees = [("v1", 0), ("v2", 0), ("v3", -2)]
+    divisor = CFDivisor(simple_graph, unwinnable_degrees)
+    assert rank(divisor) == -1
+
+def test_rank_0_k3_winnable_but_k1_removal_unwinnable(simple_graph):
+    """Test rank is 0 if divisor is winnable, but removing 1 chip makes it unwinnable."""
+    # D = (v1:1, v2:0, v3:0) on K3. Winnable.
+    # Removing 1 chip from v2 gives (1, -1, 0), which is unwinnable.
+    degrees = [("v1", 1), ("v2", 0), ("v3", 0)]
+    divisor = CFDivisor(simple_graph, degrees)
+    assert is_winnable(divisor) # Pre-condition check
+    # EWD((1,-1,0)) with q=v2 gives deg_q = -1, so unwinnable
+    assert rank(divisor) == 0
+
+def test_rank_0_k3_zero_divisor(simple_graph):
+    """Test rank is 0 for the zero divisor on K3."""
+    # D = (v1:0, v2:0, v3:0) on K3. Winnable.
+    # Removing 1 chip (k=1) results in total_degree < 0 for subtracted divisor,
+    # so generator yields nothing, processed_at_least_one_valid_divisor is false. Returns k-1 = 0.
+    degrees = [("v1", 0), ("v2", 0), ("v3", 0)]
+    divisor = CFDivisor(simple_graph, degrees)
+    assert is_winnable(divisor) # Pre-condition check
+    assert rank(divisor) == 0
+
+def test_rank_1_single_vertex_graph():
+    """Test rank is 1 for D=(1) on a single vertex graph."""
+    g = CFGraph({"v1"}, [])
+    d = CFDivisor(g, [("v1", 1)])
+    assert is_winnable(d)
+    # k=1: remove 1 from v1 -> (0). Winnable.
+    # k=2: remove 2 from v1 -> (-1). Total degree < 0. Gen yields nothing. Returns k-1 = 1.
+    assert rank(d) == 1
+
+@pytest.fixture
+def k2_graph():
+    """Provides a K2 graph."""
+    vertices = {"v1", "v2"}
+    edges = [("v1", "v2", 1)]
+    return CFGraph(vertices, edges)
+
+def test_rank_1_k2_graph(k2_graph):
+    """Test rank for D=(1,1) on K2."""
+    d = CFDivisor(k2_graph, [("v1", 1), ("v2", 1)]) # Total 2
+    assert is_winnable(d)
+    # k=1: (0,1) winnable, (1,0) winnable.
+    # k=2: (-1,1) unwinnable. Returns k-1 = 1.
+    assert rank(d) == 1
+
+def test_rank_0_k2_graph_asymmetric(k2_graph):
+    """Test rank for D=(2,0) on K2."""
+    d = CFDivisor(k2_graph, [("v1", 2), ("v2", 0)]) # Total 2
+    assert is_winnable(d)
+    # k=1: (1,0) winnable. (2,-1) unwinnable. Returns k-1 = 0.
+    assert rank(d) == 0
+
+def test_rank_k3_slightly_more_chips(simple_graph):
+    """Test rank for a divisor with more chips on K3."""
+    # D = (1,1,0) on K3. Total 2. Winnable.
+    # is_winnable(1,1,0) on K3: True (can reduce to (0,0,0))
+    degrees = [("v1", 1), ("v2", 1), ("v3", 0)]
+    divisor = CFDivisor(simple_graph, degrees)
+    assert is_winnable(divisor)
+
+    # k=1:
+    # rem v1: (0,1,0) -> winnable
+    # rem v2: (1,0,0) -> winnable
+    # rem v3: (1,1,-1) -> unwinnable (q=v3, deg_q=-1)
+    # Since (1,1,-1) is unwinnable, rank should be k-1 = 0.
+    assert rank(divisor) == 0
+
+def test_rank_k3_even_more_chips(simple_graph):
+    """Test rank for (1,1,1) on K3."""
+    degrees = [("v1", 1), ("v2", 1), ("v3", 1)] # Total 3
+    divisor = CFDivisor(simple_graph, degrees)
+    assert is_winnable(divisor)
+    # k=1:
+    # (0,1,1) -> winnable
+    # (1,0,1) -> winnable
+    # (1,1,0) -> winnable
+    # All k=1 subtractions are winnable.
+
+    # k=2:
+    # Try removing v1,v1: (-1,1,1) -> Total 1. EWD q=v1, deg_q=-1. Unwinnable.
+    # Since removing 2 chips can lead to an unwinnable state, rank is 1.
+    assert rank(divisor) == 1
