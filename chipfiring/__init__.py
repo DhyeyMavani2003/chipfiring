@@ -10,6 +10,7 @@ from .CFiringScript import CFiringScript
 from .CFGreedyAlgorithm import GreedyAlgorithm
 from .CFDhar import DharAlgorithm
 from .algo import EWD, linear_equivalence, is_winnable, q_reduction, is_q_reduced
+from .CFRank import rank
 
 __all__ = [
     "CFGraph",
@@ -27,6 +28,7 @@ __all__ = [
     "is_winnable",
     "q_reduction",
     "is_q_reduced",
+    "rank",
 ]
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
