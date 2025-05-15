@@ -37,6 +37,20 @@ def test_ewd_example(sequence_test_graph, sequence_test_initial_divisor):
     assert reduced_div == expected_q_reduced_divisor
     assert isinstance(orientation, CFOrientation)
 
+def test_ewd_optimized_example(sequence_test_graph):
+    """Test the EWD function with the example provided in algo.py."""
+    expected_result1, expected_result2 = False, True
+    extremal_divisor1 = CFDivisor(sequence_test_graph, [("Alice", -2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)])
+    extremal_divisor2 = CFDivisor(sequence_test_graph, [("Alice", 4), ("Bob", -3), ("Charlie", 4), ("Elise", -1)])
+    is_win1, reduced_div1, orientation1 = EWD(sequence_test_graph, extremal_divisor1, optimized=True)
+    is_win2, reduced_div2, orientation2 = EWD(sequence_test_graph, extremal_divisor2, optimized=True)
+    assert is_win1 == expected_result1
+    assert is_win2 == expected_result2
+    assert reduced_div1 is None
+    assert reduced_div2 is None
+    assert orientation1 is None
+    assert orientation2 is None
+
 def test_q_reduction(sequence_test_graph, sequence_test_initial_divisor):
     """Test the q_reduction function."""
     expected_q_reduced_divisor = CFDivisor(sequence_test_graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)])

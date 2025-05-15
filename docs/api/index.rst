@@ -1,5 +1,5 @@
 API Documentation
-================
+==================
 
 This section contains the complete API documentation for the chipfiring package.
 
@@ -13,3 +13,4 @@ This section contains the complete API documentation for the chipfiring package.
    orientation
    firing_script
    algo
+   rank

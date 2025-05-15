@@ -10,8 +10,8 @@ import os
 import sys
 
 project = 'chipfiring'
-copyright = '2025-2025, Dhyey Dharmendrakumar Mavani'
-author = 'Dhyey Dharmendrakumar Mavani'
+copyright = '2025-2025, Dhyey Dharmendrakumar Mavani, Ryan (Tairan) Ji, and Nathan Pflueger'
+author = 'Dhyey Dharmendrakumar Mavani, Ryan (Tairan) Ji, and Nathan Pflueger'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

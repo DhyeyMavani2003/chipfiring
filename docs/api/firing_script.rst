@@ -1,5 +1,5 @@
 Firing Script Module
-==================
+====================
 
 .. automodule:: chipfiring.CFiringScript
    :members:
