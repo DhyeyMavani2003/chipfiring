@@ -71,7 +71,7 @@ black chipfiring/ tests/
 ruff check chipfiring/ tests/
 
 # Type check
-mypy chipfiring/
+mypy --check-untyped-defs chipfiring/
 ```
 
 ## Pull Requests

@@ -4,7 +4,10 @@ from .CFDhar import DharAlgorithm
 from .CFOrientation import CFOrientation
 from typing import Tuple, Optional
 
-def EWD(graph: CFGraph, divisor: CFDivisor, optimized: bool = False) -> Tuple[bool, Optional[CFDivisor], Optional[CFOrientation]]:
+
+def EWD(
+    graph: CFGraph, divisor: CFDivisor, optimized: bool = False
+) -> Tuple[bool, Optional[CFDivisor], Optional[CFOrientation]]:
     """
     Determine if a given chip-firing configuration is winnable using the Efficient Winnability Detection (EWD) algorithm.
 
@@ -31,18 +34,18 @@ def EWD(graph: CFGraph, divisor: CFDivisor, optimized: bool = False) -> Tuple[bo
                     to determine the initial vertex 'q'.
         RuntimeError: If the final orientation is not full (some edges remain unoriented).
     """
-    # Run EWD in optimized mode if requested. 
+    # Run EWD in optimized mode if requested.
     # With this mode, we use theorems, lemmas, and properties to determine winnability if possible.
     if optimized:
         # If total degree is negative, return False
         if divisor.get_total_degree() < 0:
             return False, None, None
-        
+
         # Apply Proposition 4.1.14 (2) from Dhyey Mavani's thesis if possible:
         #   If D is a maximal unwinnable divisor, then deg(D) = g − 1. Thus, deg(D) ≥ g implies D is winnable
         if divisor.get_total_degree() >= graph.get_genus():
             return True, None, None
-    
+
     # 1. q is the Vertex object with the minimum degree.
     # min() is applied to (Vertex, degree) pairs from divisor.degrees.items().
     # - divisor.degrees.items() yields (Vertex, int) tuples.
@@ -50,10 +53,10 @@ def EWD(graph: CFGraph, divisor: CFDivisor, optimized: bool = False) -> Tuple[bo
     # - [0] extracts the Vertex object (the first element) from the (Vertex, degree) tuple
     #   that corresponds to the minimum degree.
     q = min(divisor.degrees.items(), key=lambda item: item[1])[0]
-    
+
     # Create a DharAlgorithm instance
     dhar = DharAlgorithm(graph, divisor, q.name)
-    
+
     # 2. Initially run Dhar's to get the set of unburnt vertices and orientation
     unburnt_vertices, orientation = dhar.run()
 
@@ -76,7 +79,9 @@ def EWD(graph: CFGraph, divisor: CFDivisor, optimized: bool = False) -> Tuple[bo
 
     # Check if the orientation is full
     if not orientation.check_fullness():
-        raise RuntimeError("The final orientation is not full. Some edges remain unoriented.")
+        raise RuntimeError(
+            "The final orientation is not full. Some edges remain unoriented."
+        )
 
     if deg_q >= 0:
         return True, q_reduced_divisor, orientation
@@ -115,10 +120,11 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
 
     # Condition 4: Check winnability of the difference divisor.
     difference_divisor = divisor1 - divisor2
-    
+
     is_linearly_equivalent, _, _ = EWD(graph, difference_divisor, optimized=True)
 
     return is_linearly_equivalent
+
 
 def is_winnable(divisor: CFDivisor) -> bool:
     """Check if a given chip-firing configuration is winnable.
@@ -135,6 +141,7 @@ def is_winnable(divisor: CFDivisor) -> bool:
     is_winnable, _, _ = EWD(divisor.graph, divisor, optimized=True)
     return is_winnable
 
+
 def q_reduction(divisor: CFDivisor) -> CFDivisor:
     """
     Perform a q-reduction on the given divisor.
@@ -144,9 +151,15 @@ def q_reduction(divisor: CFDivisor) -> CFDivisor:
 
     Returns:
         The q-reduced divisor.
+
+    Raises:
+        ValueError: If the EWD algorithm doesn't produce a valid q-reduced divisor.
     """
     _, q_reduced_divisor, _ = EWD(divisor.graph, divisor)
+    if q_reduced_divisor is None:
+        raise ValueError("Failed to compute a valid q-reduced divisor")
     return q_reduced_divisor
+
 
 def is_q_reduced(divisor: CFDivisor) -> bool:
     """

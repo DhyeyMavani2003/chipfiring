@@ -120,7 +120,7 @@ class DharAlgorithm:
                 # Count edges from v to burnt vertices
                 edges_to_burnt = 0
                 burnt_neighbors = []
-                
+
                 for neighbor in self.graph.graph[v]:
                     if neighbor in burnt:
                         edges_to_burnt += self.graph.graph[v][neighbor]
@@ -134,18 +134,22 @@ class DharAlgorithm:
                     # Record orientations from burnt neighbors to the newly burning vertex
                     for burnt_neighbor in burnt_neighbors:
                         # Add orientation from burnt neighbor (source) to v (sink)
-                        current = orientation.get_orientation(burnt_neighbor.name, v.name)
+                        current = orientation.get_orientation(
+                            burnt_neighbor.name, v.name
+                        )
                         if current is None:
                             # Orientation doesn't exist yet, add it
                             orientation.set_orientation(
-                                Vertex(burnt_neighbor.name), 
-                                Vertex(v.name), 
-                                OrientationState.SOURCE_TO_SINK
+                                Vertex(burnt_neighbor.name),
+                                Vertex(v.name),
+                                OrientationState.SOURCE_TO_SINK,
                             )
                         else:
                             # If orientation exists, raise error
-                            raise ValueError(f"Conflicting orientation for edge {burnt_neighbor.name}-{v.name}")
-                    
+                            raise ValueError(
+                                f"Conflicting orientation for edge {burnt_neighbor.name}-{v.name}"
+                            )
+
                     burnt.add(v)
                     unburnt.remove(v)
                     changed = True

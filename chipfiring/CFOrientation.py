@@ -98,7 +98,7 @@ class CFOrientation:
         self.is_full = True  # All edges checked and oriented
         self.is_full_checked = True
         return True
-    
+
     def set_orientation(
         self, source: Vertex, sink: Vertex, state: OrientationState
     ) -> None:

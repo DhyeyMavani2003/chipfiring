@@ -142,10 +142,10 @@ def test_is_loopless():
     """Test the is_loopless method."""
     vertices = {"A", "B"}
     graph = CFGraph(vertices, [])
-    
+
     # Test non-loop edge
     assert graph.is_loopless("A", "B")
-    
+
     # Test loop edge
     assert not graph.is_loopless("A", "A")
 
@@ -154,30 +154,30 @@ def test_remove_vertex():
     """Test removing a vertex from the graph."""
     vertices = {"A", "B", "C", "D"}
     edges = [("A", "B", 2), ("B", "C", 1), ("C", "D", 3), ("A", "D", 2)]
-    
+
     graph = CFGraph(vertices, edges)
-    
+
     # Remove vertex C
     new_graph = graph.remove_vertex("C")
-    
+
     # Check that the new graph has the correct vertices
     assert len(new_graph.vertices) == 3
     assert all(v.name in {"A", "B", "D"} for v in new_graph.vertices)
     assert all(v.name != "C" for v in new_graph.vertices)
-    
+
     # Check that edges are preserved correctly
     assert new_graph.graph[Vertex("A")][Vertex("B")] == 2
     assert new_graph.graph[Vertex("A")][Vertex("D")] == 2
     assert Vertex("C") not in new_graph.graph
-    
+
     # Check valences
     assert new_graph.get_valence("A") == 4  # 2 from A-B, 2 from A-D
     assert new_graph.get_valence("B") == 2  # 2 from A-B
     assert new_graph.get_valence("D") == 2  # 2 from A-D
-    
+
     # Check total valence
     assert new_graph.total_valence == 4
-    
+
     # Test removing non-existent vertex
     with pytest.raises(ValueError):
         graph.remove_vertex("E")

@@ -130,6 +130,7 @@ class TestDharAlgorithm:
         # Check if the result is valid
         assert isinstance(unburnt_vertices, set)
         assert isinstance(orientation, CFOrientation)
+
     def test_run_cycle(self, cycle_graph):
         """Test the Dhar algorithm on a cycle graph."""
         # In a cycle graph with these specific values, we expect certain burning behavior
