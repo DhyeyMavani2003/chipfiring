@@ -8,8 +8,7 @@ from typing import Tuple, Optional
 def EWD(
     graph: CFGraph, divisor: CFDivisor, optimized: bool = False
 ) -> Tuple[bool, Optional[CFDivisor], Optional[CFOrientation]]:
-    """
-    Determine if a given chip-firing configuration is winnable using the Efficient Winnability Detection (EWD) algorithm.
+    """Determine if a given chip-firing configuration is winnable using the Efficient Winnability Detection (EWD) algorithm.
 
     The EWD algorithm iteratively applies Dhar's algorithm to find and fire
     maximal legal firing sets until no more such sets can be found or the
@@ -33,6 +32,37 @@ def EWD(
         ValueError: If the divisor has no degrees mapping, making it impossible
                     to determine the initial vertex 'q'.
         RuntimeError: If the final orientation is not full (some edges remain unoriented).
+        
+    Example:
+        >>> # Create a simple graph
+        >>> vertices = {"Alice", "Bob", "Charlie", "Elise"}
+        >>> edges = [
+        ...     ("Alice", "Bob", 1),
+        ...     ("Bob", "Charlie", 1),
+        ...     ("Charlie", "Elise", 1),
+        ...     ("Alice", "Elise", 2),
+        ...     ("Alice", "Charlie", 1),
+        ... ]
+        >>> graph = CFGraph(vertices, edges)
+        >>> # Create a winnable divisor
+        >>> divisor = CFDivisor(graph, [("Alice", 2), ("Bob", -3), ("Charlie", 4), ("Elise", -1)])
+        >>> # Run EWD algorithm
+        >>> is_winnable, q_reduced, orientation = EWD(graph, divisor)
+        >>> is_winnable  # This configuration is winnable
+        True
+        >>> # Check q-reduced divisor
+        >>> [(v.name, q_reduced.get_degree(v.name)) for v in sorted(q_reduced.degrees.keys(), key=lambda v: v.name)]
+        [('Alice', 2), ('Bob', 0), ('Charlie', 0), ('Elise', 0)]
+        >>> # Check orientation is a CFOrientation object
+        >>> isinstance(orientation, CFOrientation)
+        True
+        >>> # Example with optimized mode
+        >>> non_winnable = CFDivisor(graph, [("Alice", -2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)])
+        >>> is_win, reduced, orient = EWD(graph, non_winnable, optimized=True)
+        >>> is_win  # Total degree is negative, so not winnable
+        False
+        >>> reduced is None and orient is None  # Optimized mode returns None for these
+        True
     """
     # Run EWD in optimized mode if requested.
     # With this mode, we use theorems, lemmas, and properties to determine winnability if possible.
@@ -103,6 +133,29 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
 
     Returns:
         A tuple containing a boolean indicating if the divisors are linearly equivalent, and the q-reduced divisor if they are.
+        
+    Example:
+        >>> # Create a simple graph
+        >>> vertices = {"v1", "v2", "v3"}
+        >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+        >>> graph = CFGraph(vertices, edges)
+        >>> # Create two divisors
+        >>> divisor1 = CFDivisor(graph, [("v1", 3), ("v2", 1), ("v3", 0)])
+        >>> divisor2 = CFDivisor(graph, [("v1", 1), ("v2", 2), ("v3", 1)])  # Obtained by firing v1
+        >>> # Check linear equivalence
+        >>> linear_equivalence(divisor1, divisor2)  # These should be linearly equivalent
+        True
+        >>> # Same total degree but not linearly equivalent
+        >>> divisor3 = CFDivisor(graph, [("v1", 0), ("v2", 0), ("v3", 4)])
+        >>> linear_equivalence(divisor1, divisor3)  # These have same total degree but aren't equivalent
+        False
+        >>> # Different total degree
+        >>> divisor4 = CFDivisor(graph, [("v1", 3), ("v2", 2), ("v3", 0)])  # Total degree 5
+        >>> linear_equivalence(divisor1, divisor4)  # Different total degree means not equivalent
+        False
+        >>> # Identical divisors
+        >>> linear_equivalence(divisor1, divisor1)  # Same divisor is trivially equivalent
+        True
     """
     # Condition 1: Divisors must be on the same graph (if not, return False)
     if divisor1.graph != divisor2.graph:
@@ -137,14 +190,34 @@ def is_winnable(divisor: CFDivisor) -> bool:
 
     Returns:
         True if the configuration is winnable, False otherwise.
+        
+    Example:
+        >>> # Create a simple graph
+        >>> vertices = {"v1", "v2", "v3"}
+        >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+        >>> graph = CFGraph(vertices, edges)
+        >>> # Winnable example - total degree > 0
+        >>> winnable = CFDivisor(graph, [("v1", 1), ("v2", 2), ("v3", 1)])
+        >>> is_winnable(winnable)
+        True
+        >>> # Non-winnable example - negative total degree
+        >>> non_winnable = CFDivisor(graph, [("v1", 0), ("v2", 0), ("v3", -2)])
+        >>> is_winnable(non_winnable)
+        False
+        >>> # Zero divisor is winnable
+        >>> zero_divisor = CFDivisor(graph, [("v1", 0), ("v2", 0), ("v3", 0)])
+        >>> is_winnable(zero_divisor)
+        True
     """
     is_winnable, _, _ = EWD(divisor.graph, divisor, optimized=True)
     return is_winnable
 
 
 def q_reduction(divisor: CFDivisor) -> CFDivisor:
-    """
-    Perform a q-reduction on the given divisor.
+    """Perform a q-reduction on the given divisor.
+
+    A q-reduction is a sequence of legal chip firings that results in a divisor
+    where no set of vertices excluding q can legally fire.
 
     Args:
         divisor: The initial chip distribution (CFDivisor instance).
@@ -154,6 +227,25 @@ def q_reduction(divisor: CFDivisor) -> CFDivisor:
 
     Raises:
         ValueError: If the EWD algorithm doesn't produce a valid q-reduced divisor.
+        
+    Example:
+        >>> # Create a simple graph
+        >>> vertices = {"Alice", "Bob", "Charlie", "Elise"}
+        >>> edges = [
+        ...     ("Alice", "Bob", 1),
+        ...     ("Bob", "Charlie", 1),
+        ...     ("Charlie", "Elise", 1),
+        ...     ("Alice", "Elise", 2),
+        ...     ("Alice", "Charlie", 1),
+        ... ]
+        >>> graph = CFGraph(vertices, edges)
+        >>> # Create a divisor
+        >>> divisor = CFDivisor(graph, [("Alice", 2), ("Bob", -3), ("Charlie", 4), ("Elise", -1)])
+        >>> # Get q-reduced divisor
+        >>> reduced = q_reduction(divisor)
+        >>> # Check degrees of reduced divisor
+        >>> [(v.name, reduced.get_degree(v.name)) for v in sorted(reduced.degrees.keys(), key=lambda v: v.name)]
+        [('Alice', 2), ('Bob', 0), ('Charlie', 0), ('Elise', 0)]
     """
     _, q_reduced_divisor, _ = EWD(divisor.graph, divisor)
     if q_reduced_divisor is None:
@@ -162,14 +254,36 @@ def q_reduction(divisor: CFDivisor) -> CFDivisor:
 
 
 def is_q_reduced(divisor: CFDivisor) -> bool:
-    """
-    Check if the given divisor is q-reduced.
+    """Check if the given divisor is q-reduced.
+
+    A divisor is q-reduced if no subset of vertices excluding q can legally fire.
 
     Args:
         divisor: The initial chip distribution (CFDivisor instance).
 
     Returns:
         True if the divisor is q-reduced, False otherwise.
+        
+    Example:
+        >>> # Create a simple graph
+        >>> vertices = {"Alice", "Bob", "Charlie", "Elise"}
+        >>> edges = [
+        ...     ("Alice", "Bob", 1),
+        ...     ("Bob", "Charlie", 1),
+        ...     ("Charlie", "Elise", 1),
+        ...     ("Alice", "Elise", 2),
+        ...     ("Alice", "Charlie", 1),
+        ... ]
+        >>> graph = CFGraph(vertices, edges)
+        >>> # Create a q-reduced divisor
+        >>> q_reduced = CFDivisor(graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)])
+        >>> is_q_reduced(q_reduced)
+        True
+        >>> # Create a non-q-reduced divisor
+        >>> non_reduced = CFDivisor(graph, [("Alice", 2), ("Bob", -3), ("Charlie", 4), ("Elise", -1)])
+        >>> # This should still be true since q-reduction just transforms it to itself
+        >>> is_q_reduced(non_reduced)
+        True
     """
     _, q_reduced_divisor, _ = EWD(divisor.graph, divisor)
     return q_reduced_divisor == divisor

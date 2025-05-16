@@ -14,6 +14,12 @@ class CFLaplacian:
 
         Args:
             graph: A CFGraph object representing the graph.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> laplacian = CFLaplacian(graph)
         """
         self.graph = graph
 
@@ -26,6 +32,18 @@ class CFLaplacian:
             dictionary representing the row of the Laplacian matrix for that vertex.
             The inner dictionary maps neighboring Vertices to their corresponding
             negative edge valence, and the vertex itself maps to its total valence.
+            
+        Example:
+            >>> vertices = {"a", "b", "c"}
+            >>> edges = [("a", "b", 2), ("b", "c", 3)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> laplacian = CFLaplacian(graph)
+            >>> matrix = laplacian._construct_matrix()
+            >>> # The matrix would look like:
+            >>> #    a  b  c
+            >>> # a [2 -2  0]
+            >>> # b [-2 5 -3]
+            >>> # c [0 -3  3]
         """
 
         laplacian: typing.Dict[Vertex, typing.Dict[Vertex, int]] = {}
@@ -57,6 +75,23 @@ class CFLaplacian:
         Returns:
             A new CFDivisor object representing the chip configuration after applying
             the firing script via the Laplacian.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> degrees = [("v1", 5), ("v2", 0), ("v3", -2)]
+            >>> divisor = CFDivisor(graph, degrees)
+            >>> script = {"v1": 1, "v2": -1}  # v1 fires once, v2 borrows once
+            >>> firing_script = CFiringScript(graph, script)
+            >>> laplacian = CFLaplacian(graph)
+            >>> result = laplacian.apply(divisor, firing_script)
+            >>> result.get_degree("v1")
+            2  # 5 - 3
+            >>> result.get_degree("v2")
+            3  # 0 - (-3)
+            >>> result.get_degree("v3")
+            -2  # -2 - 0
         """
         laplacian = self._construct_matrix()
         # Start with the initial chip counts from the divisor
@@ -97,6 +132,20 @@ class CFLaplacian:
 
         Raises:
             ValueError: If v_name or w_name are not in the graph.
+            
+        Example:
+            >>> vertices = {"a", "b", "c"}
+            >>> edges = [("a", "b", 2), ("b", "c", 3)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> laplacian = CFLaplacian(graph)
+            >>> laplacian.get_matrix_entry("a", "a")
+            2  # Diagonal entry: valence of vertex a
+            >>> laplacian.get_matrix_entry("b", "b")
+            5  # Diagonal entry: valence of vertex b (2+3)
+            >>> laplacian.get_matrix_entry("a", "b")
+            -2  # Off-diagonal: negative valence between a and b
+            >>> laplacian.get_matrix_entry("a", "c")
+            0   # Off-diagonal: a and c are not neighbors
         """
         v = Vertex(v_name)
         w = Vertex(w_name)

@@ -1,6 +1,6 @@
 # Chip-Firing Game
 
-> A Python implementation of the chip-firing game (also known as the dollar game) on graphs, with a focus on mathematical algorithms and visualizations.
+> A Python package for the chip-firing games (i.e. the dollar game, the gonality game, etc.) on graphs, with a focus on mathematical properties and algorithms.
 
 [![Latest Version on PyPI](https://img.shields.io/pypi/v/chipfiring.svg)](https://pypi.python.org/pypi/chipfiring/)
 ![Build Status](https://github.com/DhyeyMavani2003/chipfiring/actions/workflows/test.yaml/badge.svg)
@@ -10,7 +10,9 @@
 
 ## Overview
 
-The chip-firing game is a mathematical model that can be used to study various phenomena in graph theory, algebraic geometry, and other areas of mathematics. In the dollar game variant, we consider a graph where:
+The chip-firing game is a mathematical model that can be used to study various phenomena in graph theory, algebraic geometry, and other areas of mathematics. 
+
+In the dollar game variant, we consider a graph where:
 
 - Vertices represent people
 - Edges represent relationships between people
@@ -32,36 +34,13 @@ The goal is to find a sequence of moves that makes everyone debt-free. If such a
 
 ## Installation
 
+You can install the chipfiring package directly from PyPI using pip:
+
 ```bash
 pip install chipfiring
 ```
 
-## Quick Example
-
-```python
-from chipfiring import Graph, Vertex, Divisor, DollarGame
-
-# Create vertices and graph
-alice = Vertex("Alice")
-bob = Vertex("Bob")
-charlie = Vertex("Charlie")
-
-G = Graph()
-G.add_vertex(alice)
-G.add_vertex(bob)
-G.add_vertex(charlie)
-
-G.add_edge(alice, bob)
-G.add_edge(bob, charlie)
-G.add_edge(charlie, alice)
-
-# Create initial wealth distribution
-D = Divisor(G, {alice: 2, bob: -1, charlie: -1})
-
-# Create and play the game
-game = DollarGame(G, D)
-print(f"Is winnable? {game.is_winnable()}")
-```
+Note: the most up-to-date version of the package can be found at https://pypi.org/project/chipfiring/.
 
 ## Contents
 
@@ -69,12 +48,14 @@ print(f"Is winnable? {game.is_winnable()}")
 :maxdepth: 2
 :caption: Documentation
 
-whats-in-the-box.md
-getting-started.md
 contributing.md
-api/index
+api/index.rst
 ```
 
 ## API Documentation
 
 The complete API documentation for the chipfiring package can be found in the [API Documentation](api/index) section.
+
+## Basic Usage
+
+Usage guidelines are included within the API documentation. For more examples and full-analysis workflows, check out the [examples directory](https://github.com/DhyeyMavani2003/chipfiring/tree/main/examples) in the GitHubrepository.

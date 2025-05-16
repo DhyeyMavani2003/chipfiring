@@ -25,6 +25,20 @@ class CFiringScript:
 
         Raises:
             ValueError: If any vertex name in the script is not present in the graph.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 2)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> script_dict = {"v1": 2, "v3": -1}  # v1 fires twice, v3 borrows once
+            >>> firing_script = CFiringScript(graph, script_dict)
+            >>> firing_script.script
+            {'v1': 2, 'v3': -1, 'v2': 0}  # v2 has 0 firings by default
+            
+            >>> # Empty script
+            >>> empty_script = CFiringScript(graph, {})
+            >>> empty_script.script
+            {'v1': 0, 'v2': 0, 'v3': 0}
         """
         self.graph = graph
         self._script = {}
@@ -52,6 +66,19 @@ class CFiringScript:
 
         Raises:
             ValueError: If the vertex name is not present in the graph.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 2)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> script_dict = {"v1": 5, "v2": -3}
+            >>> firing_script = CFiringScript(graph, script_dict)
+            >>> firing_script.get_firings("v1")
+            5
+            >>> firing_script.get_firings("v2")
+            -3
+            >>> firing_script.get_firings("v3")  # Not explicitly in script
+            0
         """
         vertex = Vertex(vertex_name)
         if vertex not in self.graph.vertices:
@@ -67,6 +94,18 @@ class CFiringScript:
 
         Raises:
             ValueError: If the vertex name is not present in the graph.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 2)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> firing_script = CFiringScript(graph, {})
+            >>> firing_script.set_firings("v1", 3)
+            >>> firing_script.get_firings("v1")
+            3
+            >>> firing_script.set_firings("v2", -2)
+            >>> firing_script.script
+            {'v1': 3, 'v2': -2, 'v3': 0}
         """
         vertex = Vertex(vertex_name)
         if vertex not in self.graph.vertices:
@@ -82,13 +121,39 @@ class CFiringScript:
 
         Raises:
             ValueError: If the vertex name is not present in the graph.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 2)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> script_dict = {"v1": 1}
+            >>> firing_script = CFiringScript(graph, script_dict)
+            >>> firing_script.update_firings("v1", 2)  # Add 2 more firings
+            >>> firing_script.get_firings("v1")
+            3  # 1 + 2
+            >>> firing_script.update_firings("v2", -1)  # Add -1 (borrow once)
+            >>> firing_script.get_firings("v2")
+            -1  # 0 + (-1)
         """
         current_firings = self.get_firings(vertex_name)
         self.set_firings(vertex_name, current_firings + additional_firings)
 
     @property
     def script(self) -> typing.Dict[str, int]:
-        """Return the script as a dictionary mapping vertex names to firings."""
+        """Return the script as a dictionary mapping vertex names to firings.
+        
+        Returns:
+            A dictionary where keys are vertex names and values are the number of firings.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 2)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> script_dict = {"v2": 10, "v3": -5}
+            >>> firing_script = CFiringScript(graph, script_dict)
+            >>> firing_script.script
+            {'v1': 0, 'v2': 10, 'v3': -5}
+        """
         to_return = {}
         for vertex in self.graph.vertices:
             to_return[vertex.name] = self.get_firings(vertex.name)

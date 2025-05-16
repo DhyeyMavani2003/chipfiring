@@ -3,7 +3,24 @@ import typing
 
 
 class Vertex:
-    """Represents a vertex in the graph."""
+    """Represents a vertex in the graph.
+    
+    Example:
+        >>> v1 = Vertex("A")
+        >>> v2 = Vertex("B")
+        >>> v3 = Vertex("A")
+        >>> v1 == v3  # Same name means equal vertices
+        True
+        >>> v1 != v2
+        True
+        >>> v1 < v2  # Ordering is based on name
+        True
+        >>> str(v1)
+        'A'
+        >>> vertex_set = {v1, v2, v3}  # v1 and v3 are considered equal
+        >>> len(vertex_set)
+        2
+    """
 
     def __init__(self, name: str):
         self.name = name
@@ -41,7 +58,25 @@ class Vertex:
 
 
 class Edge:
-    """Represents an edge in the graph."""
+    """Represents an edge in the graph.
+    
+    Example:
+        >>> v1 = Vertex("A")
+        >>> v2 = Vertex("B")
+        >>> v3 = Vertex("C")
+        >>> e1 = Edge(v1, v2)
+        >>> e2 = Edge(v2, v1)  # Same edge, different order
+        >>> e3 = Edge(v1, v3)
+        >>> e1 == e2  # Edge equality ignores order of vertices
+        True
+        >>> e1 != e3
+        False
+        >>> str(e1)
+        'A-B'
+        >>> edge_set = {e1, e2, e3}  # e1 and e2 are considered equal
+        >>> len(edge_set)
+        2
+    """
 
     def __init__(self, v1: Vertex, v2: Vertex):
         # Ensure consistent ordering for undirected edges
@@ -65,7 +100,23 @@ class Edge:
 
 
 class CFGraph:
-    """Represents a chip-firing graph with multiple edges possible between vertices."""
+    """Represents a chip-firing graph with multiple edges possible between vertices.
+    
+    Example:
+        >>> vertices = {"A", "B", "C"}
+        >>> edges = [("A", "B", 2), ("B", "C", 1)]
+        >>> graph = CFGraph(vertices, edges)
+        >>> len(graph.vertices)
+        3
+        >>> graph.total_valence  # 2 edges A-B, 1 edge B-C
+        3
+        >>> graph.get_valence("A")
+        2
+        >>> graph.get_valence("B")  # 2 from A-B, 1 from B-C
+        3
+        >>> graph.get_valence("C")
+        1
+    """
 
     def __init__(
         self, vertices: typing.Set[str], edges: typing.List[typing.Tuple[str, str, int]]
@@ -80,6 +131,22 @@ class CFGraph:
 
         Raises:
             ValueError: If duplicate vertex names are provided
+            
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 2), ("B", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Check we have the expected number of vertices
+            >>> len(graph.vertices)
+            3
+            >>> # Check the total valence (number of edges)
+            >>> graph.total_valence
+            3
+            >>> # With duplicate edges, valences are merged
+            >>> edges_with_dup = [("A", "B", 2), ("A", "B", 3)]
+            >>> with_dup_graph = CFGraph(vertices, edges_with_dup)  # Issues warning
+            >>> with_dup_graph.graph[Vertex("A")][Vertex("B")]
+            5
         """
         # Check for duplicate vertex names
         if len(vertices) != len(set(vertices)):
@@ -101,7 +168,23 @@ class CFGraph:
             self.add_edges(edges)
 
     def is_loopless(self, v1_name: str, v2_name: str) -> bool:
-        """Check if an edge connects a vertex to itself."""
+        """Check if an edge connects a vertex to itself.
+        
+        Args:
+            v1_name: Name of first vertex
+            v2_name: Name of second vertex
+            
+        Returns:
+            True if v1_name != v2_name (not a self-loop), False otherwise
+            
+        Example:
+            >>> vertices = {"A", "B"}
+            >>> graph = CFGraph(vertices, [])
+            >>> graph.is_loopless("A", "B")  # Different vertices
+            True
+            >>> graph.is_loopless("A", "A")  # Same vertex (self-loop)
+            False
+        """
         return v1_name != v2_name
 
     # TODO: If the user adds an edge and one or both vertices are not in the graph,
@@ -113,6 +196,21 @@ class CFGraph:
             edges: List of tuples (v1_name, v2_name, valence) where v1_name and v2_name are strings
                   and valence is a positive integer representing the number of edges
                   between the vertices
+                  
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> graph = CFGraph(vertices, [])
+            >>> graph.add_edges([("A", "B", 2), ("B", "C", 1), ("A", "C", 3)])
+            >>> graph.graph[Vertex("A")][Vertex("B")]
+            2
+            >>> graph.graph[Vertex("B")][Vertex("C")]
+            1
+            >>> graph.graph[Vertex("A")][Vertex("C")]
+            3
+            >>> # With duplicate edges, a warning is issued
+            >>> graph.add_edges([("A", "B", 3)])  # Issues warning
+            >>> graph.graph[Vertex("A")][Vertex("B")]  # 2 + 3 = 5
+            5
         """
         seen_edges = set()
         for v1_name, v2_name, valence in edges:
@@ -131,6 +229,36 @@ class CFGraph:
             v1_name: Name of first vertex
             v2_name: Name of second vertex
             valence: Number of edges to add between the vertices
+            
+        Raises:
+            ValueError: If trying to add a self-loop
+            ValueError: If valence is not positive
+            ValueError: If either vertex is not in the graph
+            
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> graph = CFGraph(vertices, [])
+            >>> # Add a single edge with valence 2
+            >>> graph.add_edge("A", "B", 2)
+            >>> graph.graph[Vertex("A")][Vertex("B")]
+            2
+            >>> graph.graph[Vertex("B")][Vertex("A")]  # Undirected graph
+            2
+            >>> # Adding to an existing edge increases valence
+            >>> graph.add_edge("A", "B", 3)
+            >>> graph.graph[Vertex("A")][Vertex("B")]  # 2 + 3 = 5
+            5
+            >>> # Invalid operations
+            >>> try:
+            ...     graph.add_edge("A", "A", 1)  # Self-loop
+            ... except ValueError:
+            ...     print("Self-loops not allowed")
+            Self-loops not allowed
+            >>> try:
+            ...     graph.add_edge("A", "D", 1)  # D not in graph
+            ... except ValueError:
+            ...     print("Vertex not in graph")
+            Vertex not in graph
         """
         if not self.is_loopless(v1_name, v2_name):
             raise ValueError(
@@ -168,14 +296,53 @@ class CFGraph:
             self.total_valence += valence
 
     def get_valence(self, v_name: str) -> int:
-        """Get the total valence (sum of all edge valences) for a vertex."""
+        """Get the total valence (sum of all edge valences) for a vertex.
+        
+        Args:
+            v_name: Name of the vertex
+            
+        Returns:
+            The total valence of the vertex
+            
+        Raises:
+            ValueError: If the vertex is not in the graph
+            
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 3)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> graph.get_valence("A")  # 2 from A-B, 3 from A-C
+            5
+            >>> graph.get_valence("B")  # 2 from A-B, 1 from B-C
+            3
+            >>> graph.get_valence("C")  # 1 from B-C, 3 from A-C
+            4
+            >>> try:
+            ...     graph.get_valence("D")  # D not in graph
+            ... except ValueError:
+            ...     print("Vertex not in graph")
+            Vertex not in graph
+        """
         v = Vertex(v_name)
         if v not in self.vertex_total_valence:
             raise ValueError(f"Vertex {v_name} not in graph")
         return self.vertex_total_valence[v]
 
     def get_genus(self) -> int:
-        """Get the genus of the graph, which is defined as |E| - |V| + 1."""
+        """Get the genus of the graph, which is defined as |E| - |V| + 1.
+        
+        Returns:
+            The genus of the graph
+            
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Total edges = 4, Vertices = 3
+            >>> # Genus = |E| - |V| + 1 = 4 - 3 + 1 = 2
+            >>> graph.get_genus()
+            2
+        """
         return self.total_valence - len(self.graph) + 1
 
     def remove_vertex(self, vertex_name: str) -> "CFGraph":
@@ -189,6 +356,28 @@ class CFGraph:
 
         Raises:
             ValueError: If the vertex name is not found in the graph
+            
+        Example:
+            >>> vertices = {"A", "B", "C", "D"}
+            >>> edges = [("A", "B", 2), ("B", "C", 1), ("C", "D", 3), ("A", "D", 2)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Remove vertex C
+            >>> new_graph = graph.remove_vertex("C")
+            >>> # Check the new graph has the correct vertices
+            >>> len(new_graph.vertices)
+            3
+            >>> # Check edges are preserved correctly
+            >>> new_graph.graph[Vertex("A")][Vertex("B")]
+            2
+            >>> new_graph.graph[Vertex("A")][Vertex("D")]
+            2
+            >>> # Check valences
+            >>> new_graph.get_valence("A")  # 2 from A-B, 2 from A-D
+            4
+            >>> new_graph.get_valence("B")  # 2 from A-B
+            2
+            >>> new_graph.get_valence("D")  # 2 from A-D
+            2
         """
         vertex = Vertex(vertex_name)
         if vertex not in self.graph:

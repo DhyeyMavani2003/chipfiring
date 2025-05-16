@@ -26,14 +26,14 @@ pip install -e .  # Install in development mode
 We use pytest for testing. To run the test suite:
 
 ```bash
-# Run all tests
-./run_tests.py
+# Run all tests in the tests directory with verbose info locally
+pytest tests/ --verbose
 
 # Run specific tests
 pytest tests/test_graph.py
 
-# Run tests with coverage
-pytest --cov=chipfiring tests/
+# Run tests across all the supported Python versions
+make test
 ```
 
 ## Building Documentation
@@ -41,9 +41,8 @@ pytest --cov=chipfiring tests/
 The documentation is built using Sphinx:
 
 ```bash
-# Build documentation
-cd docs
-make html
+# Build documentation workflow
+make docs
 
 # View the documentation
 open _build/html/index.html  # On macOS

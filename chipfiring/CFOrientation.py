@@ -30,6 +30,13 @@ class CFOrientation:
         Raises:
             ValueError: If an edge specified in orientations does not exist in the graph
             ValueError: If multiple orientations are specified for the same edge
+            
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientations = [("A", "B"), ("B", "C")]
+            >>> orientation = CFOrientation(graph, orientations)
         """
         self.graph = graph
         # Initialize orientation dictionary
@@ -86,7 +93,27 @@ class CFOrientation:
         self.check_fullness()
 
     def check_fullness(self) -> bool:
-        """Check if all edges have an orientation and update is_full."""
+        """Check if all edges have an orientation and update is_full.
+        
+        Returns:
+            True if all edges have an orientation, False otherwise
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientation = CFOrientation(graph, [("v1", "v2")])
+            >>> orientation.check_fullness()
+            False
+            >>> # Now complete the orientation
+            >>> from chipfiring.CFOrientation import Vertex, OrientationState
+            >>> v2, v3 = Vertex("v2"), Vertex("v3")
+            >>> orientation.set_orientation(v2, v3, OrientationState.SOURCE_TO_SINK)
+            >>> v1, v3 = Vertex("v1"), Vertex("v3")
+            >>> orientation.set_orientation(v1, v3, OrientationState.SOURCE_TO_SINK)
+            >>> orientation.check_fullness()
+            True
+        """
         for v1 in self.graph.vertices:
             for v2 in self.graph.graph[v1]:
                 # Only check each edge once (where v1 < v2)
@@ -108,6 +135,20 @@ class CFOrientation:
             source: Source vertex
             sink: Sink vertex
             state: New orientation state
+            
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientation = CFOrientation(graph, [])
+            >>> from chipfiring.CFOrientation import OrientationState, Vertex
+            >>> v_a = Vertex("A")
+            >>> v_b = Vertex("B")
+            >>> orientation.set_orientation(v_a, v_b, OrientationState.SOURCE_TO_SINK)
+            >>> orientation.get_out_degree("A")
+            2  # A-B edge has valence 2
+            >>> orientation.get_in_degree("B")
+            2
         """
         old_state = self.orientation[source][sink]
         valence = self.graph.graph[source][sink]
@@ -166,6 +207,23 @@ class CFOrientation:
 
         Raises:
             ValueError: If the edge does not exist
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientations = [("v1", "v2"), ("v2", "v3"), ("v1", "v3")]
+            >>> orientation = CFOrientation(graph, orientations)
+            >>> orientation.get_orientation("v1", "v2")
+            ('v1', 'v2')
+            >>> orientation.get_orientation("v2", "v1")  # Order doesn't matter
+            ('v1', 'v2')
+            >>> # For a partially oriented graph:
+            >>> partial = CFOrientation(graph, [("v1", "v2")])
+            >>> partial.get_orientation("v1", "v2")
+            ('v1', 'v2')
+            >>> partial.get_orientation("v2", "v3")
+            None
         """
         v1 = Vertex(v1_name)
         v2 = Vertex(v2_name)
@@ -200,6 +258,21 @@ class CFOrientation:
 
         Raises:
             ValueError: If the edge does not exist
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientations = [("v1", "v2"), ("v2", "v3"), ("v1", "v3")]
+            >>> orientation = CFOrientation(graph, orientations)
+            >>> orientation.is_source("v1", "v2")
+            True
+            >>> orientation.is_source("v2", "v1")
+            False
+            >>> # For an unoriented edge
+            >>> partial = CFOrientation(graph, [("v1", "v2")])
+            >>> partial.is_source("v2", "v3")
+            None
         """
         vertex = Vertex(vertex_name)
         neighbor = Vertex(neighbor_name)
@@ -231,6 +304,21 @@ class CFOrientation:
 
         Raises:
             ValueError: If the edge does not exist
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientations = [("v1", "v2"), ("v2", "v3"), ("v1", "v3")]
+            >>> orientation = CFOrientation(graph, orientations)
+            >>> orientation.is_sink("v1", "v2")
+            False
+            >>> orientation.is_sink("v2", "v1")
+            True
+            >>> # For an unoriented edge
+            >>> partial = CFOrientation(graph, [("v1", "v2")])
+            >>> partial.is_sink("v2", "v3")
+            None
         """
         vertex = Vertex(vertex_name)
         neighbor = Vertex(neighbor_name)
@@ -259,6 +347,19 @@ class CFOrientation:
 
         Raises:
             ValueError: If the vertex name is not found in the graph
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientations = [("v1", "v2"), ("v2", "v3"), ("v1", "v3")]
+            >>> orientation = CFOrientation(graph, orientations)
+            >>> orientation.get_in_degree("v1")
+            0
+            >>> orientation.get_in_degree("v2")
+            1  # from v1
+            >>> orientation.get_in_degree("v3")
+            2  # from v1, v2
         """
         vertex = Vertex(vertex_name)
         if vertex not in self.graph.graph:
@@ -276,6 +377,19 @@ class CFOrientation:
 
         Raises:
             ValueError: If the vertex name is not found in the graph
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientations = [("v1", "v2"), ("v2", "v3"), ("v1", "v3")]
+            >>> orientation = CFOrientation(graph, orientations)
+            >>> orientation.get_out_degree("v1")
+            2
+            >>> orientation.get_out_degree("v2")
+            1  # to v3
+            >>> orientation.get_out_degree("v3")
+            0
         """
         vertex = Vertex(vertex_name)
         if vertex not in self.graph.graph:
@@ -290,6 +404,20 @@ class CFOrientation:
 
         Returns:
             A new CFOrientation object representing the reversed orientation.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientations = [("v1", "v2"), ("v2", "v3"), ("v1", "v3")]
+            >>> orientation = CFOrientation(graph, orientations)
+            >>> reversed_orientation = orientation.reverse()
+            >>> reversed_orientation.get_orientation("v1", "v2")
+            ('v2', 'v1')
+            >>> reversed_orientation.get_orientation("v2", "v3")
+            ('v3', 'v2')
+            >>> reversed_orientation.get_orientation("v1", "v3")
+            ('v3', 'v1')
         """
         # Ensure the fullness status is up-to-date
         if not self.is_full_checked:
@@ -330,6 +458,20 @@ class CFOrientation:
 
         Returns:
             A new CFDivisor object representing the calculated divisor.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientations = [("v1", "v2"), ("v2", "v3"), ("v1", "v3")]
+            >>> orientation = CFOrientation(graph, orientations)
+            >>> div = orientation.divisor()
+            >>> div.get_degree("v1")
+            -1  # in-degree 0 - 1
+            >>> div.get_degree("v2")
+            0   # in-degree 1 - 1
+            >>> div.get_degree("v3")
+            1   # in-degree 2 - 1
         """
         # Ensure the fullness status is up-to-date
         if not self.is_full_checked:
@@ -351,11 +493,24 @@ class CFOrientation:
 
     def canonical_divisor(self) -> CFDivisor:
         """Returns the canonical divisor associated with the graph; by definition, the canonical divisor of an orientation is
-        equal to the divisor of the orientation plus the divisor of the reverse of the orientation. After simlifying, we get thatfor each vertex v,
+        equal to the divisor of the orientation plus the divisor of the reverse of the orientation. After simplifying, we get that for each vertex v,
         the degree of v in the canonical divisor is the valence of v minus 2.
 
         Returns:
             A new CFDivisor object representing the canonical divisor.
+        
+        Example:
+            >>> vertices = {"a", "b", "c"}
+            >>> edges = [("a", "b", 2), ("b", "c", 3)]  # Multi-graph
+            >>> graph = CFGraph(vertices, edges)
+            >>> orientation = CFOrientation(graph, [])  # Orientation doesn't matter
+            >>> canonical = orientation.canonical_divisor()
+            >>> canonical.get_degree("a")
+            0   # valence 2 - 2
+            >>> canonical.get_degree("b")
+            3   # valence 5 - 2
+            >>> canonical.get_degree("c")
+            1   # valence 3 - 2
         """
         canonical_degrees = []
         for vertex in self.graph.vertices:

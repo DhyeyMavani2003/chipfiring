@@ -5,7 +5,21 @@ from .CFGraph import CFGraph, Vertex
 
 # TODO: Implement 0-divisors and 1-divisors
 class CFDivisor:
-    """Represents a divisor (chip configuration) on a chip-firing graph."""
+    """Represents a divisor (chip configuration) on a chip-firing graph.
+    
+    Example:
+        >>> vertices = {"A", "B", "C"}
+        >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
+        >>> graph = CFGraph(vertices, edges)
+        >>> degrees = [("A", 2), ("B", -1), ("C", 0)]
+        >>> divisor = CFDivisor(graph, degrees)
+        >>> divisor.get_degree("A")
+        2
+        >>> divisor.get_degree("B")
+        -1
+        >>> divisor.get_total_degree()  # 2 + (-1) + 0 = 1
+        1
+    """
 
     def __init__(self, graph: CFGraph, degrees: List[Tuple[str, int]]):
         """Initialize the divisor with a graph and list of vertex degrees.
@@ -18,6 +32,24 @@ class CFDivisor:
         Raises:
             ValueError: If a vertex name appears multiple times in degrees
             ValueError: If a vertex name is not found in the graph
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Create a divisor with specified degrees
+            >>> degrees = [("v1", 10), ("v2", -5)]  # v3 defaults to 0
+            >>> divisor = CFDivisor(graph, degrees)
+            >>> divisor.get_degree("v1")
+            10
+            >>> divisor.get_degree("v2")
+            -5
+            >>> divisor.get_degree("v3")  # Default degree
+            0
+            >>> # Empty degrees list makes all vertices have 0 chips
+            >>> zero_divisor = CFDivisor(graph, [])
+            >>> zero_divisor.get_degree("v1")
+            0
         """
         self.graph = graph
         # Initialize the degrees dictionary with all vertices having degree 0
@@ -44,6 +76,23 @@ class CFDivisor:
 
         Returns:
             True if the divisor is effective, False otherwise
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Effective divisor (all non-negative)
+            >>> effective = CFDivisor(graph, [("v1", 1), ("v2", 0), ("v3", 3)])
+            >>> effective.is_effective()
+            True
+            >>> # Not effective (has negative degree)
+            >>> not_effective = CFDivisor(graph, [("v1", 1), ("v2", 2), ("v3", -3)])
+            >>> not_effective.is_effective()
+            False
+            >>> # Zero degrees are considered effective
+            >>> zero = CFDivisor(graph, [("v1", 0), ("v2", 0), ("v3", 0)])
+            >>> zero.is_effective()
+            True
         """
         for _, degree in self.degrees.items():
             if degree < 0:
@@ -61,6 +110,24 @@ class CFDivisor:
 
         Raises:
             ValueError: If the vertex name is not found in the divisor
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> degrees = [("v1", 5), ("v2", 0), ("v3", -2)]
+            >>> divisor = CFDivisor(graph, degrees)
+            >>> divisor.get_degree("v1")
+            5
+            >>> divisor.get_degree("v2")
+            0
+            >>> divisor.get_degree("v3")
+            -2
+            >>> try:
+            ...     divisor.get_degree("v4")  # Non-existent vertex
+            ... except ValueError as e:
+            ...     print(str(e))
+            Vertex v4 not in divisor
         """
         vertex = Vertex(vertex_name)
         if vertex not in self.degrees:
@@ -72,6 +139,23 @@ class CFDivisor:
 
         Returns:
             The total number of chips in the divisor
+            
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Test positive total
+            >>> divisor1 = CFDivisor(graph, [("A", 2), ("B", 1), ("C", 0)])
+            >>> divisor1.get_total_degree()  # 2 + 1 + 0 = 3
+            3
+            >>> # Test negative total
+            >>> divisor2 = CFDivisor(graph, [("A", -2), ("B", -1), ("C", 0)])
+            >>> divisor2.get_total_degree()  # -2 + (-1) + 0 = -3
+            -3
+            >>> # Test zero total
+            >>> divisor3 = CFDivisor(graph, [("A", 1), ("B", -1), ("C", 0)])
+            >>> divisor3.get_total_degree()  # 1 + (-1) + 0 = 0
+            0
         """
         return self.total_degree
 
@@ -86,6 +170,25 @@ class CFDivisor:
 
         Raises:
             ValueError: If the vertex name is not found in the graph.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Create a divisor
+            >>> divisor = CFDivisor(graph, [("v1", 3), ("v2", 1), ("v3", 0)])
+            >>> # K3 graph: each vertex has valence 2
+            >>> initial_total = divisor.get_total_degree()  # 4
+            >>> # Lend from v1 (valence 2)
+            >>> divisor.lending_move("v1")
+            >>> divisor.get_degree("v1")  # 3 - 2 = 1
+            1
+            >>> divisor.get_degree("v2")  # 1 + 1 = 2
+            2
+            >>> divisor.get_degree("v3")  # 0 + 1 = 1
+            1
+            >>> divisor.get_total_degree() == initial_total  # Total preserved
+            True
         """
         vertex = Vertex(vertex_name)
         if vertex not in self.graph.graph:
@@ -113,6 +216,24 @@ class CFDivisor:
 
         Raises:
             ValueError: If the vertex name is not found in the graph.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Create a divisor
+            >>> divisor = CFDivisor(graph, [("v1", 3), ("v2", 1), ("v3", 0)])
+            >>> initial_total = divisor.get_total_degree()  # 4
+            >>> # Borrow at v2 (valence 2)
+            >>> divisor.borrowing_move("v2")
+            >>> divisor.get_degree("v2")  # 1 + 2 = 3
+            3
+            >>> divisor.get_degree("v1")  # 3 - 1 = 2
+            2
+            >>> divisor.get_degree("v3")  # 0 - 1 = -1
+            -1
+            >>> divisor.get_total_degree() == initial_total  # Total preserved
+            True
         """
         vertex = Vertex(vertex_name)
         if vertex not in self.graph.graph:
@@ -143,6 +264,33 @@ class CFDivisor:
         Raises:
             ValueError: If either vertex name is not found in the divisor.
             ValueError: If the amount is not positive.
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> divisor = CFDivisor(graph, [("v1", 5), ("v2", 0), ("v3", -2)])
+            >>> initial_total = divisor.get_total_degree()  # 3
+            >>> # Transfer 1 chip v1 -> v2
+            >>> divisor.chip_transfer("v1", "v2")
+            >>> divisor.get_degree("v1")  # 5 - 1 = 4
+            4
+            >>> divisor.get_degree("v2")  # 0 + 1 = 1
+            1
+            >>> # Transfer multiple chips
+            >>> divisor.chip_transfer("v2", "v3", amount=3)
+            >>> divisor.get_degree("v2")  # 1 - 3 = -2
+            -2
+            >>> divisor.get_degree("v3")  # -2 + 3 = 1
+            1
+            >>> divisor.get_total_degree() == initial_total  # Total preserved
+            True
+            >>> # Invalid operations
+            >>> try:
+            ...     divisor.chip_transfer("v1", "v2", amount=0)  # Zero amount
+            ... except ValueError as e:
+            ...     print(str(e))
+            Amount must be positive for chip transfer
         """
         if amount <= 0:
             raise ValueError("Amount must be positive for chip transfer")
@@ -172,6 +320,31 @@ class CFDivisor:
 
         Raises:
             ValueError: If any vertex name in the set is not found in the graph.
+            
+        Example:
+            >>> vertices = {"a", "b", "c"}
+            >>> edges = [("a", "b", 2), ("b", "c", 3)]  # Multi-graph
+            >>> graph = CFGraph(vertices, edges)
+            >>> divisor = CFDivisor(graph, [("a", 10), ("b", 5), ("c", 0)])
+            >>> initial_total = divisor.get_total_degree()  # 15
+            >>> # Fire single vertex
+            >>> divisor.set_fire({"a"})  # Transfers 2 chips from a to b
+            >>> divisor.get_degree("a")  # 10 - 2 = 8
+            8
+            >>> divisor.get_degree("b")  # 5 + 2 = 7
+            7
+            >>> divisor.get_degree("c")  # Unchanged
+            0
+            >>> # Fire multiple vertices
+            >>> divisor.set_fire({"a", "b"})  # a->b (in set, no transfer), b->c (3 chips)
+            >>> divisor.get_degree("a")  # 8 (unchanged)
+            8
+            >>> divisor.get_degree("b")  # 7 - 3 = 4
+            4
+            >>> divisor.get_degree("c")  # 0 + 3 = 3
+            3
+            >>> divisor.get_total_degree() == initial_total  # Total preserved
+            True
         """
         firing_set_vertices = set()
         # Validate vertex names and convert to Vertex objects
@@ -205,6 +378,26 @@ class CFDivisor:
 
         Raises:
             ValueError: If the vertex name is not found in the graph
+            
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> divisor = CFDivisor(graph, [("A", 3), ("B", -1), ("C", 2)])
+            >>> # Remove vertex B
+            >>> new_divisor = divisor.remove_vertex("B")
+            >>> # Check the new divisor has one fewer vertex
+            >>> "B" in [v.name for v in new_divisor.graph.vertices]
+            False
+            >>> len(new_divisor.graph.vertices)
+            2
+            >>> # Check degrees are preserved for remaining vertices
+            >>> new_divisor.get_degree("A")
+            3
+            >>> new_divisor.get_degree("C")
+            2
+            >>> new_divisor.get_total_degree()  # 3 + 2 = 5
+            5
         """
         vertex = Vertex(vertex_name)
         if vertex not in self.graph.graph:
@@ -229,6 +422,28 @@ class CFDivisor:
 
         Returns:
             True if the divisors are equal, False otherwise
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Two identical divisors
+            >>> div1 = CFDivisor(graph, [("v1", 1), ("v2", 2), ("v3", 3)])
+            >>> div2 = CFDivisor(graph, [("v1", 1), ("v2", 2), ("v3", 3)])
+            >>> div1 == div2
+            True
+            >>> # Different degree at one vertex
+            >>> div3 = CFDivisor(graph, [("v1", 5), ("v2", 2), ("v3", 3)])
+            >>> div1 == div3
+            False
+            >>> # Different underlying graph
+            >>> different_graph = CFGraph({"v1", "v2", "v3"}, [("v1", "v2", 2)])
+            >>> div4 = CFDivisor(different_graph, [("v1", 1), ("v2", 2), ("v3", 3)])
+            >>> div1 == div4
+            False
+            >>> # Comparison with non-CFDivisor object
+            >>> div1 == "not a divisor"
+            False
         """
         if not isinstance(other, CFDivisor):
             return False
@@ -273,6 +488,36 @@ class CFDivisor:
         Raises:
             TypeError: If 'other' is not a CFDivisor.
             ValueError: If the divisors are not on compatible graphs (different vertex sets).
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Create two divisors
+            >>> degrees1 = [("v1", 1), ("v2", 2), ("v3", 3)]
+            >>> divisor1 = CFDivisor(graph, degrees1)
+            >>> degrees2 = [("v1", 4), ("v2", 5), ("v3", 0)]
+            >>> divisor2 = CFDivisor(graph, degrees2)
+            >>> # Add them
+            >>> sum_divisor = divisor1 + divisor2
+            >>> sum_divisor.get_degree("v1")  # 1 + 4 = 5
+            5
+            >>> sum_divisor.get_degree("v2")  # 2 + 5 = 7
+            7
+            >>> sum_divisor.get_degree("v3")  # 3 + 0 = 3
+            3
+            >>> sum_divisor.get_total_degree()  # (1+2+3) + (4+5+0) = 15
+            15
+            >>> # With unspecified degrees (defaulting to 0)
+            >>> div_a = CFDivisor(graph, [("v1", 10)])  # v2, v3 are 0
+            >>> div_b = CFDivisor(graph, [("v2", 5)])   # v1, v3 are 0
+            >>> sum_div = div_a + div_b
+            >>> sum_div.get_degree("v1")  # 10 + 0 = 10
+            10
+            >>> sum_div.get_degree("v2")  # 0 + 5 = 5
+            5
+            >>> sum_div.get_degree("v3")  # 0 + 0 = 0
+            0
         """
         if self.graph.vertices != other.graph.vertices:
             raise ValueError(
@@ -304,6 +549,24 @@ class CFDivisor:
         Raises:
             TypeError: If 'other' is not a CFDivisor.
             ValueError: If the divisors are not on compatible graphs (different vertex sets).
+            
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Create two divisors
+            >>> divisor1 = CFDivisor(graph, [("v1", 5), ("v2", 0), ("v3", -2)])
+            >>> divisor2 = CFDivisor(graph, [("v1", 1), ("v2", -1), ("v3", 3)])
+            >>> # Subtract them
+            >>> diff_divisor = divisor1 - divisor2
+            >>> diff_divisor.get_degree("v1")  # 5 - 1 = 4
+            4
+            >>> diff_divisor.get_degree("v2")  # 0 - (-1) = 1
+            1
+            >>> diff_divisor.get_degree("v3")  # -2 - 3 = -5
+            -5
+            >>> diff_divisor.get_total_degree()  # (5+0-2) - (1-1+3) = 3 - 3 = 0
+            0
         """
         if self.graph.vertices != other.graph.vertices:
             raise ValueError(

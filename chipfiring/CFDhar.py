@@ -6,9 +6,33 @@ from .CFOrientation import CFOrientation, OrientationState
 
 
 class DharAlgorithm:
+    """Implements Dhar's algorithm for finding maximal legal firing sets on a graph.
+
+    Dhar's algorithm uses a "burning process" to identify vertices that can be
+    legally fired together. It starts a fire at a distinguished vertex and
+    determines which vertices burn based on chip configuration.
+
+    Example:
+        >>> # Create a simple graph
+        >>> vertices = {"A", "B", "C", "D"}
+        >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1), ("D", "A", 1), ("A", "C", 1)]
+        >>> graph = CFGraph(vertices, edges)
+        >>> # Create a chip configuration
+        >>> config = CFDivisor(graph, [("A", 3), ("B", 2), ("C", 1), ("D", 2)])
+        >>> # Initialize the algorithm with "A" as the distinguished vertex
+        >>> dhar = DharAlgorithm(graph, config, "A")
+        >>> # Run the algorithm to find maximal legal firing set
+        >>> firing_set, orientation = dhar.run()
+        >>> # Check which vertices are in the firing set (excluding A)
+        >>> sorted([v.name for v in firing_set])
+        ['B', 'C', 'D']
+        >>> # Verify orientation is a CFOrientation object
+        >>> isinstance(orientation, CFOrientation)
+        True
+    """
+
     def __init__(self, graph: CFGraph, configuration: CFDivisor, q_name: str):
-        """
-        Initialize Dhar's Algorithm for finding a maximal legal firing set.
+        """Initialize Dhar's Algorithm for finding a maximal legal firing set.
 
         Args:
             graph: A CFGraph object representing the graph
@@ -17,6 +41,27 @@ class DharAlgorithm:
 
         Raises:
             ValueError: If q_name is not found in the graph
+            
+        Example:
+            >>> # Create a simple graph
+            >>> vertices = {"A", "B", "C", "D"}
+            >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1), ("D", "A", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Create a chip configuration
+            >>> config = CFDivisor(graph, [("A", 2), ("B", 1), ("C", 0), ("D", 1)])
+            >>> # Initialize the algorithm with "A" as the distinguished vertex
+            >>> dhar = DharAlgorithm(graph, config, "A")
+            >>> dhar.q.name
+            'A'
+            >>> # Unburnt vertices initially (all except q)
+            >>> sorted([v.name for v in dhar.unburnt_vertices])
+            ['B', 'C', 'D']
+            >>> # Invalid distinguished vertex
+            >>> try:
+            ...     DharAlgorithm(graph, config, "E")
+            ... except ValueError as e:
+            ...     print(str(e))
+            Distinguished vertex E not found in graph
         """
         self.graph = graph
         self.q = Vertex(q_name)
@@ -31,8 +76,7 @@ class DharAlgorithm:
         self.unburnt_vertices = set(self.graph.vertices) - {self.q}
 
     def outdegree_S(self, vertex: Vertex, S: Set[Vertex]) -> int:
-        """
-        Calculate the number of edges from a vertex to vertices in set S.
+        """Calculate the number of edges from a vertex to vertices in set S.
 
         Args:
             vertex: The vertex to calculate outdegree for
@@ -40,6 +84,25 @@ class DharAlgorithm:
 
         Returns:
             Sum of edge weights from vertex to vertices in S
+            
+        Example:
+            >>> # Create a simple graph
+            >>> vertices = {"A", "B", "C", "D"}
+            >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1), 
+            ...          ("D", "A", 1), ("A", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> config = CFDivisor(graph, [("A", 2), ("B", 1), ("C", 0), ("D", 1)])
+            >>> dhar = DharAlgorithm(graph, config, "A")
+            >>> # Calculate outdegree to a set of vertices
+            >>> S = {Vertex("B"), Vertex("C")}
+            >>> dhar.outdegree_S(Vertex("A"), S)  # A has edges to both B and C
+            2
+            >>> dhar.outdegree_S(Vertex("D"), S)  # D has no edges to B or C
+            0
+            >>> # With weighted edges
+            >>> graph.add_edge("D", "C", 2)  # Add weighted edge from D to C
+            >>> dhar.outdegree_S(Vertex("D"), S)  # D now has 2-weighted edge to C
+            2
         """
         return sum(
             self.graph.graph[vertex][neighbor]
@@ -48,12 +111,36 @@ class DharAlgorithm:
         )
 
     def send_debt_to_q(self) -> None:
-        """
-        Concentrate all debt at the distinguished vertex q, making all non-q vertices out of debt.
+        """Concentrate all debt at the distinguished vertex q, making all non-q vertices out of debt.
         This method modifies self.configuration so all non-q vertices have non-negative values.
 
         The algorithm works by performing borrowing moves at vertices in debt,
         working in reverse order of distance from q (approximated by BFS).
+        
+        Example:
+            >>> # Create a graph with some debt in the configuration
+            >>> vertices = {"A", "B", "C", "D"}
+            >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1), ("D", "A", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> config = CFDivisor(graph, [("A", 2), ("B", -1), ("C", -2), ("D", 1)])
+            >>> dhar = DharAlgorithm(graph, config, "A")
+            >>> # Check initial configuration
+            >>> config.get_degree("B")
+            -1
+            >>> config.get_degree("C")
+            -2
+            >>> # Send debt to q (A)
+            >>> dhar.send_debt_to_q()
+            >>> # Verify all non-q vertices have non-negative values
+            >>> dhar.configuration.get_degree("B") >= 0
+            True
+            >>> dhar.configuration.get_degree("C") >= 0
+            True
+            >>> dhar.configuration.get_degree("D") >= 0
+            True
+            >>> # The distinguished vertex q takes on the debt
+            >>> dhar.configuration.get_degree("A") <= 2  # Less than or equal to initial value
+            True
         """
         # Sort vertices by distance from q (approximation using BFS)
         queue = [self.q]
@@ -86,8 +173,7 @@ class DharAlgorithm:
                         self.configuration.degrees[neighbor] -= edge_count
 
     def run(self) -> Tuple[Set[Vertex], CFOrientation]:
-        """
-        Run Dhar's Algorithm to find a maximal legal firing set.
+        """Run Dhar's Algorithm to find a maximal legal firing set.
 
         This implementation uses the "burning process" metaphor:
         1. Start a fire at the distinguished vertex q
@@ -98,6 +184,32 @@ class DharAlgorithm:
             A tuple containing:
             - A set of unburnt vertices (excluding q) representing the maximal legal firing set
             - A CFOrientation object tracking the burning directions
+            
+        Example:
+            >>> # Create a simple graph
+            >>> vertices = {"A", "B", "C", "D"}
+            >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1), ("D", "A", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Create a configuration
+            >>> config = CFDivisor(graph, [("A", 3), ("B", 2), ("C", 1), ("D", 2)])
+            >>> dhar = DharAlgorithm(graph, config, "A")
+            >>> # Run the algorithm
+            >>> unburnt_vertices, orientation = dhar.run()
+            >>> # All vertices remain unburnt in this example
+            >>> sorted([v.name for v in unburnt_vertices])
+            ['B', 'C', 'D']
+            >>> isinstance(orientation, CFOrientation)
+            True
+            >>> # Example with debt and burning
+            >>> config2 = CFDivisor(graph, [("A", 3), ("B", 0), ("C", 0), ("D", 2)])
+            >>> dhar2 = DharAlgorithm(graph, config2, "A")
+            >>> unburnt2, orientation2 = dhar2.run()
+            >>> # B burns because it has 0 chips but an edge to burnt vertex A
+            >>> 'B' not in [v.name for v in unburnt2]
+            True
+            >>> # Test orientation - B should be oriented from A
+            >>> orientation2.get_orientation("A", "B") is not None
+            True
         """
         # First, ensure all non-q vertices are out of debt
         self.send_debt_to_q()
@@ -158,6 +270,40 @@ class DharAlgorithm:
         return unburnt - {self.q}, orientation
 
     def legal_set_fire(self, unburnt_vertices: Set[Vertex]):
+        """Perform a firing of the legal set of unburnt vertices.
+        
+        This method updates the divisor by firing all vertices in the unburnt set.
+        
+        Args:
+            unburnt_vertices: A set of vertices to fire
+            
+        Example:
+            >>> # Create a simple graph
+            >>> vertices = {"A", "B", "C", "D"}
+            >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1), ("D", "A", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Create a configuration
+            >>> config = CFDivisor(graph, [("A", 3), ("B", 2), ("C", 1), ("D", 2)])
+            >>> dhar = DharAlgorithm(graph, config, "A")
+            >>> # Run the algorithm
+            >>> unburnt_vertices, _ = dhar.run()
+            >>> # Store initial degrees
+            >>> initial_b = config.get_degree("B")
+            >>> initial_c = config.get_degree("C")
+            >>> initial_d = config.get_degree("D")
+            >>> # Fire the legal set
+            >>> dhar.legal_set_fire(unburnt_vertices)
+            >>> # Degrees should change according to firing rules
+            >>> config.get_degree("B") != initial_b
+            True
+            >>> config.get_degree("C") != initial_c
+            True
+            >>> config.get_degree("D") != initial_d
+            True
+            >>> # Total degree remains the same
+            >>> config.get_total_degree() == 8  # 3 + 2 + 1 + 2 = 8
+            True
+        """
         divisor = self.full_configuration
         for v in self.full_configuration.degrees.keys():
             if v == self.q:
