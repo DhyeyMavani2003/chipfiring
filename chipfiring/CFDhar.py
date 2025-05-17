@@ -41,7 +41,7 @@ class DharAlgorithm:
 
         Raises:
             ValueError: If q_name is not found in the graph
-            
+
         Example:
             >>> # Create a simple graph
             >>> vertices = {"A", "B", "C", "D"}
@@ -84,11 +84,11 @@ class DharAlgorithm:
 
         Returns:
             Sum of edge weights from vertex to vertices in S
-            
+
         Example:
             >>> # Create a simple graph
             >>> vertices = {"A", "B", "C", "D"}
-            >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1), 
+            >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1),
             ...          ("D", "A", 1), ("A", "C", 1)]
             >>> graph = CFGraph(vertices, edges)
             >>> config = CFDivisor(graph, [("A", 2), ("B", 1), ("C", 0), ("D", 1)])
@@ -116,7 +116,7 @@ class DharAlgorithm:
 
         The algorithm works by performing borrowing moves at vertices in debt,
         working in reverse order of distance from q (approximated by BFS).
-        
+
         Example:
             >>> # Create a graph with some debt in the configuration
             >>> vertices = {"A", "B", "C", "D"}
@@ -184,7 +184,7 @@ class DharAlgorithm:
             A tuple containing:
             - A set of unburnt vertices (excluding q) representing the maximal legal firing set
             - A CFOrientation object tracking the burning directions
-            
+
         Example:
             >>> # Create a simple graph
             >>> vertices = {"A", "B", "C", "D"}
@@ -271,12 +271,12 @@ class DharAlgorithm:
 
     def legal_set_fire(self, unburnt_vertices: Set[Vertex]):
         """Perform a firing of the legal set of unburnt vertices.
-        
+
         This method updates the divisor by firing all vertices in the unburnt set.
-        
+
         Args:
             unburnt_vertices: A set of vertices to fire
-            
+
         Example:
             >>> # Create a simple graph
             >>> vertices = {"A", "B", "C", "D"}

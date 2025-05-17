@@ -13,7 +13,7 @@ class GreedyAlgorithm:
         Args:
             graph: A CFGraph object representing the graph.
             divisor: A CFDivisor object representing the initial chip configuration.
-            
+
         Example:
             >>> G = CFGraph({"A", "B", "C", "D"}, [])
             >>> G.add_edge("A", "B", 1)
@@ -42,7 +42,7 @@ class GreedyAlgorithm:
 
         Returns:
             True if effective (all vertices have non-negative chips), otherwise False.
-            
+
         Example:
             >>> G = CFGraph({"A", "B", "C", "D"}, [])
             >>> G.add_edge("A", "B", 1)
@@ -69,7 +69,7 @@ class GreedyAlgorithm:
 
         Args:
             vertex_name: The name of the vertex at which to perform the borrowing move.
-            
+
         Example:
             >>> G = CFGraph({"A", "B", "C", "D"}, [])
             >>> G.add_edge("A", "B", 1)
@@ -111,7 +111,7 @@ class GreedyAlgorithm:
         Returns:
             Tuple (True, firing_script) if the game is winnable; otherwise (False, None).
             The firing script is a dictionary mapping vertex names to their net number of firings.
-            
+
         Example:
             >>> G = CFGraph({"A", "B", "C", "D"}, [])
             >>> G.add_edge("A", "B", 1)
@@ -131,7 +131,7 @@ class GreedyAlgorithm:
             >>> # Check that the resulting divisor is effective
             >>> all(algorithm.divisor.get_degree(v) >= 0 for v in "ABCD")
             True
-            >>> 
+            >>>
             >>> # Example with an unwinnable configuration (too much debt)
             >>> divisor2 = CFDivisor(G, [("A", -100), ("B", -100), ("C", -100), ("D", -100)])
             >>> algorithm2 = GreedyAlgorithm(G, divisor2)

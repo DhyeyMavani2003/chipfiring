@@ -6,7 +6,7 @@ from .CFGraph import CFGraph, Vertex
 # TODO: Implement 0-divisors and 1-divisors
 class CFDivisor:
     """Represents a divisor (chip configuration) on a chip-firing graph.
-    
+
     Example:
         >>> vertices = {"A", "B", "C"}
         >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
@@ -32,7 +32,7 @@ class CFDivisor:
         Raises:
             ValueError: If a vertex name appears multiple times in degrees
             ValueError: If a vertex name is not found in the graph
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -76,7 +76,7 @@ class CFDivisor:
 
         Returns:
             True if the divisor is effective, False otherwise
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -110,7 +110,7 @@ class CFDivisor:
 
         Raises:
             ValueError: If the vertex name is not found in the divisor
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -139,7 +139,7 @@ class CFDivisor:
 
         Returns:
             The total number of chips in the divisor
-            
+
         Example:
             >>> vertices = {"A", "B", "C"}
             >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
@@ -170,7 +170,7 @@ class CFDivisor:
 
         Raises:
             ValueError: If the vertex name is not found in the graph.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -216,7 +216,7 @@ class CFDivisor:
 
         Raises:
             ValueError: If the vertex name is not found in the graph.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -264,7 +264,7 @@ class CFDivisor:
         Raises:
             ValueError: If either vertex name is not found in the divisor.
             ValueError: If the amount is not positive.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -320,7 +320,7 @@ class CFDivisor:
 
         Raises:
             ValueError: If any vertex name in the set is not found in the graph.
-            
+
         Example:
             >>> vertices = {"a", "b", "c"}
             >>> edges = [("a", "b", 2), ("b", "c", 3)]  # Multi-graph
@@ -378,7 +378,7 @@ class CFDivisor:
 
         Raises:
             ValueError: If the vertex name is not found in the graph
-            
+
         Example:
             >>> vertices = {"A", "B", "C"}
             >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
@@ -422,7 +422,7 @@ class CFDivisor:
 
         Returns:
             True if the divisors are equal, False otherwise
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -488,7 +488,7 @@ class CFDivisor:
         Raises:
             TypeError: If 'other' is not a CFDivisor.
             ValueError: If the divisors are not on compatible graphs (different vertex sets).
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -549,7 +549,7 @@ class CFDivisor:
         Raises:
             TypeError: If 'other' is not a CFDivisor.
             ValueError: If the divisors are not on compatible graphs (different vertex sets).
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]

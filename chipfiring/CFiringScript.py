@@ -25,7 +25,7 @@ class CFiringScript:
 
         Raises:
             ValueError: If any vertex name in the script is not present in the graph.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 2)]
@@ -34,7 +34,7 @@ class CFiringScript:
             >>> firing_script = CFiringScript(graph, script_dict)
             >>> firing_script.script
             {'v1': 2, 'v3': -1, 'v2': 0}  # v2 has 0 firings by default
-            
+
             >>> # Empty script
             >>> empty_script = CFiringScript(graph, {})
             >>> empty_script.script
@@ -66,7 +66,7 @@ class CFiringScript:
 
         Raises:
             ValueError: If the vertex name is not present in the graph.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 2)]
@@ -94,7 +94,7 @@ class CFiringScript:
 
         Raises:
             ValueError: If the vertex name is not present in the graph.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 2)]
@@ -121,7 +121,7 @@ class CFiringScript:
 
         Raises:
             ValueError: If the vertex name is not present in the graph.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 2)]
@@ -141,10 +141,10 @@ class CFiringScript:
     @property
     def script(self) -> typing.Dict[str, int]:
         """Return the script as a dictionary mapping vertex names to firings.
-        
+
         Returns:
             A dictionary where keys are vertex names and values are the number of firings.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 2)]

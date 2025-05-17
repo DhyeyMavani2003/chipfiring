@@ -1,4 +1,5 @@
 import typing
+import math
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
 from .CFiringScript import CFiringScript
@@ -14,7 +15,7 @@ class CFLaplacian:
 
         Args:
             graph: A CFGraph object representing the graph.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -32,7 +33,7 @@ class CFLaplacian:
             dictionary representing the row of the Laplacian matrix for that vertex.
             The inner dictionary maps neighboring Vertices to their corresponding
             negative edge valence, and the vertex itself maps to its total valence.
-            
+
         Example:
             >>> vertices = {"a", "b", "c"}
             >>> edges = [("a", "b", 2), ("b", "c", 3)]
@@ -75,7 +76,7 @@ class CFLaplacian:
         Returns:
             A new CFDivisor object representing the chip configuration after applying
             the firing script via the Laplacian.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -132,7 +133,7 @@ class CFLaplacian:
 
         Raises:
             ValueError: If v_name or w_name are not in the graph.
-            
+
         Example:
             >>> vertices = {"a", "b", "c"}
             >>> edges = [("a", "b", 2), ("b", "c", 3)]
@@ -157,3 +158,98 @@ class CFLaplacian:
         matrix = self._construct_matrix()
         # Return L[v][w], defaulting to 0 if w is not a neighbor of v (or if v=w and v has no neighbors)
         return matrix.get(v, {}).get(w, 0)
+
+    def get_reduced_matrix(
+        self, q: Vertex
+    ) -> typing.Dict[Vertex, typing.Dict[Vertex, int]]:
+        """
+        Get the reduced Laplacian matrix for a given vertex q.
+
+        Args:
+            q: The vertex to reduce the matrix with respect to.
+
+        Returns:
+            A dictionary representing the reduced Laplacian matrix.
+
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
+            >>> # The full Laplacian matrix is:
+            >>> #    A  B  C
+            >>> # A [3 -2 -1]
+            >>> # B [-2 3 -1]
+            >>> # C [-1 -1 2]
+            >>> # Reducing with respect to B, we get:
+            >>> #    A  C
+            >>> # A [3 -1]
+            >>> # C [-1 2]
+        """
+        laplacian = self._construct_matrix()
+        vertices = self.graph.vertices
+
+        # Create a new dictionary for the reduced matrix
+        reduced_matrix: typing.Dict[Vertex, typing.Dict[Vertex, int]] = {}
+
+        # For each vertex except q, create a row in the reduced matrix
+        for v in vertices:
+            if v != q:
+                reduced_matrix[v] = {}
+                # For each vertex except q, add an entry to the row
+                for w in vertices:
+                    if w != q:
+                        reduced_matrix[v][w] = laplacian[v][w]
+
+        return reduced_matrix
+
+    def apply_reduced_matrix(
+        self,
+        divisor: CFDivisor,
+        reduced_matrix: typing.Dict[Vertex, typing.Dict[Vertex, int]],
+        q: Vertex,
+    ) -> typing.List[typing.Tuple[str, int]]:
+        """
+        Apply the reduced Laplacian matrix to a divisor.
+
+        Args:
+            divisor: The initial CFDivisor object representing chip counts.
+            reduced_matrix: The reduced Laplacian matrix to apply.
+            q: The vertex to reduce the matrix with respect to.
+
+        Returns:
+            A list of tuples representing the new divisor after applying the reduced matrix.
+
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> laplacian = CFLaplacian(graph)
+            >>> reduced_matrix = laplacian.get_reduced_matrix(Vertex("B"))
+            >>> # The reduced matrix is:
+            >>> #    A  C
+            >>> # A [3 -1]
+            >>> # C [-1 2]
+            >>> # The initial divisor is:
+            >>> # [(A, 3), (B, 0), (C, 0)]
+            >>> # Applying the reduced matrix to the divisor with respect to B, we get:
+            >>> # [(A, -6), (C, 3)]
+        """
+        # Get the initial chip counts from the divisor
+        initial_degrees = divisor.degrees
+
+        # Create a new dictionary for the resulting degrees
+        resulting_degrees = {}
+
+        # For each vertex in the reduced matrix, calculate the new degree
+        for v in reduced_matrix:
+            new_degree = initial_degrees[v]
+            for w in reduced_matrix[v]:
+                new_degree -= reduced_matrix[v][w] * initial_degrees[w]
+            resulting_degrees[v] = math.floor(new_degree)
+
+        # Create a new list of tuples for the resulting degrees
+        final_degrees_list = [
+            (vertex.name, degree) for vertex, degree in resulting_degrees.items()
+        ]
+
+        # Return the new list of degrees
+        return final_degrees_list

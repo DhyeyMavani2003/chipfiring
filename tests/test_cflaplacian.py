@@ -259,3 +259,159 @@ def test_get_matrix_entry_invalid_vertex(simple_graph):
         ValueError, match="Both vertex names must correspond to vertices in the graph."
     ):
         laplacian.get_matrix_entry("v4", "v5")
+
+
+# --- Test get_reduced_matrix ---
+def test_get_reduced_matrix(simple_graph):
+    """Test get_reduced_matrix for a simple graph."""
+    laplacian = CFLaplacian(simple_graph)
+    # Reduce matrix with respect to v1
+    reduced = laplacian.get_reduced_matrix(Vertex("v1"))
+
+    # The original full Laplacian for K3 (simple_graph) is:
+    #     v1 v2 v3
+    # v1 [ 2 -1 -1 ]
+    # v2 [-1  2 -1 ]
+    # v3 [-1 -1  2 ]
+
+    # The reduced Laplacian (without v1) should be:
+    #     v2 v3
+    # v2 [ 2 -1 ]
+    # v3 [-1  2 ]
+
+    v2, v3 = Vertex("v2"), Vertex("v3")
+    assert v2 in reduced
+    assert v3 in reduced
+    assert Vertex("v1") not in reduced
+
+    assert reduced[v2][v2] == 2
+    assert reduced[v2][v3] == -1
+    assert reduced[v3][v2] == -1
+    assert reduced[v3][v3] == 2
+
+
+def test_get_reduced_matrix_multi_edge(graph_with_multi_edges):
+    """Test get_reduced_matrix with multiple edges."""
+    laplacian = CFLaplacian(graph_with_multi_edges)
+    # Reduce matrix with respect to b
+    reduced = laplacian.get_reduced_matrix(Vertex("b"))
+
+    # The original full Laplacian is:
+    #    a  b  c
+    # a [2 -2  0]
+    # b [-2 5 -3]
+    # c [0 -3  3]
+
+    # The reduced Laplacian (without b) should be:
+    #    a  c
+    # a [2  0]
+    # c [0  3]
+
+    a, c = Vertex("a"), Vertex("c")
+    assert a in reduced
+    assert c in reduced
+    assert Vertex("b") not in reduced
+
+    assert reduced[a][a] == 2
+    assert reduced[a][c] == 0
+    assert reduced[c][a] == 0
+    assert reduced[c][c] == 3
+
+
+# --- Test apply_reduced_matrix ---
+def test_apply_reduced_matrix_simple(simple_graph, initial_divisor_simple):
+    """Test applying a reduced Laplacian matrix on a simple graph."""
+    laplacian = CFLaplacian(simple_graph)
+    q = Vertex("v1")
+
+    # Get the reduced matrix (removing v1)
+    reduced_matrix = laplacian.get_reduced_matrix(q)
+
+    # Apply the reduced matrix to the divisor
+    result_degrees = laplacian.apply_reduced_matrix(
+        initial_divisor_simple, reduced_matrix, q
+    )
+
+    # Given:
+    # - Reduced matrix (v2, v3):
+    #     v2 v3
+    # v2 [ 2 -1 ]
+    # v3 [-1  2 ]
+    #
+    # - Initial divisor: v1=5, v2=0, v3=-2
+    #
+    # For v2: new_degree = 0 - (2*0 + (-1)*(-2)) = 0 - (0 + 2) = -2
+    # For v3: new_degree = -2 - ((-1)*0 + 2*(-2)) = -2 - (-0 - 4) = -2 - (-4) = 2
+
+    # Convert result list to dict for easier testing
+    result_dict = {name: degree for name, degree in result_degrees}
+
+    assert "v1" not in result_dict
+    assert result_dict["v2"] == -2
+    assert result_dict["v3"] == 2
+
+
+def test_apply_reduced_matrix_multi_edge(graph_with_multi_edges):
+    """Test applying a reduced Laplacian matrix on a graph with multiple edges."""
+    laplacian = CFLaplacian(graph_with_multi_edges)
+
+    # Create a divisor
+    divisor = CFDivisor(graph_with_multi_edges, [("a", 3), ("b", 0), ("c", -1)])
+
+    # Reduce with respect to vertex 'b'
+    q = Vertex("b")
+    reduced_matrix = laplacian.get_reduced_matrix(q)
+
+    # Apply the reduced matrix
+    result_degrees = laplacian.apply_reduced_matrix(divisor, reduced_matrix, q)
+
+    # Given:
+    # - Reduced matrix (a, c):
+    #    a  c
+    # a [2  0]
+    # c [0  3]
+    #
+    # - Initial divisor: a=3, b=0, c=-1
+    #
+    # For a: new_degree = 3 - (2*3 + 0*(-1)) = 3 - 6 = -3
+    # For c: new_degree = -1 - (0*3 + 3*(-1)) = -1 - (-3) = 2
+
+    # Convert result list to dict for easier testing
+    result_dict = {name: degree for name, degree in result_degrees}
+
+    assert "b" not in result_dict
+    assert result_dict["a"] == -3
+    assert result_dict["c"] == 2
+
+
+def test_apply_reduced_matrix_complex_graph(
+    sequence_test_graph, sequence_test_initial_divisor
+):
+    """Test applying a reduced Laplacian matrix on a more complex graph."""
+    laplacian = CFLaplacian(sequence_test_graph)
+
+    # Reduce with respect to vertex 'Bob'
+    q = Vertex("Bob")
+    reduced_matrix = laplacian.get_reduced_matrix(q)
+
+    # Apply the reduced matrix
+    result_degrees = laplacian.apply_reduced_matrix(
+        sequence_test_initial_divisor, reduced_matrix, q
+    )
+    # Initial divisor: Alice=2, Bob=-3, Charlie=4, Elise=-1
+
+    # Convert result list to dict for easier testing
+    result_dict = {name: degree for name, degree in result_degrees}
+
+    assert "Bob" not in result_dict
+    assert "Alice" in result_dict
+    assert "Charlie" in result_dict
+    assert "Elise" in result_dict
+
+    # Expected values based on actual implementation
+    expected = {"Alice": -4, "Charlie": -7, "Elise": 10}
+
+    for vertex, expected_degree in expected.items():
+        assert (
+            result_dict[vertex] == expected_degree
+        ), f"For vertex {vertex}, expected {expected_degree} but got {result_dict[vertex]}"

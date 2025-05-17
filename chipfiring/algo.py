@@ -1,5 +1,6 @@
 from .CFGraph import CFGraph
 from .CFDivisor import CFDivisor
+from .CFLaplacian import CFLaplacian
 from .CFDhar import DharAlgorithm
 from .CFOrientation import CFOrientation
 from typing import Tuple, Optional
@@ -32,7 +33,7 @@ def EWD(
         ValueError: If the divisor has no degrees mapping, making it impossible
                     to determine the initial vertex 'q'.
         RuntimeError: If the final orientation is not full (some edges remain unoriented).
-        
+
     Example:
         >>> # Create a simple graph
         >>> vertices = {"Alice", "Bob", "Charlie", "Elise"}
@@ -84,6 +85,19 @@ def EWD(
     #   that corresponds to the minimum degree.
     q = min(divisor.degrees.items(), key=lambda item: item[1])[0]
 
+    # Apply the reduced matrix optimization to the divisor with respect to q (if optimized is True)
+    if optimized:
+        laplacian = CFLaplacian(graph)
+        reduced_laplacian = laplacian.get_reduced_matrix(q)
+        # D = c + kq then c' = c - reduced_laplacian[q]*c then D' = c' + (deg(D) - deg(c))q
+        # write a function reduced_laplacian_optimization to do this
+        config_degrees_list = laplacian.apply_reduced_matrix(
+            divisor, reduced_laplacian, q
+        )
+        config_degree = sum(degree for _, degree in config_degrees_list)
+        config_degrees_list.append((q.name, divisor.get_total_degree() - config_degree))
+        divisor = CFDivisor(graph, config_degrees_list)
+
     # Create a DharAlgorithm instance
     dhar = DharAlgorithm(graph, divisor, q.name)
 
@@ -133,7 +147,7 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
 
     Returns:
         A tuple containing a boolean indicating if the divisors are linearly equivalent, and the q-reduced divisor if they are.
-        
+
     Example:
         >>> # Create a simple graph
         >>> vertices = {"v1", "v2", "v3"}
@@ -190,7 +204,7 @@ def is_winnable(divisor: CFDivisor) -> bool:
 
     Returns:
         True if the configuration is winnable, False otherwise.
-        
+
     Example:
         >>> # Create a simple graph
         >>> vertices = {"v1", "v2", "v3"}
@@ -227,7 +241,7 @@ def q_reduction(divisor: CFDivisor) -> CFDivisor:
 
     Raises:
         ValueError: If the EWD algorithm doesn't produce a valid q-reduced divisor.
-        
+
     Example:
         >>> # Create a simple graph
         >>> vertices = {"Alice", "Bob", "Charlie", "Elise"}
@@ -263,7 +277,7 @@ def is_q_reduced(divisor: CFDivisor) -> bool:
 
     Returns:
         True if the divisor is q-reduced, False otherwise.
-        
+
     Example:
         >>> # Create a simple graph
         >>> vertices = {"Alice", "Bob", "Charlie", "Elise"}

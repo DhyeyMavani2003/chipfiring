@@ -30,7 +30,7 @@ class CFOrientation:
         Raises:
             ValueError: If an edge specified in orientations does not exist in the graph
             ValueError: If multiple orientations are specified for the same edge
-            
+
         Example:
             >>> vertices = {"A", "B", "C"}
             >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
@@ -94,10 +94,10 @@ class CFOrientation:
 
     def check_fullness(self) -> bool:
         """Check if all edges have an orientation and update is_full.
-        
+
         Returns:
             True if all edges have an orientation, False otherwise
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -135,7 +135,7 @@ class CFOrientation:
             source: Source vertex
             sink: Sink vertex
             state: New orientation state
-            
+
         Example:
             >>> vertices = {"A", "B", "C"}
             >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
@@ -207,7 +207,7 @@ class CFOrientation:
 
         Raises:
             ValueError: If the edge does not exist
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -258,7 +258,7 @@ class CFOrientation:
 
         Raises:
             ValueError: If the edge does not exist
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -304,7 +304,7 @@ class CFOrientation:
 
         Raises:
             ValueError: If the edge does not exist
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -347,7 +347,7 @@ class CFOrientation:
 
         Raises:
             ValueError: If the vertex name is not found in the graph
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -377,7 +377,7 @@ class CFOrientation:
 
         Raises:
             ValueError: If the vertex name is not found in the graph
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -404,7 +404,7 @@ class CFOrientation:
 
         Returns:
             A new CFOrientation object representing the reversed orientation.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -458,7 +458,7 @@ class CFOrientation:
 
         Returns:
             A new CFDivisor object representing the calculated divisor.
-            
+
         Example:
             >>> vertices = {"v1", "v2", "v3"}
             >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
@@ -498,7 +498,7 @@ class CFOrientation:
 
         Returns:
             A new CFDivisor object representing the canonical divisor.
-        
+
         Example:
             >>> vertices = {"a", "b", "c"}
             >>> edges = [("a", "b", 2), ("b", "c", 3)]  # Multi-graph
