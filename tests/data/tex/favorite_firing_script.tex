@@ -1,0 +1,34 @@
+\documentclass{article}
+\usepackage{tikz}
+\usetikzlibrary{automata, positioning, arrows.meta, shapes}
+
+\begin{document}
+
+\begin{tikzpicture}[shorten >=1pt, node distance=2.5cm, on grid, auto,
+    every state/.style={draw=black!50, thick, minimum size=0.8cm, inner sep=3pt},
+    edge_label/.style={midway, fill=white, inner sep=1pt, font=\small}
+]
+
+% Firing Script Definition
+    \node[state] (Alice) {Alice};
+    \node[state] (Bob) [below=of Alice] {Bob};
+    \node[state] (Charlie) [right=of Bob] {Charlie};
+    \node[state] (Elise) [right=of Charlie] {Elise};
+
+% Firing information as labels
+    \node[anchor=west, xshift=1pt, yshift=1pt, at=(Alice.north east), font=\small] {1};
+    \node[anchor=west, xshift=1pt, yshift=1pt, at=(Bob.north east), font=\small] {2};
+    \node[anchor=west, xshift=1pt, yshift=1pt, at=(Charlie.north east), font=\small] {3};
+    \node[anchor=west, xshift=1pt, yshift=1pt, at=(Elise.north east), font=\small] {4};
+
+% Edges (structure only, firings are shown next to nodes)
+    \path[-] (Alice) edge[bend left=0] (Bob);
+    \path[-] (Alice) edge[bend left=0] (Charlie);
+    \path[-] (Alice) edge[bend right=5] (Elise);
+    \path[-] (Alice) edge[bend left=5] (Elise);
+    \path[-] (Bob) edge[bend left=0] (Charlie);
+    \path[-] (Charlie) edge[bend left=0] (Elise);
+
+\end{tikzpicture}
+
+\end{document}

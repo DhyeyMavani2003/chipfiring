@@ -1,0 +1,10 @@
+{
+    "vertices": ["Alice", "Bob", "Charlie", "Elise"],
+    "edges": [
+        ["Alice", "Bob", 1],
+        ["Bob", "Charlie", 1],
+        ["Charlie", "Elise", 1],
+        ["Alice", "Elise", 2],
+        ["Alice", "Charlie", 1]
+    ]
+}

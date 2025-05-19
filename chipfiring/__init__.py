@@ -11,6 +11,7 @@ from .CFGreedyAlgorithm import GreedyAlgorithm
 from .CFDhar import DharAlgorithm
 from .algo import EWD, linear_equivalence, is_winnable, q_reduction, is_q_reduced
 from .CFRank import rank
+from .CFDataProcessor import CFDataProcessor
 
 __all__ = [
     "CFGraph",
@@ -29,6 +30,7 @@ __all__ = [
     "q_reduction",
     "is_q_reduced",
     "rank",
+    "CFDataProcessor",
 ]
 
 __version__ = "0.1.2"
