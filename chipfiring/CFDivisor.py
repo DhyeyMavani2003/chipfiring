@@ -69,6 +69,41 @@ class CFDivisor:
             self.degrees[vertex] = degree
             self.total_degree += degree
 
+    def to_dict(self) -> Dict[str, any]:
+        """Converts the CFDivisor instance to a dictionary representation.
+
+        Returns:
+            A dictionary with 'graph' and 'degrees'.
+        """
+        graph_dict = self.graph.to_dict()
+        degrees_dict = {v.name: deg for v, deg in self.degrees.items()}
+        return {
+            "graph": graph_dict,
+            "degrees": degrees_dict
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, any]) -> "CFDivisor":
+        """Creates a CFDivisor instance from a dictionary representation.
+
+        Args:
+            data: A dictionary with 'graph' (CFGraph representation) 
+                  and 'degrees' (dictionary mapping vertex names to degrees).
+
+        Returns:
+            A CFDivisor instance.
+        """
+        graph_data = data.get("graph")
+        if not graph_data:
+            raise ValueError("Graph data is missing in CFDivisor representation")
+        
+        graph = CFGraph.from_dict(graph_data)
+        
+        degrees_dict = data.get("degrees", {})
+        degrees_list = list(degrees_dict.items()) # Convert dict to list of tuples for constructor
+        
+        return cls(graph, degrees_list)
+
     def is_effective(self) -> bool:
         """Check if the divisor is effective.
 

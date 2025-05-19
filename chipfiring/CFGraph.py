@@ -401,3 +401,44 @@ class CFGraph:
 
         # Create new graph with remaining vertices and edges
         return CFGraph(remaining_vertices, remaining_edges)
+
+    @classmethod
+    def from_dict(cls, data: typing.Dict[str, typing.Any]) -> "CFGraph":
+        """Creates a CFGraph instance from a dictionary representation.
+
+        Args:
+            data: A dictionary with 'vertices' (list of names) and 
+                  'edges' (list of [v1_name, v2_name, valence] tuples).
+
+        Returns:
+            A CFGraph instance.
+        """
+        vertices = set(data.get("vertices", []))
+        edges = data.get("edges", [])
+        graph = cls(vertices, edges)
+
+        return graph
+
+    def to_dict(self) -> typing.Dict[str, typing.Any]:
+        """Converts the CFGraph instance to a dictionary representation.
+
+        Returns:
+            A dictionary with 'vertices' and 'edges'.
+        """
+        vertex_names = sorted([v.name for v in self.vertices]) # Sort for consistent output
+        
+        edge_list = []
+
+        sorted_vertices = sorted(list(self.vertices), key=lambda v: v.name)
+
+        for v1 in sorted_vertices:
+            if v1 in self.graph:
+                sorted_neighbors = sorted(self.graph[v1].keys(), key=lambda v: v.name)
+                for v2 in sorted_neighbors:
+                    if v1.name < v2.name:
+                        valence = self.graph[v1][v2]
+                        edge_list.append([v1.name, v2.name, valence])
+                    elif v1.name == v2.name:
+                        raise ValueError("Self-loops are not allowed")
+
+        return {"vertices": vertex_names, "edges": edge_list}

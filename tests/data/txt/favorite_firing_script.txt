@@ -1,0 +1,11 @@
+GRAPH_VERTICES: Alice, Bob, Charlie, Elise
+GRAPH_EDGE: Alice, Bob, 1
+GRAPH_EDGE: Alice, Charlie, 1
+GRAPH_EDGE: Alice, Elise, 2
+GRAPH_EDGE: Bob, Charlie, 1
+GRAPH_EDGE: Charlie, Elise, 1
+---SCRIPT---
+FIRING: Alice, 1
+FIRING: Bob, 2
+FIRING: Charlie, 3
+FIRING: Elise, 4 

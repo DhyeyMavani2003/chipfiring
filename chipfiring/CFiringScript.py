@@ -138,6 +138,41 @@ class CFiringScript:
         current_firings = self.get_firings(vertex_name)
         self.set_firings(vertex_name, current_firings + additional_firings)
 
+    def to_dict(self) -> typing.Dict[str, typing.Any]:
+        """Converts the CFiringScript instance to a dictionary representation.
+
+        Returns:
+            A dictionary with 'graph' and 'script' (mapping vertex names to firings).
+        """
+        graph_dict = self.graph.to_dict()
+        
+        script_to_store = {v.name: f for v, f in self._script.items()} # Use internal _script
+
+        return {
+            "graph": graph_dict,
+            "script": script_to_store
+        }
+
+    @classmethod
+    def from_dict(cls, data: typing.Dict[str, typing.Any]) -> "CFiringScript":
+        """Creates a CFiringScript instance from a dictionary representation.
+
+        Args:
+            data: A dictionary with 'graph' (CFGraph representation) 
+                  and 'script' (dictionary mapping vertex names to firings).
+
+        Returns:
+            A CFiringScript instance.
+        """
+        graph_data = data.get("graph")
+        if not graph_data:
+            raise ValueError("Graph data is missing in CFiringScript representation")
+        
+        graph = CFGraph.from_dict(graph_data)
+        script_dict = data.get("script", {}) # Script can be empty, defaults to {} in constructor
+        
+        return cls(graph, script_dict)
+
     @property
     def script(self) -> typing.Dict[str, int]:
         """Return the script as a dictionary mapping vertex names to firings.

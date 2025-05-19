@@ -1,0 +1,6 @@
+VERTICES: Alice, Bob, Charlie, Elise
+EDGE: Alice, Bob, 1
+EDGE: Alice, Charlie, 1
+EDGE: Alice, Elise, 2
+EDGE: Bob, Charlie, 1
+EDGE: Charlie, Elise, 1 

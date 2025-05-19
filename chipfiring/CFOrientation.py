@@ -520,3 +520,50 @@ class CFOrientation:
 
         # Create and return the new divisor object
         return CFDivisor(self.graph, canonical_degrees)
+
+    def to_dict(self) -> typing.Dict[str, typing.Any]:
+        """Converts the CFOrientation instance to a dictionary representation.
+
+        Returns:
+            A dictionary with 'graph' and 'orientations'.
+        """
+        graph_dict = self.graph.to_dict()
+        
+        orientation_list = []
+        
+        sorted_vertices = sorted(list(self.graph.vertices), key=lambda v: v.name)
+
+        for v1 in sorted_vertices:
+            sorted_neighbors = sorted(self.graph.graph[v1].keys(), key=lambda v: v.name)
+            for v2 in sorted_neighbors:
+                if v1.name < v2.name:
+                    state = self.orientation[v1].get(v2)
+                    if state == OrientationState.SOURCE_TO_SINK:
+                        orientation_list.append([v1.name, v2.name])
+                    elif state == OrientationState.SINK_TO_SOURCE:
+                        orientation_list.append([v2.name, v1.name])
+        
+        return {
+            "graph": graph_dict,
+            "orientations": orientation_list
+        }
+
+    @classmethod
+    def from_dict(cls, data: typing.Dict[str, typing.Any]) -> "CFOrientation":
+        """Creates a CFOrientation instance from a dictionary representation.
+
+        Args:
+            data: A dictionary with 'graph' (CFGraph representation) 
+                  and 'orientations' (list of [source_name, sink_name] tuples).
+
+        Returns:
+            A CFOrientation instance.
+        """
+        graph_data = data.get("graph")
+        if not graph_data:
+            raise ValueError("Graph data is missing in CFOrientation representation")
+        
+        graph = CFGraph.from_dict(graph_data)
+        orientations_list = data.get("orientations", [])
+        
+        return cls(graph, orientations_list)
