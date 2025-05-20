@@ -9,3 +9,5 @@ coverage
 black
 mypy
 ruff
+dash
+dash-cytoscape
