@@ -19,6 +19,8 @@ INSTALL_REQUIRES = [
   "pandas",
   "pytest",
   "coverage",
+  "dash",
+  "dash-cytoscape",
   
 ]
 ENTRY_POINTS = {

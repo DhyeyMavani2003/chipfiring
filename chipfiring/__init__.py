@@ -31,6 +31,7 @@ __all__ = [
     "is_q_reduced",
     "rank",
     "CFDataProcessor",
+    "visualize"
 ]
 
 __version__ = "0.1.2"
