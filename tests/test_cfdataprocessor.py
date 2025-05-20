@@ -586,8 +586,8 @@ class TestCFDataProcessorTeX:
             # Check that all vertices and their firing counts are represented
             for vertex_name, fires in sample_firingscript.script.items():
                 if fires != 0:
-                    assert f"{vertex_name.replace('_', '\\_')}" in content # Vertex name
-                    assert f"{{{fires}}}" in content # Firing count as label
+                    assert vertex_name.replace('_', '\\_') in content
+                    assert f"{{{fires}}}" in content
 
     def test_no_invalid_escape_sequence_warnings(self, data_processor, sample_graph, tmp_path):
         """Test that no invalid escape sequence warnings are generated in TeX output."""
