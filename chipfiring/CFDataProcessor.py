@@ -101,15 +101,20 @@ class CFDataProcessor:
                 edges = []
                 for line in lines:
                     if line.startswith("VERTICES:"):
-                        vertex_names = [name.strip() for name in line.replace("VERTICES:", "").split(',')]
+                        vertex_names = [name.strip() for name in line.replace("VERTICES:", "").split(',') if name.strip()]
                     elif line.startswith("EDGE:"):
                         parts = [part.strip() for part in line.replace("EDGE:", "").split(',')]
                         if len(parts) == 3:
-                            edges.append((parts[0], parts[1], int(parts[2])))
+                            try:
+                                valence = int(parts[2])
+                                edges.append((parts[0], parts[1], valence))
+                            except ValueError:
+                                raise RuntimeError(f"DEBUG_RUNTIME_ERROR: Malformed valence in EDGE line: {line}. Skipping edge.")
                         else:
-                            print(f"Warning: Malformed EDGE line: {line}")
+                            print(f"Warning: Malformed EDGE line (parts count): {line}. Skipping edge.")
                 if not vertex_names:
                     raise ValueError("VERTICES line missing or empty in TXT file for graph.")
+                print("DEBUG: Attempting to return CFGraph object from read_txt")
                 return CFGraph(set(vertex_names), edges)
             
             elif object_type.lower() == 'divisor':
@@ -120,13 +125,17 @@ class CFDataProcessor:
 
                 for line in lines:
                     if line.startswith("GRAPH_VERTICES:"):
-                        graph_vertex_names = [name.strip() for name in line.replace("GRAPH_VERTICES:", "").split(',')]
+                        graph_vertex_names = [name.strip() for name in line.replace("GRAPH_VERTICES:", "").split(',') if name.strip()]
                     elif line.startswith("GRAPH_EDGE:"):
                         parts = [part.strip() for part in line.replace("GRAPH_EDGE:", "").split(',')]
                         if len(parts) == 3:
-                            graph_edges.append((parts[0], parts[1], int(parts[2])))
+                            try:
+                                valence = int(parts[2])
+                                graph_edges.append((parts[0], parts[1], valence))
+                            except ValueError:
+                                print(f"Warning: Malformed valence in GRAPH_EDGE line: {line}. Skipping edge.")
                         else:
-                            print(f"Warning: Malformed GRAPH_EDGE line: {line}")
+                            print(f"Warning: Malformed GRAPH_EDGE line (parts count): {line}. Skipping edge.")
                     elif line == "---DEGREES---":
                         parsing_degrees = True
                     elif line.startswith("DEGREE:") and parsing_degrees:
@@ -140,8 +149,7 @@ class CFDataProcessor:
                     raise ValueError("GRAPH_VERTICES line missing or empty in TXT file for divisor.")
                 
                 graph = CFGraph(set(graph_vertex_names), graph_edges)
-                # For CFDivisor constructor, all graph vertices will default to degree 0 
-                # if not specified in divisor_degrees_list.
+                print("DEBUG: Attempting to return CFDivisor object from read_txt")
                 return CFDivisor(graph, divisor_degrees_list)
 
             elif object_type.lower() == 'orientation':
@@ -151,13 +159,17 @@ class CFDataProcessor:
                 parsing_orientations = False
                 for line in lines:
                     if line.startswith("GRAPH_VERTICES:"):
-                        graph_vertex_names = [name.strip() for name in line.replace("GRAPH_VERTICES:", "").split(',')]
+                        graph_vertex_names = [name.strip() for name in line.replace("GRAPH_VERTICES:", "").split(',') if name.strip()]
                     elif line.startswith("GRAPH_EDGE:"):
                         parts = [part.strip() for part in line.replace("GRAPH_EDGE:", "").split(',')]
                         if len(parts) == 3: 
-                            graph_edges.append((parts[0], parts[1], int(parts[2])))
+                            try:
+                                valence = int(parts[2])
+                                graph_edges.append((parts[0], parts[1], valence))
+                            except ValueError:
+                                print(f"Warning: Malformed valence in GRAPH_EDGE line: {line}. Skipping edge.")
                         else: 
-                            print(f"Warning: Malformed GRAPH_EDGE line: {line}")
+                            print(f"Warning: Malformed GRAPH_EDGE line (parts count): {line}. Skipping edge.")
                     elif line == "---ORIENTATIONS---":
                         parsing_orientations = True
                     elif line.startswith("ORIENTED:") and parsing_orientations:
@@ -169,6 +181,7 @@ class CFDataProcessor:
                 if not graph_vertex_names: 
                     raise ValueError("GRAPH_VERTICES missing for orientation.")
                 graph = CFGraph(set(graph_vertex_names), graph_edges)
+                print("DEBUG: Attempting to return CFOrientation object from read_txt")
                 return CFOrientation(graph, orientations_list)
 
             elif object_type.lower() == 'firingscript':
@@ -178,13 +191,17 @@ class CFDataProcessor:
                 parsing_script = False
                 for line in lines:
                     if line.startswith("GRAPH_VERTICES:"):
-                        graph_vertex_names = [name.strip() for name in line.replace("GRAPH_VERTICES:", "").split(',')]
+                        graph_vertex_names = [name.strip() for name in line.replace("GRAPH_VERTICES:", "").split(',') if name.strip()]
                     elif line.startswith("GRAPH_EDGE:"):
                         parts = [part.strip() for part in line.replace("GRAPH_EDGE:", "").split(',')]
                         if len(parts) == 3: 
-                            graph_edges.append((parts[0], parts[1], int(parts[2])))
+                            try:
+                                valence = int(parts[2])
+                                graph_edges.append((parts[0], parts[1], valence))
+                            except ValueError:
+                                print(f"Warning: Malformed valence in GRAPH_EDGE line: {line}. Skipping edge.")
                         else: 
-                            print(f"Warning: Malformed GRAPH_EDGE line: {line}")
+                            print(f"Warning: Malformed GRAPH_EDGE line (parts count): {line}. Skipping edge.")
                     elif line == "---SCRIPT---":
                         parsing_script = True
                     elif line.startswith("FIRING:") and parsing_script:
@@ -196,6 +213,7 @@ class CFDataProcessor:
                 if not graph_vertex_names: 
                     raise ValueError("GRAPH_VERTICES missing for firingscript.")
                 graph = CFGraph(set(graph_vertex_names), graph_edges)
+                print("DEBUG: Attempting to return CFiringScript object from read_txt")
                 return CFiringScript(graph, script_dict)
             else:
                 print(f"Unsupported object_type for TXT reading: {object_type}")
@@ -342,7 +360,7 @@ class CFDataProcessor:
 
 
                     anchor_node_name_orig = vertices_list[anchor_idx].name
-                    anchor_node_tikz_id = _tikz_node_positions[anchor_node_name_orig]
+                    anchor_node_tikz_id = _tikz_node_positions.get(anchor_node_name_orig)
                     pos_str = "below=of " + anchor_node_tikz_id
                 elif current_real_idx % 3 == 2: # Third in row
                     # prev_node_tikz_id is already correct from previous iteration

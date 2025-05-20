@@ -4,6 +4,7 @@ from chipfiring.CFGraph import CFGraph
 from chipfiring.CFDivisor import CFDivisor
 from chipfiring.CFOrientation import CFOrientation
 from chipfiring.algo import is_winnable
+from chipfiring.CFRank import CFRank
 
 
 @pytest.fixture
@@ -244,3 +245,39 @@ def test_rank_sequence_optimized_corollary_4_4_3(sequence_test_graph):
     print(rank(D, optimized=True).get_log_summary())
     # Check if Corollary 4.4.3 is called in the optimized rank calculation logs
     assert "Corollary 4.4.3" in rank(D, optimized=True).get_log_summary()
+
+
+# New tests to improve coverage
+def test_cfrank_instance_rank_before_calculation():
+    """Test accessing rank property before calculation raises ValueError."""
+    cfr = CFRank()
+    with pytest.raises(ValueError, match="No rank has been calculated yet."):
+        _ = cfr.rank
+
+
+def test_cfrank_instance_get_log_summary_no_logs():
+    """Test get_log_summary returns appropriate message when no logs exist."""
+    cfr = CFRank()
+    assert cfr.get_log_summary() == "No calculation logs available."
+
+
+def test_rank_optimized_k_minus_d_not_smaller(simple_graph):
+    """
+    Test the optimized rank calculation path where deg(K-D) >= deg(D).
+    Uses D = (0,0,0) on K3.
+    For K3, g=1, so 2g-2 = 0.
+    D=(0,0,0) -> deg(D)=0. The condition deg(D) > 2g-2 (0 > 0) is false.
+    K for K3 is (1,1,1), so K-D = (1,1,1). deg(K-D) = 3.
+    The condition deg(K-D) < deg(D) (3 < 0) is false.
+    So, it should log "Optimized mode: (K-D) has degree >= that of D. Running next step on D itself."
+    The rank of (0,0,0) on K3 is 0.
+    """
+    zero_divisor = CFDivisor(simple_graph, [("v1", 0), ("v2", 0), ("v3", 0)])
+    result = rank(zero_divisor, optimized=True)
+    assert result.rank == 0
+    log_summary = result.get_log_summary()
+    assert "Optimized mode: D has degree > 2g-2" not in log_summary
+    assert (
+        "Optimized mode: (K-D) has degree >= that of D. Running next step on D itself."
+        in log_summary
+    )
