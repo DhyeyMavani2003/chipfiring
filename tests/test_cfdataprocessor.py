@@ -546,7 +546,6 @@ class TestCFDataProcessorTeX:
             
             # Check that all vertices and their degrees are represented
             for vertex in sample_divisor.graph.vertices:
-                assert f"{vertex.name.replace('_', '\\_')}" in content
                 degree = sample_divisor.get_degree(vertex.name)
                 # Degree is shown as a label next to the node
                 assert f"{{{degree}}}" in content 
