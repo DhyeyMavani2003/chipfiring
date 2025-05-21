@@ -1,5 +1,5 @@
 import typing
-import math
+import numpy as np  # Add NumPy import
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
 from .CFiringScript import CFiringScript
@@ -23,6 +23,7 @@ class CFLaplacian:
             >>> laplacian = CFLaplacian(graph)
         """
         self.graph = graph
+        self.laplacian = self._construct_matrix()
 
     def _construct_matrix(self) -> typing.Dict[Vertex, typing.Dict[Vertex, int]]:
         """
@@ -88,29 +89,58 @@ class CFLaplacian:
             >>> laplacian = CFLaplacian(graph)
             >>> result = laplacian.apply(divisor, firing_script)
             >>> result.get_degree("v1")
-            2  # 5 - 3
+            2
             >>> result.get_degree("v2")
-            3  # 0 - (-3)
+            3
             >>> result.get_degree("v3")
-            -2  # -2 - 0
+            -2
         """
-        laplacian = self._construct_matrix()
-        # Start with the initial chip counts from the divisor
         resulting_degrees: typing.Dict[Vertex, int] = divisor.degrees.copy()
-        vertices = self.graph.vertices
+        
+        # Establish a consistent, sorted order for vertices for matrix/vector operations
+        ordered_vertices = sorted(list(self.graph.vertices), key=lambda v: v.name)
+        num_vertices = len(ordered_vertices)
 
-        # Calculate the change in chips: -L * s
-        # Iterate through each row v of the Laplacian
-        for v in vertices:
-            change_at_v = 0
-            # Iterate through each column w of the Laplacian row for v
-            for w in vertices:
-                laplacian_vw = laplacian[v][w]
-                firings_w = firing_script.get_firings(w.name)  # s[w]
-                change_at_v += laplacian_vw * firings_w
+        if num_vertices == 0:
+            # If there are no vertices, return the original divisor unchanged
+            final_degrees_list = [
+                (vertex.name, degree) for vertex, degree in resulting_degrees.items()
+            ]
+            return CFDivisor(self.graph, final_degrees_list)
 
-            # Update the degree at vertex v: D'[v] = D[v] - change_at_v
-            resulting_degrees[v] -= change_at_v
+        # 1. Convert self.laplacian (Dict[Vertex, defaultdict(int)]) to a numerical matrix L_matrix
+        L_matrix: typing.List[typing.List[int]] = [
+            [0] * num_vertices for _ in range(num_vertices)
+        ]
+        for r_idx, v_row in enumerate(ordered_vertices):
+            for c_idx, v_col in enumerate(ordered_vertices):
+                # self.laplacian[v_row] is a defaultdict(int), so access is safe
+                L_matrix[r_idx][c_idx] = self.laplacian[v_row][v_col]
+
+        # 2. Convert firing_script to a numerical vector s_vector
+        s_vector: typing.List[int] = [0] * num_vertices
+        for idx, v_obj in enumerate(ordered_vertices):
+            s_vector[idx] = firing_script.get_firings(v_obj.name)
+
+        # 3. Calculate Ls_vector using NumPy
+        L_np = np.array(L_matrix)
+        s_np = np.array(s_vector)
+        Ls_vector = L_np.dot(s_np)  # Or L_np @ s_np
+
+        # 4. Update resulting_degrees: D'[v_obj] = D[v_obj] - (Ls_vector)_idx
+        for idx, v_obj in enumerate(ordered_vertices):
+            # It's assumed v_obj from ordered_vertices (derived from self.graph.vertices)
+            # will be a key in resulting_degrees (derived from divisor.degrees,
+            # which should be for the same graph).
+            if v_obj in resulting_degrees:
+                resulting_degrees[v_obj] -= Ls_vector[idx]
+            # else:
+                # This case implies inconsistency between divisor's graph and CFLaplacian's graph.
+                # Current CFDivisor structure ensures degrees are for vertices in its graph.
+                # If graphs match, v_obj should be in resulting_degrees.
+                # If not, an error might be more appropriate, or ensure keys align.
+                # For now, we rely on the input divisor being correctly associated with the graph.
+
 
         # Convert the resulting degrees dict back to the list format for CFDivisor constructor
         final_degrees_list = [
@@ -155,7 +185,7 @@ class CFLaplacian:
                 "Both vertex names must correspond to vertices in the graph."
             )
 
-        matrix = self._construct_matrix()
+        matrix = self.laplacian
         # Return L[v][w], defaulting to 0 if w is not a neighbor of v (or if v=w and v has no neighbors)
         return matrix.get(v, {}).get(w, 0)
 
@@ -184,7 +214,7 @@ class CFLaplacian:
             >>> # A [3 -1]
             >>> # C [-1 2]
         """
-        laplacian = self._construct_matrix()
+        laplacian = self.laplacian
         vertices = self.graph.vertices
 
         # Create a new dictionary for the reduced matrix
@@ -201,55 +231,104 @@ class CFLaplacian:
 
         return reduced_matrix
 
-    def apply_reduced_matrix(
+    def apply_reduced_matrix_inv_floor_optimization(
         self,
         divisor: CFDivisor,
         reduced_matrix: typing.Dict[Vertex, typing.Dict[Vertex, int]],
         q: Vertex,
     ) -> typing.List[typing.Tuple[str, int]]:
         """
-        Apply the reduced Laplacian matrix to a divisor.
+        Apply the reduced Laplacian matrix to a divisor according to the formula:
+        c' = c - floor(inv(L_q) @ c)
+        where L_q is the reduced Laplacian with respect to q, and c is the
+        part of the divisor not on q.
 
         Args:
             divisor: The initial CFDivisor object representing chip counts.
-            reduced_matrix: The reduced Laplacian matrix to apply.
-            q: The vertex to reduce the matrix with respect to.
+            reduced_matrix: The reduced Laplacian matrix (L_q) to apply.
+                            Keys are Vertex objects (all vertices except q).
+            q: The vertex the matrix was reduced with respect to.
 
         Returns:
-            A list of tuples representing the new divisor after applying the reduced matrix.
+            A list of tuples representing the new divisor (c') for vertices not equal to q.
 
-        Example:
+        Raises:
+            ValueError: If the reduced_matrix is empty or not invertible.
+
+        Example: # NOTE: This example might need updating based on the new formula.
             >>> vertices = {"A", "B", "C"}
             >>> edges = [("A", "B", 2), ("B", "C", 1), ("A", "C", 1)]
             >>> graph = CFGraph(vertices, edges)
             >>> laplacian = CFLaplacian(graph)
-            >>> reduced_matrix = laplacian.get_reduced_matrix(Vertex("B"))
-            >>> # The reduced matrix is:
+            >>> q_vertex = Vertex("B")
+            >>> reduced_lap_dict = laplacian.get_reduced_matrix(q_vertex)
+            >>> # Reduced Laplacian L_B (for A, C):
             >>> #    A  C
             >>> # A [3 -1]
             >>> # C [-1 2]
-            >>> # The initial divisor is:
-            >>> # [(A, 3), (B, 0), (C, 0)]
-            >>> # Applying the reduced matrix to the divisor with respect to B, we get:
-            >>> # [(A, -6), (C, 3)]
+            >>> # inv(L_B) = [[2/5, 1/5], [1/5, 3/5]]
+            >>> initial_degrees_dict = {"A": 3, "C": 0} # Divisor c, on vertices not B
+            >>> divisor_obj = CFDivisor(graph, [("A", 3), ("B", 10), ("C", 0)]) # Full divisor D
+            >>> # c = [3, 0] for A, C
+            >>> # inv(L_B) @ c = [2/5*3 + 1/5*0, 1/5*3 + 3/5*0] = [6/5, 3/5] = [1.2, 0.6]
+            >>> # floor(inv(L_B) @ c) = [1, 0]
+            >>> # c' = c - floor(inv(L_B) @ c) = [3-1, 0-0] = [2, 0]
+            >>> # result = laplacian.apply_reduced_matrix_inv_floor_optimization(divisor_obj, reduced_lap_dict, q_vertex)
+            >>> # dict(result)
+            {'A': 2, 'C': 0}
         """
-        # Get the initial chip counts from the divisor
-        initial_degrees = divisor.degrees
+        initial_degrees_on_reduced_vertices = divisor.degrees
 
-        # Create a new dictionary for the resulting degrees
-        resulting_degrees = {}
+        # Establish an ordered list of vertices in the reduced matrix (all graph vertices except q)
+        # The keys of reduced_matrix are Vertex objects, which are the ones we care about.
+        ordered_reduced_vertices = sorted(list(reduced_matrix.keys()), key=lambda v: v.name)
 
-        # For each vertex in the reduced matrix, calculate the new degree
-        for v in reduced_matrix:
-            new_degree = initial_degrees[v]
-            for w in reduced_matrix[v]:
-                new_degree -= reduced_matrix[v][w] * initial_degrees[w]
-            resulting_degrees[v] = math.floor(new_degree)
+        if not ordered_reduced_vertices:
+            # This case should ideally not happen if graph has >1 vertex and q is one of them.
+            # Or if it does, perhaps an empty list is the right return.
+            return []
 
-        # Create a new list of tuples for the resulting degrees
-        final_degrees_list = [
-            (vertex.name, degree) for vertex, degree in resulting_degrees.items()
-        ]
+        num_reduced_vertices = len(ordered_reduced_vertices)
 
-        # Return the new list of degrees
+        # 1. Convert reduced_matrix (L_q) to a NumPy 2D array
+        Lq_np = np.zeros((num_reduced_vertices, num_reduced_vertices), dtype=float) # Use float for inverse
+        for r_idx, v_row in enumerate(ordered_reduced_vertices):
+            for c_idx, v_col in enumerate(ordered_reduced_vertices):
+                # reduced_matrix[v_row] is a Dict[Vertex, int]
+                Lq_np[r_idx, c_idx] = reduced_matrix[v_row].get(v_col, 0)
+
+        # 2. Create vector c_np from divisor.degrees for ordered_reduced_vertices
+        c_np = np.zeros(num_reduced_vertices, dtype=float)
+        for idx, v_obj in enumerate(ordered_reduced_vertices):
+            # initial_degrees_on_reduced_vertices is Dict[Vertex, int]
+            c_np[idx] = initial_degrees_on_reduced_vertices.get(v_obj, 0)
+
+        # 3. Calculate inv(L_q)
+        try:
+            inv_Lq_np = np.linalg.inv(Lq_np)
+        except np.linalg.LinAlgError:
+            raise ValueError("Reduced Laplacian matrix is singular and cannot be inverted.")
+
+        # 4. Calculate inv(L_q) @ c
+        invLq_c_np = inv_Lq_np @ c_np
+
+        # 5. Floor the result: floor(inv(L_q) @ c)
+        sigma_np = np.floor(invLq_c_np)
+
+        # 6. Calculate L_q @ sigma
+        Lq_sigma_np = Lq_np @ sigma_np
+
+        # 7. Calculate c' = c - (L_q @ sigma)
+        c_prime_np = c_np - Lq_sigma_np
+
+        # 8. Convert c_prime_np back to list of tuples
+        final_degrees_list: typing.List[typing.Tuple[str, int]] = []
+        for idx, v_obj in enumerate(ordered_reduced_vertices):
+            # Convert float result to int, consistent with chip counts
+            # The values in c_prime_np should be integers after subtraction if c_np and Lq_sigma_np are.
+            final_degrees_list.append((v_obj.name, int(round(c_prime_np[idx]))))
+            # Using int(round()) for robustness with potential floating point inaccuracies.
+            # CFDivisor degrees are int, so result should be int.
+            # An alternative is int(c_prime_np[idx]) if precise integer arithmetic is expected.
+
         return final_degrees_list

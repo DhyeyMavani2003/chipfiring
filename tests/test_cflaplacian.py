@@ -328,27 +328,16 @@ def test_apply_reduced_matrix_simple(simple_graph, initial_divisor_simple):
     reduced_matrix = laplacian.get_reduced_matrix(q)
 
     # Apply the reduced matrix to the divisor
-    result_degrees = laplacian.apply_reduced_matrix(
+    result_degrees = laplacian.apply_reduced_matrix_inv_floor_optimization(
         initial_divisor_simple, reduced_matrix, q
     )
-
-    # Given:
-    # - Reduced matrix (v2, v3):
-    #     v2 v3
-    # v2 [ 2 -1 ]
-    # v3 [-1  2 ]
-    #
-    # - Initial divisor: v1=5, v2=0, v3=-2
-    #
-    # For v2: new_degree = 0 - (2*0 + (-1)*(-2)) = 0 - (0 + 2) = -2
-    # For v3: new_degree = -2 - ((-1)*0 + 2*(-2)) = -2 - (-0 - 4) = -2 - (-4) = 2
 
     # Convert result list to dict for easier testing
     result_dict = {name: degree for name, degree in result_degrees}
 
     assert "v1" not in result_dict
-    assert result_dict["v2"] == -2
-    assert result_dict["v3"] == 2
+    assert result_dict["v2"] == 0
+    assert result_dict["v3"] == 1
 
 
 def test_apply_reduced_matrix_multi_edge(graph_with_multi_edges):
@@ -363,24 +352,13 @@ def test_apply_reduced_matrix_multi_edge(graph_with_multi_edges):
     reduced_matrix = laplacian.get_reduced_matrix(q)
 
     # Apply the reduced matrix
-    result_degrees = laplacian.apply_reduced_matrix(divisor, reduced_matrix, q)
-
-    # Given:
-    # - Reduced matrix (a, c):
-    #    a  c
-    # a [2  0]
-    # c [0  3]
-    #
-    # - Initial divisor: a=3, b=0, c=-1
-    #
-    # For a: new_degree = 3 - (2*3 + 0*(-1)) = 3 - 6 = -3
-    # For c: new_degree = -1 - (0*3 + 3*(-1)) = -1 - (-3) = 2
+    result_degrees = laplacian.apply_reduced_matrix_inv_floor_optimization(divisor, reduced_matrix, q)
 
     # Convert result list to dict for easier testing
     result_dict = {name: degree for name, degree in result_degrees}
 
     assert "b" not in result_dict
-    assert result_dict["a"] == -3
+    assert result_dict["a"] == 1
     assert result_dict["c"] == 2
 
 
@@ -395,7 +373,7 @@ def test_apply_reduced_matrix_complex_graph(
     reduced_matrix = laplacian.get_reduced_matrix(q)
 
     # Apply the reduced matrix
-    result_degrees = laplacian.apply_reduced_matrix(
+    result_degrees = laplacian.apply_reduced_matrix_inv_floor_optimization(
         sequence_test_initial_divisor, reduced_matrix, q
     )
     # Initial divisor: Alice=2, Bob=-3, Charlie=4, Elise=-1
@@ -409,7 +387,7 @@ def test_apply_reduced_matrix_complex_graph(
     assert "Elise" in result_dict
 
     # Expected values based on actual implementation
-    expected = {"Alice": -4, "Charlie": -7, "Elise": 10}
+    expected = {"Alice": 0, "Charlie": 2, "Elise": -1}
 
     for vertex, expected_degree in expected.items():
         assert (

@@ -89,9 +89,9 @@ def EWD(
     if optimized:
         laplacian = CFLaplacian(graph)
         reduced_laplacian = laplacian.get_reduced_matrix(q)
-        # D = c + kq then c' = c - reduced_laplacian[q]*c then D' = c' + (deg(D) - deg(c))q
+        # D = c + kq then c' = c - floor((reduced_laplacian at q)^-1@c) then D' = c' + (deg(D) - deg(c))q
         # write a function reduced_laplacian_optimization to do this
-        config_degrees_list = laplacian.apply_reduced_matrix(
+        config_degrees_list = laplacian.apply_reduced_matrix_inv_floor_optimization(
             divisor, reduced_laplacian, q
         )
         config_degree = sum(degree for _, degree in config_degrees_list)
