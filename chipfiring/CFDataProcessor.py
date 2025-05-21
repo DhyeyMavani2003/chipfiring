@@ -362,7 +362,7 @@ class CFDataProcessor:
             "",
             "\\begin{tikzpicture}[shorten >=1pt, node distance=2.5cm, on grid, auto,",
             "    every state/.style={draw=black!50, thick, minimum size=0.8cm, inner sep=3pt},",
-            "    edge_label/.style={midway, fill=white, inner sep=1pt, font=\small}",
+            "    edge_label/.style={midway, fill=white, inner sep=1pt, font=\\small}",
             "]",
             ""
         ]

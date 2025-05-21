@@ -3,6 +3,7 @@ from chipfiring.CFGraph import CFGraph, Vertex
 from chipfiring.CFDivisor import CFDivisor
 from chipfiring.CFDhar import DharAlgorithm
 from chipfiring.CFOrientation import CFOrientation
+from chipfiring.CFConfig import CFConfig
 import copy
 
 
@@ -58,177 +59,122 @@ def sequence_test_graph():
 class TestDharAlgorithm:
     def test_init_valid(self, simple_graph):
         """Test initialization with valid parameters."""
-        config = CFDivisor(simple_graph, [("A", 2), ("B", 1), ("C", 0), ("D", 1)])
-        dhar = DharAlgorithm(simple_graph, config, "A")
-        assert dhar.q == Vertex("A")
+        divisor = CFDivisor(simple_graph, [("A", 2), ("B", 1), ("C", 0), ("D", 1)])
+        dhar = DharAlgorithm(simple_graph, divisor, "A")
+        assert dhar.q_vertex == Vertex("A")
         assert dhar.graph == simple_graph
-        assert set(dhar.unburnt_vertices) == {Vertex("B"), Vertex("C"), Vertex("D")}
+        assert dhar.configuration.get_v_tilde_names() == {"B", "C", "D"}
 
     def test_init_invalid_q(self, simple_graph):
         """Test initialization with invalid distinguished vertex."""
-        config = CFDivisor(simple_graph, [("A", 2), ("B", 1), ("C", 0), ("D", 1)])
+        divisor = CFDivisor(simple_graph, [("A", 2), ("B", 1), ("C", 0), ("D", 1)])
         with pytest.raises(
-            ValueError, match="Distinguished vertex E not found in graph"
+            ValueError, match="Vertex q='E' not found in the graph of the divisor."
         ):
-            DharAlgorithm(simple_graph, config, "E")
+            DharAlgorithm(simple_graph, divisor, "E")
 
     def test_outdegree_S(self, simple_graph):
         """Test outdegree_S method."""
-        config = CFDivisor(simple_graph, [("A", 2), ("B", 1), ("C", 0), ("D", 1)])
-        dhar = DharAlgorithm(simple_graph, config, "A")
+        divisor = CFDivisor(simple_graph, [("A", 2), ("B", 1), ("C", 0), ("D", 1)])
+        dhar = DharAlgorithm(simple_graph, divisor, "A")
 
-        # Test outdegree to a set of vertices
         S = {Vertex("B"), Vertex("C")}
-        assert dhar.outdegree_S(Vertex("A"), S) == 2  # A has edges to both B and C
-        assert dhar.outdegree_S(Vertex("D"), S) == 1  # D has one edge to C
-        assert dhar.outdegree_S(Vertex("B"), {Vertex("C")}) == 1  # B has one edge to C
+        assert dhar.outdegree_S(Vertex("A"), S) == 2
+        assert dhar.outdegree_S(Vertex("D"), S) == 1
+        assert dhar.outdegree_S(Vertex("B"), {Vertex("C")}) == 1
 
     def test_send_debt_to_q(self, simple_graph):
         """Test send_debt_to_q method."""
-        # Create a configuration with debt
-        config = CFDivisor(simple_graph, [("A", 2), ("B", -1), ("C", -2), ("D", 1)])
-        dhar = DharAlgorithm(simple_graph, config, "A")
-
-        # Run the method to send debt to q
+        divisor = CFDivisor(simple_graph, [("A", 2), ("B", -1), ("C", -2), ("D", 1)])
+        dhar = DharAlgorithm(simple_graph, divisor, "A")
         dhar.send_debt_to_q()
-
-        # All non-q vertices should now have non-negative values
-        for v in dhar.configuration.degrees.keys():
-            assert dhar.configuration.get_degree(v.name) >= 0
+        for v_name in dhar.configuration.get_v_tilde_names():
+            assert dhar.configuration.get_degree_at(v_name) >= 0
 
     def test_run_simple(self, simple_graph):
         """Test run method on a simple graph."""
-        # Configuration with no debt
-        config = CFDivisor(simple_graph, [("A", 3), ("B", 2), ("C", 1), ("D", 2)])
-        dhar = DharAlgorithm(simple_graph, config, "A")
+        divisor = CFDivisor(simple_graph, [("A", 3), ("B", 2), ("C", 1), ("D", 2)])
+        dhar = DharAlgorithm(simple_graph, divisor, "A")
+        unburnt_vertex_names, orientation = dhar.run()
 
-        unburnt_vertices, orientation = dhar.run()
-
-        # Verify the result is a set of vertices
-        assert isinstance(unburnt_vertices, set)
+        assert isinstance(unburnt_vertex_names, set)
         assert isinstance(orientation, CFOrientation)
-        # In this case, some vertices should remain unburnt
-        # Convert to vertex names for easier checking
-        unburnt_names = {v.name for v in unburnt_vertices}
-        expected_vertices = {"B", "C", "D"}
-        assert unburnt_names.issubset(expected_vertices)
+        expected_unburnt_names = {"B", "C", "D"}
+        assert unburnt_vertex_names == expected_unburnt_names
 
     def test_run_with_debt(self, simple_graph):
         """Test run method with debt in the configuration."""
-        # Configuration with debt
-        config = CFDivisor(simple_graph, [("A", 3), ("B", -1), ("C", 1), ("D", 2)])
-        dhar = DharAlgorithm(simple_graph, config, "A")
+        divisor = CFDivisor(simple_graph, [("A", 3), ("B", -1), ("C", 1), ("D", 2)])
+        dhar = DharAlgorithm(simple_graph, divisor, "A")
+        unburnt_vertex_names, orientation = dhar.run()
 
-        unburnt_vertices, orientation = dhar.run()
-
-        # Verify debt has been removed
-        assert all(
-            dhar.configuration.get_degree(v.name) >= 0
-            for v in dhar.configuration.degrees.keys()
-        )
-
-        # Check if the result is valid
-        assert isinstance(unburnt_vertices, set)
+        for v_name in dhar.configuration.get_v_tilde_names():
+            assert dhar.configuration.get_degree_at(v_name) >= 0
+        assert isinstance(unburnt_vertex_names, set)
         assert isinstance(orientation, CFOrientation)
 
     def test_run_cycle(self, cycle_graph):
         """Test the Dhar algorithm on a cycle graph."""
-        # In a cycle graph with these specific values, we expect certain burning behavior
-        config = CFDivisor(cycle_graph, [("A", 2), ("B", 0), ("C", 1), ("D", 0)])
-        dhar = DharAlgorithm(cycle_graph, config, "A")
+        divisor = CFDivisor(cycle_graph, [("A", 2), ("B", 0), ("C", 1), ("D", 0)])
+        dhar = DharAlgorithm(cycle_graph, divisor, "A")
+        unburnt_vertex_names, orientation = dhar.run()
 
-        unburnt_vertices, orientation = dhar.run()
-
-        # In this configuration, B should burn (0 chips, 1 edge to burnt A)
-        # Then C might burn depending on the burning propagation
-        # Verify the result is a set of vertices
-        assert isinstance(unburnt_vertices, set)
+        assert isinstance(unburnt_vertex_names, set)
         assert isinstance(orientation, CFOrientation)
+        assert unburnt_vertex_names == set()
 
     def test_run_weighted(self, weighted_graph):
         """Test the Dhar algorithm on a weighted graph."""
-        # Test with weighted edges
-        config = CFDivisor(weighted_graph, [("A", 4), ("B", 3), ("C", 2), ("D", 3)])
-        dhar = DharAlgorithm(weighted_graph, config, "A")
+        divisor = CFDivisor(weighted_graph, [("A", 4), ("B", 3), ("C", 2), ("D", 3)])
+        dhar = DharAlgorithm(weighted_graph, divisor, "A")
+        unburnt_vertex_names, orientation = dhar.run()
 
-        unburnt_vertices, orientation = dhar.run()
-
-        # Verify the result is a set of vertices
-        assert isinstance(unburnt_vertices, set)
+        assert isinstance(unburnt_vertex_names, set)
         assert isinstance(orientation, CFOrientation)
-        # Convert unburnt vertices to a firing script for comparison
-        firing_script = {v.name: 1 for v in unburnt_vertices}
-        assert len(firing_script) <= 3  # A is excluded as distinguished vertex
+        assert all(isinstance(name, str) for name in unburnt_vertex_names)
+        assert len(unburnt_vertex_names) <= 3
 
     def test_maximal_firing_set(self, simple_graph):
         """Test that the algorithm produces a maximal legal firing set."""
-        # Create a configuration where some vertices should remain unburnt
-        config = CFDivisor(simple_graph, [("A", 2), ("B", 2), ("C", 2), ("D", 2)])
-        dhar = DharAlgorithm(simple_graph, config, "A")
+        divisor = CFDivisor(simple_graph, [("A", 2), ("B", 2), ("C", 2), ("D", 2)])
+        dhar = DharAlgorithm(simple_graph, divisor, "A")
+        unburnt_vertex_names, _ = dhar.run()
 
-        unburnt_vertices, _ = dhar.run()
+        test_config_obj = CFConfig(copy.deepcopy(divisor), "A")
+        if unburnt_vertex_names:
+            test_config_obj.set_fire(unburnt_vertex_names)
 
-        # Create a firing script from unburnt vertices
-        firing_script = {v.name: 1 for v in unburnt_vertices}
-
-        # Verify that firing all vertices in the script doesn't create debt
-        # (This is the definition of a legal firing set)
-        test_config = copy.deepcopy(config)
-        for vertex, count in firing_script.items():
-            # Simulate firing vertex 'count' times
-            for _ in range(count):
-                test_config.firing_move(vertex)
-
-        # Check no vertex is in debt after firing
-        for v in simple_graph.vertices:
-            if v.name != "A":  # Exclude q
-                assert test_config.get_degree(v.name) >= 0
+        for v_name in test_config_obj.get_v_tilde_names():
+            assert test_config_obj.get_degree_at(v_name) >= 0
 
     def test_debt_concentration_with_bob_as_q(self, sequence_test_graph):
         """Test the debt concentration with Bob as distinguished vertex."""
-        # Config with debt at multiple vertices: Alice=2, Bob=-3, Charlie=4, Elise=-1
         divisor = CFDivisor(
             sequence_test_graph,
             [("Alice", 2), ("Bob", -3), ("Charlie", 4), ("Elise", -1)],
         )
-
-        # Initialize with Bob as the distinguished vertex
         dhar = DharAlgorithm(sequence_test_graph, divisor, "Bob")
+        unburnt_vertex_names, orientation = dhar.run()
 
-        # Run the algorithm
-        unburnt_vertices, orientation = dhar.run()
+        for v_name in dhar.configuration.get_v_tilde_names():
+            assert dhar.configuration.get_degree_at(v_name) >= 0
 
-        # Check that debt has been properly concentrated at q (Bob)
-        for v in dhar.configuration.degrees.keys():
-            if v.name != "Bob":
-                assert dhar.configuration.get_degree(v.name) >= 0
-
-        # Verify the result is a set of vertices
-        assert isinstance(unburnt_vertices, set)
+        assert isinstance(unburnt_vertex_names, set)
         assert isinstance(orientation, CFOrientation)
-        assert unburnt_vertices == {Vertex("Charlie"), Vertex("Elise")}
+        assert unburnt_vertex_names == {"Charlie", "Elise"}
 
     def test_debt_concentration_with_bob_as_q_alt(self, sequence_test_graph):
-        """Test the debt concentration with Bob as distinguished vertex."""
-        # Config with debt at multiple vertices: Alice=2, Bob=-3, Charlie=4, Elise=-1
+        """Test the debt concentration with Bob as distinguished vertex, alternate initial."""
         divisor = CFDivisor(
             sequence_test_graph,
             [("Alice", 3), ("Bob", -2), ("Charlie", 1), ("Elise", 0)],
         )
-
-        # Initialize with Bob as the distinguished vertex
         dhar = DharAlgorithm(sequence_test_graph, divisor, "Bob")
+        unburnt_vertex_names, orientation = dhar.run()
 
-        # Run the algorithm
-        unburnt_vertices, orientation = dhar.run()
+        for v_name in dhar.configuration.get_v_tilde_names():
+            assert dhar.configuration.get_degree_at(v_name) >= 0
 
-        # Check that debt has been properly concentrated at q (Bob)
-        for v in dhar.configuration.degrees.keys():
-            if v.name != "Bob":
-                assert dhar.configuration.get_degree(v.name) >= 0
-
-        # Verify the result is a set of vertices
-        assert isinstance(unburnt_vertices, set)
+        assert isinstance(unburnt_vertex_names, set)
         assert isinstance(orientation, CFOrientation)
-
-        assert unburnt_vertices == {Vertex("Alice"), Vertex("Charlie"), Vertex("Elise")}
+        assert unburnt_vertex_names == {"Alice", "Charlie", "Elise"}

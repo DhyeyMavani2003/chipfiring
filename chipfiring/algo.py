@@ -115,11 +115,8 @@ def EWD(
         orientation = new_orientation
 
     # 4. If the degree of q is non-negative, then the graph is winnable
-    deg_q = divisor.get_total_degree() - (
-        dhar.configuration.get_total_degree() - dhar.configuration.get_degree(q.name)
-    )
-    dhar.configuration.degrees[q] = deg_q
-    q_reduced_divisor = dhar.configuration
+    deg_q = dhar.configuration.get_q_underlying_degree()
+    q_reduced_divisor = dhar.configuration.divisor
 
     # Check if the orientation is full
     if not orientation.check_fullness():

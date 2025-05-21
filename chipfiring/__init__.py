@@ -4,6 +4,7 @@ Chip firing package for simulating graph-based chip firing games.
 
 from .CFGraph import CFGraph, Vertex, Edge
 from .CFDivisor import CFDivisor
+from .CFConfig import CFConfig
 from .CFLaplacian import CFLaplacian
 from .CFOrientation import CFOrientation, OrientationState
 from .CFiringScript import CFiringScript
@@ -18,6 +19,7 @@ __all__ = [
     "Vertex",
     "Edge",
     "CFDivisor",
+    "CFConfig",
     "CFLaplacian",
     "CFOrientation",
     "OrientationState",
