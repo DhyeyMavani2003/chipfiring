@@ -10,3 +10,7 @@ sphinxcontrib-qthelp
 sphinxcontrib-serializinghtml
 myst-parser
 docutils
+numpy
+networkx
+matplotlib
+pandas
