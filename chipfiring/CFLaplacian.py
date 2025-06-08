@@ -1,3 +1,4 @@
+from __future__ import annotations
 import typing
 import numpy as np  # Add NumPy import
 from .CFGraph import CFGraph, Vertex

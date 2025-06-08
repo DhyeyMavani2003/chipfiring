@@ -1,6 +1,6 @@
+from __future__ import annotations
 import warnings
 import typing
-
 
 class Vertex:
     """Represents a vertex in the graph.

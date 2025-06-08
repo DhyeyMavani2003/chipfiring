@@ -8,7 +8,7 @@ how much freedom you have to move chips around while keeping the divisor effecti
 The implementation uses the Efficient Winnability Detection (EWD) algorithm as a building
 block and provides both standard and optimized calculation modes.
 """
-
+from __future__ import annotations
 from .CFGraph import Vertex
 from .CFDivisor import CFDivisor
 from .CFOrientation import CFOrientation

@@ -1,7 +1,7 @@
 """
 Chip firing package for simulating graph-based chip firing games.
 """
-
+from __future__ import annotations
 from .CFGraph import CFGraph, Vertex, Edge
 from .CFDivisor import CFDivisor
 from .CFConfig import CFConfig

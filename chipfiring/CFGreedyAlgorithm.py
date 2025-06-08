@@ -1,3 +1,4 @@
+from __future__ import annotations
 from .CFGraph import CFGraph
 from .CFDivisor import CFDivisor
 from .CFiringScript import CFiringScript

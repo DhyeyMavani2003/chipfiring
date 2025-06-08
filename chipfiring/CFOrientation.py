@@ -1,8 +1,8 @@
+from __future__ import annotations
 from enum import Enum
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
 import typing
-from typing import Optional
 
 
 class OrientationState(Enum):
@@ -244,7 +244,7 @@ class CFOrientation:
         else:  # state == OrientationState.SINK_TO_SOURCE
             return v2_name, v1_name
 
-    def is_source(self, vertex_name: str, neighbor_name: str) -> Optional[bool]:
+    def is_source(self, vertex_name: str, neighbor_name: str) -> typing.Optional[bool]:
         """Check if a vertex is the source of an oriented edge.
 
         Args:
@@ -290,7 +290,7 @@ class CFOrientation:
             return None
         return state == OrientationState.SOURCE_TO_SINK
 
-    def is_sink(self, vertex_name: str, neighbor_name: str) -> Optional[bool]:
+    def is_sink(self, vertex_name: str, neighbor_name: str) -> typing.Optional[bool]:
         """Check if a vertex is the sink of an oriented edge.
 
         Args:
