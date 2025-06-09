@@ -1,6 +1,7 @@
 from __future__ import annotations
+from typing import Dict
 import typing
-import numpy as np  # Add NumPy import
+import numpy as np
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
 from .CFiringScript import CFiringScript
@@ -232,6 +233,46 @@ class CFLaplacian:
 
         return reduced_matrix
 
+    def solve_partial_system(self, degrees_at_v_tilde: Dict[Vertex, int], q_vertex: Vertex) -> Dict[Vertex, int]:
+        """
+        Solve the system L_q * x = b_q for a chip-firing context.
+        
+        Args:
+            degrees_at_v_tilde: Dictionary of degrees at non-q vertices
+            q_vertex: The q-vertex (excluded from the system)
+            
+        Returns:
+            Dictionary of resulting degrees at non-q vertices after solving
+        """
+        if not self.graph.vertices:
+            return {}
+
+        # Get reduced Laplacian L_q
+        reduced_L = self.get_reduced_matrix(q_vertex)
+        
+        # Construct vector b_q (degrees at non-q vertices)
+        # Order must match the rows/cols of reduced_L
+        v_tilde_ordered = [v for v in sorted(self.graph.vertices, key=lambda x: x.name) if v != q_vertex]
+        
+        b_vector = np.array([degrees_at_v_tilde.get(v, 0) for v in v_tilde_ordered], dtype=float)
+
+        if reduced_L.size == 0 and b_vector.size == 0: # Graph with only q_vertex or no vertices
+             return {}
+        if reduced_L.shape[0] != b_vector.shape[0]:
+            raise ValueError("Shape mismatch between reduced Laplacian and b_vector")
+
+        # Solve L_q * x = b_q
+        solution_vector = np.linalg.solve(reduced_L, b_vector)
+        
+        # Map solution back to Vertex objects
+        # Create a mapping from original Vertex object to its index in the solution_vector
+        new_idx_map = {v: i for i, v in enumerate(v_tilde_ordered)}
+
+        return {
+            v: int(np.rint(solution_vector[new_idx_map[v]]))
+            for v in v_tilde_ordered
+        }
+
     def apply_reduced_matrix_inv_floor_optimization(
         self,
         divisor: CFDivisor,
@@ -327,8 +368,8 @@ class CFLaplacian:
         for idx, v_obj in enumerate(ordered_reduced_vertices):
             # Convert float result to int, consistent with chip counts
             # The values in c_prime_np should be integers after subtraction if c_np and Lq_sigma_np are.
-            final_degrees_list.append((v_obj.name, int(round(c_prime_np[idx]))))
-            # Using int(round()) for robustness with potential floating point inaccuracies.
+            final_degrees_list.append((v_obj.name, int(np.rint(c_prime_np[idx]))))
+            # Using int(np.rint()) for robustness with potential floating point inaccuracies.
             # CFDivisor degrees are int, so result should be int.
             # An alternative is int(c_prime_np[idx]) if precise integer arithmetic is expected.
 

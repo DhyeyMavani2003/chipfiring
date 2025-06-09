@@ -13,6 +13,12 @@ from .CFDhar import DharAlgorithm
 from .algo import EWD, linear_equivalence, is_winnable, q_reduction, is_q_reduced
 from .CFRank import rank
 from .CFDataProcessor import CFDataProcessor
+from .CFGonality import gonality, play_gonality_game, CFGonality, GonalityGameResult, GonalityResult
+from .CFPlatonicSolids import (
+    tetrahedron, cube, octahedron, dodecahedron, icosahedron,
+    complete_graph, platonic_solid_gonality_bounds, complete_graph_gonality
+)
+from .CFGonalityDhar import GonalityDharAlgorithm, enhanced_dhar_gonality_test, batch_gonality_analysis
 
 __all__ = [
     "CFGraph",
@@ -33,7 +39,22 @@ __all__ = [
     "is_q_reduced",
     "rank",
     "CFDataProcessor",
-    "visualize"
+    "gonality",
+    "play_gonality_game",
+    "CFGonality",
+    "GonalityGameResult",
+    "GonalityResult",
+    "tetrahedron",
+    "cube",
+    "octahedron",
+    "dodecahedron",
+    "icosahedron",
+    "complete_graph",
+    "platonic_solid_gonality_bounds",
+    "complete_graph_gonality",
+    "GonalityDharAlgorithm",
+    "enhanced_dhar_gonality_test",
+    "batch_gonality_analysis",
 ]
 
 __version__ = "0.1.2"

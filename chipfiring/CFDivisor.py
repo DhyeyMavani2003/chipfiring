@@ -446,6 +446,26 @@ class CFDivisor:
 
         return CFDivisor(new_graph, remaining_degrees)
 
+    def degrees_to_str(self) -> str:
+        """Return a string representation of the degrees.
+        
+        Returns:
+            A string showing vertex names and their degrees in alphabetical order.
+            
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 1), ("B", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> divisor = CFDivisor(graph, [("A", 2), ("B", -1), ("C", 0)])
+            >>> divisor.degrees_to_str()
+            'A:2, B:-1, C:0'
+        """
+        degrees_str = ", ".join(
+            f"{v.name}:{self.degrees[v]}" 
+            for v in sorted(self.graph.vertices, key=lambda v: v.name)
+        )
+        return degrees_str
+
     def __eq__(self, other) -> bool:
         """Check if two divisors are equal.
 
