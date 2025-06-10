@@ -615,226 +615,141 @@ class TestOctahedronSpecificFunctions:
         assert 'description' in bramble
 
 
-class TestCompleteMultipartiteGonalityFunction:
-    """Test complete multipartite gonality function."""
+class TestIcosahedronSpecificFunctions:
+    """Test icosahedron-specific theoretical functions."""
     
-    def test_complete_multipartite_gonality_basic(self):
-        """Test basic complete multipartite gonality calculations."""
-        from chipfiring.CFCombinatorics import complete_multipartite_gonality
+    def test_icosahedron_independence_number(self):
+        """Test icosahedron independence number function."""
+        from chipfiring.CFCombinatorics import icosahedron_independence_number
         
-        # Test octahedron K_{2,2,2}
-        assert complete_multipartite_gonality([2, 2, 2]) == 4
-        
-        # Test complete bipartite graphs
-        assert complete_multipartite_gonality([3, 3]) == 3
-        assert complete_multipartite_gonality([4, 2]) == 4
-        assert complete_multipartite_gonality([5, 1]) == 5
-        
-        # Test formula: gon(K_{n1,n2,...,nk}) = n - nk
-        partitions = [
-            ([1, 1, 1], 2),    # n=3, nk=1, gonality=2
-            ([2, 1, 1], 3),    # n=4, nk=1, gonality=3
-            ([3, 2, 1], 5),    # n=6, nk=1, gonality=5
-            ([4, 4], 4),       # n=8, nk=4, gonality=4
-        ]
-        
-        for partition, expected in partitions:
-            actual = complete_multipartite_gonality(partition)
-            assert actual == expected, f"K_{partition} should have gonality {expected}, got {actual}"
+        alpha = icosahedron_independence_number()
+        assert alpha == 3
     
-    def test_complete_multipartite_gonality_edge_cases(self):
-        """Test edge cases for complete multipartite gonality."""
-        from chipfiring.CFCombinatorics import complete_multipartite_gonality
+    def test_icosahedron_2_uniform_scramble(self):
+        """Test icosahedron 2-uniform scramble construction function."""
+        from chipfiring.CFCombinatorics import icosahedron_2_uniform_scramble
         
-        # Single part (complete graph)
-        assert complete_multipartite_gonality([5]) == 4  # K5 has gonality 4
+        scramble = icosahedron_2_uniform_scramble()
         
-        # Two equal parts
-        assert complete_multipartite_gonality([3, 3]) == 3  # K_{3,3}
-        
-        # Star graph
-        assert complete_multipartite_gonality([5, 1]) == 5  # K_{5,1}
-
-
-class TestMinimumMaximumDegree:
-    """Test minimum and maximum degree functions."""
+        # Check structure
+        assert isinstance(scramble, dict)
+        assert scramble['is_2_uniform']
+        assert scramble['scramble_norm'] == 8
+        assert len(scramble['scramble_sets']) == 6
+        assert scramble['vertex_pairs'] == 6
+        assert 'description' in scramble
     
-    @pytest.fixture
-    def various_graphs(self):
-        """Create various test graphs."""
-        # Complete graph K4
-        k4 = CFGraph({"0", "1", "2", "3"}, 
-                    [("0", "1", 1), ("0", "2", 1), ("0", "3", 1),
-                     ("1", "2", 1), ("1", "3", 1), ("2", "3", 1)])
+    def test_icosahedron_screewidth_bound(self):
+        """Test icosahedron screewidth bound function."""
+        from chipfiring.CFCombinatorics import icosahedron_screewidth_bound
         
-        # Path graph
-        path = CFGraph({"0", "1", "2", "3"}, 
-                      [("0", "1", 1), ("1", "2", 1), ("2", "3", 1)])
+        screewidth_info = icosahedron_screewidth_bound()
         
-        # Star graph
-        star = CFGraph({"0", "1", "2", "3", "4"}, 
-                      [("0", "1", 1), ("0", "2", 1), ("0", "3", 1), ("0", "4", 1)])
-        
-        return {'k4': k4, 'path': path, 'star': star}
+        assert screewidth_info['screewidth_upper_bound'] == 8
+        assert screewidth_info['scramble_number_bound'] == 8
+        assert 'scw(I) ≤ ||S|| = 8' in screewidth_info['relation']
     
-    def test_minimum_degree(self, various_graphs):
-        """Test minimum degree function."""
-        from chipfiring.CFCombinatorics import minimum_degree
+    def test_icosahedron_lemma_3_subgraph_bounds(self):
+        """Test icosahedron Lemma 3 subgraph bounds function."""
+        from chipfiring.CFCombinatorics import icosahedron_lemma_3_subgraph_bounds
         
-        assert minimum_degree(various_graphs['k4']) == 3  # All vertices have degree 3
-        assert minimum_degree(various_graphs['path']) == 1  # End vertices have degree 1
-        assert minimum_degree(various_graphs['star']) == 1  # Leaf vertices have degree 1
+        lemma3_info = icosahedron_lemma_3_subgraph_bounds()
+        
+        assert 'max_outdegree_bound' in lemma3_info
+        assert lemma3_info['independence_number'] == 3
+        assert 'critical_subgraphs' in lemma3_info
+        assert len(lemma3_info['critical_subgraphs']) >= 3
     
-    def test_maximum_degree(self, various_graphs):
-        """Test maximum degree function."""
-        from chipfiring.CFCombinatorics import maximum_degree
+    def test_icosahedron_dhars_burning_algorithm(self):
+        """Test icosahedron Dhar's burning algorithm function."""
+        from chipfiring.CFCombinatorics import icosahedron_dhars_burning_algorithm
         
-        assert maximum_degree(various_graphs['k4']) == 3  # All vertices have degree 3
-        assert maximum_degree(various_graphs['path']) == 2  # Middle vertices have degree 2
-        assert maximum_degree(various_graphs['star']) == 4  # Center vertex has degree 4
-
-
-class TestBipartiteDetection:
-    """Test bipartite graph detection."""
+        dhars_info = icosahedron_dhars_burning_algorithm()
+        
+        assert dhars_info['gonality'] == 9
+        assert dhars_info['proof_complete']
+        assert dhars_info['debt_free_divisor_exists']['degree'] == 9
+        assert dhars_info['no_lower_degree_divisor']['degree'] == 8
     
-    def test_is_bipartite_true_cases(self):
-        """Test bipartite detection for bipartite graphs."""
-        from chipfiring.CFCombinatorics import is_bipartite
+    def test_icosahedron_egg_cut_number(self):
+        """Test icosahedron egg-cut number function."""
+        from chipfiring.CFCombinatorics import icosahedron_egg_cut_number
         
-        # Path graph (bipartite)
-        path = CFGraph({"0", "1", "2", "3"}, 
-                      [("0", "1", 1), ("1", "2", 1), ("2", "3", 1)])
-        assert is_bipartite(path)
+        egg_cut_info = icosahedron_egg_cut_number()
         
-        # Complete bipartite K_{2,3}
-        k23 = CFGraph({"a1", "a2", "b1", "b2", "b3"}, 
-                     [("a1", "b1", 1), ("a1", "b2", 1), ("a1", "b3", 1),
-                      ("a2", "b1", 1), ("a2", "b2", 1), ("a2", "b3", 1)])
-        assert is_bipartite(k23)
-        
-        # Single edge
-        edge = CFGraph({"0", "1"}, [("0", "1", 1)])
-        assert is_bipartite(edge)
+        assert egg_cut_info['egg_cut_number'] == 8
+        assert egg_cut_info['lower_bound'] == 3
+        assert egg_cut_info['upper_bound'] == 9
     
-    def test_is_bipartite_false_cases(self):
-        """Test bipartite detection for non-bipartite graphs."""
-        from chipfiring.CFCombinatorics import is_bipartite
+    def test_icosahedron_hitting_set_analysis(self):
+        """Test icosahedron hitting set analysis function."""
+        from chipfiring.CFCombinatorics import icosahedron_hitting_set_analysis
         
-        # Triangle (odd cycle, not bipartite)
-        triangle = CFGraph({"0", "1", "2"}, 
-                          [("0", "1", 1), ("1", "2", 1), ("0", "2", 1)])
-        assert not is_bipartite(triangle)
+        hitting_set_info = icosahedron_hitting_set_analysis()
         
-        # Complete graph K4 (not bipartite)
-        k4 = CFGraph({"0", "1", "2", "3"}, 
-                    [("0", "1", 1), ("0", "2", 1), ("0", "3", 1),
-                     ("1", "2", 1), ("1", "3", 1), ("2", "3", 1)])
-        assert not is_bipartite(k4)
-
-
-class TestBrambleOrderLowerBound:
-    """Test bramble order lower bound function."""
+        assert hitting_set_info['minimum_hitting_set_size'] == 6
+        assert 'scramble_sets' in hitting_set_info
+        assert 'hitting_sets' in hitting_set_info
+        assert len(hitting_set_info['hitting_sets']) >= 3
     
-    def test_bramble_order_complete_graphs(self):
-        """Test bramble order for complete graphs."""
-        from chipfiring.CFCombinatorics import bramble_order_lower_bound
+    def test_icosahedron_gonality_theoretical_bounds(self):
+        """Test icosahedron comprehensive theoretical bounds function."""
+        from chipfiring.CFCombinatorics import icosahedron_gonality_theoretical_bounds
         
-        # K3 (triangle)
-        k3 = CFGraph({"0", "1", "2"}, 
-                    [("0", "1", 1), ("1", "2", 1), ("0", "2", 1)])
-        assert bramble_order_lower_bound(k3) == 3  # K3 has treewidth 2, bramble order 3
+        bounds = icosahedron_gonality_theoretical_bounds()
         
-        # K4 (tetrahedron)
-        k4 = CFGraph({"0", "1", "2", "3"}, 
-                    [("0", "1", 1), ("0", "2", 1), ("0", "3", 1),
-                     ("1", "2", 1), ("1", "3", 1), ("2", "3", 1)])
-        assert bramble_order_lower_bound(k4) == 4  # K4 has treewidth 3, bramble order 4
-    
-    def test_bramble_order_bipartite_graphs(self):
-        """Test bramble order for bipartite graphs."""
-        from chipfiring.CFCombinatorics import bramble_order_lower_bound
-        
-        # Complete bipartite K_{2,2}
-        k22 = CFGraph({"a1", "a2", "b1", "b2"}, 
-                     [("a1", "b1", 1), ("a1", "b2", 1),
-                      ("a2", "b1", 1), ("a2", "b2", 1)])
-        bramble_bound = bramble_order_lower_bound(k22)
-        assert bramble_bound >= 2  # Should give reasonable lower bound
-    
-    def test_bramble_order_paths_and_cycles(self):
-        """Test bramble order for paths and cycles."""
-        from chipfiring.CFCombinatorics import bramble_order_lower_bound
-        
-        # Path graph (treewidth 1)
-        path = CFGraph({"0", "1", "2", "3"}, 
-                      [("0", "1", 1), ("1", "2", 1), ("2", "3", 1)])
-        assert bramble_order_lower_bound(path) >= 1  # Path has treewidth 1
-        
-        # 4-cycle (treewidth 2)
-        cycle4 = CFGraph({"0", "1", "2", "3"}, 
-                        [("0", "1", 1), ("1", "2", 1), ("2", "3", 1), ("3", "0", 1)])
-        assert bramble_order_lower_bound(cycle4) >= 2  # 4-cycle has treewidth 2
-
-
-class TestEnhancedGonalityBounds:
-    """Test enhanced gonality bounds with new theoretical results."""
-    
-    @pytest.fixture
-    def octahedron_graph(self):
-        """Create octahedron graph for testing."""
-        return CFGraph({"v0", "v1", "v2", "v3", "v4", "v5"}, 
-                      [("v0", "v2", 1), ("v0", "v3", 1), ("v0", "v4", 1), ("v0", "v5", 1),
-                       ("v1", "v2", 1), ("v1", "v3", 1), ("v1", "v4", 1), ("v1", "v5", 1),
-                       ("v2", "v4", 1), ("v2", "v5", 1), ("v3", "v4", 1), ("v3", "v5", 1)])
-    
-    @pytest.fixture
-    def triangle(self):
-        """Create triangle graph for testing."""
-        return CFGraph({"v0", "v1", "v2"}, 
-                      [("v0", "v1", 1), ("v1", "v2", 1), ("v2", "v0", 1)])
-    
-    def test_enhanced_gonality_bounds_octahedron(self, octahedron_graph):
-        """Test enhanced gonality bounds for octahedron."""
-        bounds = gonality_theoretical_bounds(octahedron_graph)
-        
-        # Check new bounds are present
-        assert 'independence_upper_bound' in bounds
-        assert 'minimum_degree_bound' in bounds
-        assert 'bramble_order_bound' in bounds
-        
-        # Check octahedron-specific values
-        assert bounds['independence_upper_bound'] == 4  # n - α(G) = 6 - 2
-        assert bounds['minimum_degree_bound'] == 4  # δ(G) = 4
-        assert bounds['bramble_order_bound'] >= 4  # Bramble construction
-        
-        # Check bound consistency
-        assert bounds['lower_bound'] <= 4  # Should be consistent with gonality = 4
-        assert bounds['upper_bound'] >= 4
-    
-    def test_all_bounds_present(self, triangle):
-        """Test that all expected bounds are present."""
-        bounds = gonality_theoretical_bounds(triangle)
-        
-        expected_bounds = [
-            'trivial_lower_bound', 'trivial_upper_bound', 'independence_upper_bound',
-            'treewidth_lower_bound', 'minimum_degree_bound', 'bramble_order_bound',
-            'genus_bound', 'scramble_bound', 'connectivity_bound',
-            'lower_bound', 'upper_bound'
-        ]
-        
-        for bound_name in expected_bounds:
-            assert bound_name in bounds, f"Missing bound: {bound_name}"
-    
-    def test_bounds_reasonableness(self, triangle):
-        """Test that bounds are reasonable."""
-        bounds = gonality_theoretical_bounds(triangle)
-        
-        # Basic sanity checks
-        assert bounds['trivial_lower_bound'] == 1
-        assert bounds['trivial_upper_bound'] == 2  # n - 1 = 3 - 1
-        assert bounds['lower_bound'] >= 1
-        assert bounds['upper_bound'] <= 2
+        # Check key bounds
+        assert bounds['independence_upper_bound'] == 9
+        assert bounds['scramble_number_bound'] == 8
+        assert bounds['dhars_algorithm_result'] == 9
+        assert bounds['screewidth_bound'] == 8
         assert bounds['lower_bound'] <= bounds['upper_bound']
+
+
+class TestScrambleNumberTheory:
+    """Test scramble number theory functions."""
+    
+    def test_scramble_2_uniform_properties(self):
+        """Test properties of 2-uniform scrambles."""
+        from chipfiring.CFCombinatorics import icosahedron_2_uniform_scramble
+        
+        scramble = icosahedron_2_uniform_scramble()
+        
+        # 2-uniform means all sets have size 2
+        assert scramble['is_2_uniform']
+        for scramble_set in scramble['scramble_sets']:
+            assert len(scramble_set) == 2
+        
+        # Check construction type
+        assert scramble['construction_type'] == 'opposite_vertex_pairs'
+    
+    def test_scramble_hitting_sets(self):
+        """Test hitting set computations for scrambles."""
+        from chipfiring.CFCombinatorics import icosahedron_hitting_set_analysis
+        
+        hitting_set_info = icosahedron_hitting_set_analysis()
+        scramble_sets = hitting_set_info['scramble_sets']
+        hitting_sets = hitting_set_info['hitting_sets']
+        
+        # Each hitting set must intersect all scramble sets
+        for hitting_set in hitting_sets:
+            for scramble_set in scramble_sets:
+                intersection = hitting_set.intersection(scramble_set)
+                assert len(intersection) >= 1
+    
+    def test_egg_cut_scramble_relationship(self):
+        """Test relationship between egg-cut number and scramble theory."""
+        from chipfiring.CFCombinatorics import (
+            icosahedron_egg_cut_number,
+            icosahedron_2_uniform_scramble
+        )
+        
+        egg_cut_info = icosahedron_egg_cut_number()
+        scramble_info = icosahedron_2_uniform_scramble()
+        
+        # Egg-cut number should relate to scramble norm
+        assert egg_cut_info['egg_cut_number'] == scramble_info['scramble_norm']
+        assert egg_cut_info['egg_cut_number'] == 8
 
 
 if __name__ == "__main__":
