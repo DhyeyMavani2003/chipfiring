@@ -114,6 +114,39 @@ def parking_function_count(n: int) -> int:
     return (n + 1) ** (n - 1)
 
 
+def is_connected(graph: CFGraph) -> bool:
+    """
+    Check if a graph is connected.
+    
+    Args:
+        graph: The graph to check
+        
+    Returns:
+        bool: True if graph is connected
+    """
+    if len(graph.vertices) <= 1:
+        return True
+    
+    # DFS to check connectivity
+    start_vertex = next(iter(graph.vertices))
+    visited = set()
+    stack = [start_vertex]
+    
+    while stack:
+        vertex = stack.pop()
+        if vertex in visited:
+            continue
+        
+        visited.add(vertex)
+        
+        # Add neighbors to stack
+        for neighbor in graph.graph[vertex]:
+            if neighbor not in visited:
+                stack.append(neighbor)
+    
+    return len(visited) == len(graph.vertices)
+
+
 def maximal_independent_sets(graph: CFGraph) -> List[Set[str]]:
     """
     Find all maximal independent sets in a graph.
@@ -179,6 +212,213 @@ def independence_number(graph: CFGraph) -> int:
     if not mis_list:
         return 0
     return max(len(mis) for mis in mis_list)
+
+
+def minimum_degree(graph: CFGraph) -> int:
+    """
+    Compute the minimum degree of a graph.
+    
+    This provides a simple lower bound on treewidth and gonality:
+    δ(G) ≤ tw(G) ≤ gon(G)
+    
+    Args:
+        graph: The graph to analyze
+        
+    Returns:
+        int: The minimum degree
+        
+    Examples:
+        >>> vertices = {"0", "1", "2"}
+        >>> edges = [("0", "1", 1), ("1", "2", 1), ("0", "2", 1)]
+        >>> graph = CFGraph(vertices, edges)
+        >>> minimum_degree(graph)
+        2
+    """
+    if len(graph.vertices) == 0:
+        return 0
+    
+    return min(graph.get_valence(v.name) for v in graph.vertices)
+
+
+def maximum_degree(graph: CFGraph) -> int:
+    """
+    Compute the maximum degree of a graph.
+    
+    Args:
+        graph: The graph to analyze
+        
+    Returns:
+        int: The maximum degree
+        
+    Examples:
+        >>> vertices = {"0", "1", "2", "3"}
+        >>> edges = [("0", "1", 1), ("1", "2", 1), ("2", "3", 1)]
+        >>> graph = CFGraph(vertices, edges)
+        >>> maximum_degree(graph)
+        2
+    """
+    if len(graph.vertices) == 0:
+        return 0
+    
+    return max(graph.get_valence(v.name) for v in graph.vertices)
+
+
+def is_bipartite(graph: CFGraph) -> bool:
+    """
+    Check if a graph is bipartite.
+    
+    Args:
+        graph: The graph to check
+        
+    Returns:
+        bool: True if the graph is bipartite
+        
+    Examples:
+        >>> vertices = {"0", "1", "2", "3"}
+        >>> edges = [("0", "2", 1), ("0", "3", 1), ("1", "2", 1), ("1", "3", 1)]
+        >>> graph = CFGraph(vertices, edges)
+        >>> is_bipartite(graph)
+        True
+    """
+    if len(graph.vertices) <= 1:
+        return True
+    
+    # Convert to NetworkX for bipartite testing
+    nx_graph = nx.Graph()
+    for vertex in graph.vertices:
+        nx_graph.add_node(vertex.name)
+    
+    for v1 in graph.vertices:
+        for v2, valence in graph.graph[v1].items():
+            if v1.name < v2.name:  # Avoid duplicate edges
+                nx_graph.add_edge(v1.name, v2.name)
+    
+    return nx.is_bipartite(nx_graph)
+
+
+def bramble_order_lower_bound(graph: CFGraph) -> int:
+    """
+    Compute a lower bound on the maximum bramble order.
+    
+    Based on the theory from "Chip-firing on the Platonic solids",
+    this provides a lower bound on treewidth and thus gonality.
+    
+    Args:
+        graph: The graph to analyze
+        
+    Returns:
+        int: Lower bound on maximum bramble order
+        
+    Examples:
+        >>> vertices = {"0", "1", "2"}
+        >>> edges = [("0", "1", 1), ("1", "2", 1), ("0", "2", 1)]
+        >>> graph = CFGraph(vertices, edges)
+        >>> bramble_order_lower_bound(graph) >= 1
+        True
+    """
+    n = len(graph.vertices)
+    if n <= 1:
+        return 1
+    
+    # For complete graphs K_n, bramble order is n
+    expected_edges = n * (n - 1) // 2
+    actual_edges = sum(1 for v1 in graph.vertices 
+                      for v2, valence in graph.graph[v1].items() 
+                      if v1.name < v2.name)
+    
+    if actual_edges == expected_edges:
+        return n  # Complete graph has bramble order n
+    
+    # For bipartite graphs, use minimum degree + 1
+    if is_bipartite(graph):
+        return minimum_degree(graph) + 1
+    
+    # General lower bound based on minimum degree
+    return minimum_degree(graph) + 1
+
+
+def complete_multipartite_gonality(partition_sizes: List[int]) -> int:
+    """
+    Compute the exact gonality of a complete multipartite graph K_{n1,n2,...,nk}.
+    
+    For k >= 2 partitions: gon(K_{n1,n2,...,nk}) = n - min(ni) where min(ni) is the smallest part.
+    For k = 1 partition: gon(K_n) = n - 1 (complete graph gonality).
+    
+    Args:
+        partition_sizes: List of partition sizes
+        
+    Returns:
+        int: The exact gonality
+        
+    Examples:
+        >>> complete_multipartite_gonality([2, 2, 2])  # Octahedron K_{2,2,2}
+        4
+        >>> complete_multipartite_gonality([3, 4])  # K_{3,4}
+        4
+        >>> complete_multipartite_gonality([5])  # K_5 (complete graph)
+        4
+    """
+    if not partition_sizes:
+        return 0
+    
+    n = sum(partition_sizes)
+    
+    # Special case: single partition = complete graph K_n
+    if len(partition_sizes) == 1:
+        return n - 1
+    
+    # General case: complete multipartite with k >= 2 partitions
+    nk = min(partition_sizes)  # Use smallest part
+    return n - nk
+
+
+def octahedron_independence_number() -> int:
+    """
+    Compute the independence number of the octahedron (K_{2,2,2}).
+    
+    As proven in the theory, the octahedron has independence number 2.
+    
+    Returns:
+        int: The independence number (2)
+    """
+    return 2
+
+
+def octahedron_bramble_construction() -> Dict[str, any]:
+    """
+    Construct the bramble of order 5 on the octahedron as described in the theory.
+    
+    This bramble proves that the treewidth of the octahedron is at least 4.
+    
+    Returns:
+        Dict[str, any]: Information about the bramble construction
+    """
+    # Label vertices u1, u2, v1, v2, w1, w2 where a vertex is connected 
+    # only to those vertices with a different letter label
+    bramble_sets = [
+        {"u1"},
+        {"v1"}, 
+        {"w1"},
+        {"u2", "v2"},
+        {"u2", "w2"},
+        {"v2", "w2"}
+    ]
+    
+    # Any hitting set needs u1, v1, w1 (singleton sets) plus at least 2 of {u2, v2, w2}
+    min_hitting_set_size = 5
+    
+    return {
+        'bramble_sets': bramble_sets,
+        'order': min_hitting_set_size,
+        'separators': min_hitting_set_size - 1,
+        'treewidth_lower_bound': min_hitting_set_size - 1,
+        'description': 'Bramble of order 5 on octahedron K_{2,2,2} proving treewidth >= 4',
+        'vertex_labeling': {
+            'u1': 'v0', 'u2': 'v1',  # Group 1
+            'v1': 'v2', 'v2': 'v3',  # Group 2
+            'w1': 'v4', 'w2': 'v5'   # Group 3
+        }
+    }
 
 
 def treewidth_upper_bound(graph: CFGraph) -> int:
@@ -313,6 +553,9 @@ def gonality_theoretical_bounds(graph: CFGraph) -> Dict[str, int]:
     """
     Compute various theoretical bounds for gonality.
     
+    This includes bounds from independence number, treewidth, bramble order,
+    and minimum degree as described in the octahedron theory.
+    
     Args:
         graph: The graph to analyze
         
@@ -324,7 +567,7 @@ def gonality_theoretical_bounds(graph: CFGraph) -> Dict[str, int]:
         >>> edges = [("0", "1", 1), ("1", "2", 1), ("2", "3", 1), ("3", "0", 1)]
         >>> graph = CFGraph(vertices, edges)
         >>> bounds = gonality_theoretical_bounds(graph)
-        >>> 'treewidth_bound' in bounds
+        >>> 'independence_upper_bound' in bounds
         True
     """
     n = len(graph.vertices)
@@ -336,24 +579,38 @@ def gonality_theoretical_bounds(graph: CFGraph) -> Dict[str, int]:
     tw_bound = treewidth_upper_bound(graph)
     genus_bound = genus_upper_bound(graph)
     scramble_bound = scramble_number_upper_bound(graph)
+    min_deg = minimum_degree(graph)
+    bramble_bound = bramble_order_lower_bound(graph)
     
     bounds = {
         'trivial_lower_bound': 1,
         'trivial_upper_bound': n - 1,
-        'independence_bound': alpha,
-        'treewidth_bound': tw_bound + 1,
+        'independence_upper_bound': n - alpha,  # Theorem 1: gon(G) ≤ n - α(G)
+        'treewidth_lower_bound': tw_bound,      # Theorem 2: tw(G) ≤ gon(G)
+        'minimum_degree_bound': min_deg,        # δ(G) ≤ tw(G) ≤ gon(G)
+        'bramble_order_bound': bramble_bound,   # Bramble order lower bound
         'genus_bound': genus_bound + 1,
         'scramble_bound': scramble_bound,
-        'connectivity_bound': min(3, n - 1)  # For most graphs, gonality ≤ 3
+        'connectivity_bound': min(3, n - 1)
     }
     
-    # Compute tighter bounds
-    bounds['lower_bound'] = max(bounds['trivial_lower_bound'], 
-                               max(1, bounds['connectivity_bound'] - 1))
-    bounds['upper_bound'] = min(bounds['trivial_upper_bound'],
-                               min(bounds['independence_bound'] + 2,
-                                   bounds['treewidth_bound'],
-                                   bounds['scramble_bound']))
+    # Compute tighter bounds using the theoretical results
+    lower_bound_candidates = [
+        bounds['trivial_lower_bound'],
+        bounds['minimum_degree_bound'],
+        bounds['bramble_order_bound'] - 1,  # bramble order - 1 = treewidth lower bound
+        max(1, bounds['connectivity_bound'] - 1)
+    ]
+    
+    upper_bound_candidates = [
+        bounds['trivial_upper_bound'],
+        bounds['independence_upper_bound'],
+        bounds['treewidth_lower_bound'] + 1,  # rough upper bound from treewidth
+        bounds['scramble_bound']
+    ]
+    
+    bounds['lower_bound'] = max(lower_bound_candidates)
+    bounds['upper_bound'] = min(upper_bound_candidates)
     
     return bounds
 
@@ -413,40 +670,6 @@ def analyze_graph_properties(graph: CFGraph) -> Dict[str, any]:
     properties['gonality_bounds'] = gonality_theoretical_bounds(graph)
     
     return properties
-
-
-def is_connected(graph: CFGraph) -> bool:
-    """
-    Check if a graph is connected.
-    
-    Args:
-        graph: The graph to check
-        
-    Returns:
-        bool: True if graph is connected
-    """
-    if len(graph.vertices) <= 1:
-        return True
-    
-    # DFS to check connectivity
-    start_vertex = next(iter(graph.vertices))
-    visited = set()
-    stack = [start_vertex]
-    
-    while stack:
-        vertex = stack.pop()
-        if vertex in visited:
-            continue
-        
-        visited.add(vertex)
-        
-        # Add neighbors to stack
-        for neighbor in graph.graph[vertex]:
-            if neighbor not in visited:
-                stack.append(neighbor)
-    
-    return len(visited) == len(graph.vertices)
-
 
 def graph_complement(graph: CFGraph) -> CFGraph:
     """

@@ -363,8 +363,9 @@ class TestGonalityBounds:
     
     @pytest.fixture
     def triangle(self):
-        """Triangle graph."""
-        return CFGraph({"0", "1", "2"}, [("0", "1", 1), ("1", "2", 1), ("0", "2", 1)])
+        """Create triangle graph for testing."""
+        return CFGraph({"v0", "v1", "v2"}, 
+                      [("v0", "v1", 1), ("v1", "v2", 1), ("v2", "v0", 1)])
     
     @pytest.fixture
     def path_4(self):
@@ -383,8 +384,8 @@ class TestGonalityBounds:
         
         # Check that all expected bounds are present
         expected_keys = [
-            'trivial_lower_bound', 'trivial_upper_bound', 'independence_bound',
-            'treewidth_bound', 'genus_bound', 'scramble_bound', 'connectivity_bound',
+            'trivial_lower_bound', 'trivial_upper_bound', 'independence_upper_bound',
+            'treewidth_lower_bound', 'genus_bound', 'scramble_bound', 'connectivity_bound',
             'lower_bound', 'upper_bound'
         ]
         for key in expected_keys:
@@ -394,7 +395,7 @@ class TestGonalityBounds:
         assert bounds['trivial_lower_bound'] == 1
         assert bounds['trivial_upper_bound'] == 2  # n-1 = 3-1 = 2
         assert bounds['lower_bound'] <= bounds['upper_bound']
-        assert bounds['independence_bound'] == 1  # Triangle has independence number 1
+        assert bounds['independence_upper_bound'] == 2  # Triangle: n - α = 3 - 1 = 2
     
     def test_gonality_theoretical_bounds_path(self, path_4):
         """Test gonality bounds for path."""
@@ -403,7 +404,7 @@ class TestGonalityBounds:
         assert bounds['trivial_lower_bound'] == 1
         assert bounds['trivial_upper_bound'] == 3  # n-1 = 4-1 = 3
         assert bounds['lower_bound'] <= bounds['upper_bound']
-        assert bounds['independence_bound'] == 2  # Path of 4 has independence number 2
+        assert bounds['independence_upper_bound'] == 2  # Path of 4 has independence number 2
     
     def test_analyze_graph_properties_triangle(self, triangle):
         """Test graph property analysis for triangle."""
@@ -588,6 +589,252 @@ class TestAdditionalRobustness:
         # Multiple components
         multi_comp = CFGraph({"0", "1", "2", "3"}, [("0", "1", 1), ("2", "3", 1)])
         assert not is_connected(multi_comp)
+
+
+class TestOctahedronSpecificFunctions:
+    """Test octahedron-specific theoretical functions."""
+    
+    def test_octahedron_independence_number(self):
+        """Test octahedron independence number function."""
+        from chipfiring.CFCombinatorics import octahedron_independence_number
+        
+        alpha = octahedron_independence_number()
+        assert alpha == 2
+    
+    def test_octahedron_bramble_construction(self):
+        """Test octahedron bramble construction function."""
+        from chipfiring.CFCombinatorics import octahedron_bramble_construction
+        
+        bramble = octahedron_bramble_construction()
+        
+        # Check structure
+        assert isinstance(bramble, dict)
+        assert bramble['order'] == 5
+        assert bramble['separators'] == 4
+        assert len(bramble['bramble_sets']) == 6  # Corrected: there are 6 bramble sets
+        assert 'description' in bramble
+
+
+class TestCompleteMultipartiteGonalityFunction:
+    """Test complete multipartite gonality function."""
+    
+    def test_complete_multipartite_gonality_basic(self):
+        """Test basic complete multipartite gonality calculations."""
+        from chipfiring.CFCombinatorics import complete_multipartite_gonality
+        
+        # Test octahedron K_{2,2,2}
+        assert complete_multipartite_gonality([2, 2, 2]) == 4
+        
+        # Test complete bipartite graphs
+        assert complete_multipartite_gonality([3, 3]) == 3
+        assert complete_multipartite_gonality([4, 2]) == 4
+        assert complete_multipartite_gonality([5, 1]) == 5
+        
+        # Test formula: gon(K_{n1,n2,...,nk}) = n - nk
+        partitions = [
+            ([1, 1, 1], 2),    # n=3, nk=1, gonality=2
+            ([2, 1, 1], 3),    # n=4, nk=1, gonality=3
+            ([3, 2, 1], 5),    # n=6, nk=1, gonality=5
+            ([4, 4], 4),       # n=8, nk=4, gonality=4
+        ]
+        
+        for partition, expected in partitions:
+            actual = complete_multipartite_gonality(partition)
+            assert actual == expected, f"K_{partition} should have gonality {expected}, got {actual}"
+    
+    def test_complete_multipartite_gonality_edge_cases(self):
+        """Test edge cases for complete multipartite gonality."""
+        from chipfiring.CFCombinatorics import complete_multipartite_gonality
+        
+        # Single part (complete graph)
+        assert complete_multipartite_gonality([5]) == 4  # K5 has gonality 4
+        
+        # Two equal parts
+        assert complete_multipartite_gonality([3, 3]) == 3  # K_{3,3}
+        
+        # Star graph
+        assert complete_multipartite_gonality([5, 1]) == 5  # K_{5,1}
+
+
+class TestMinimumMaximumDegree:
+    """Test minimum and maximum degree functions."""
+    
+    @pytest.fixture
+    def various_graphs(self):
+        """Create various test graphs."""
+        # Complete graph K4
+        k4 = CFGraph({"0", "1", "2", "3"}, 
+                    [("0", "1", 1), ("0", "2", 1), ("0", "3", 1),
+                     ("1", "2", 1), ("1", "3", 1), ("2", "3", 1)])
+        
+        # Path graph
+        path = CFGraph({"0", "1", "2", "3"}, 
+                      [("0", "1", 1), ("1", "2", 1), ("2", "3", 1)])
+        
+        # Star graph
+        star = CFGraph({"0", "1", "2", "3", "4"}, 
+                      [("0", "1", 1), ("0", "2", 1), ("0", "3", 1), ("0", "4", 1)])
+        
+        return {'k4': k4, 'path': path, 'star': star}
+    
+    def test_minimum_degree(self, various_graphs):
+        """Test minimum degree function."""
+        from chipfiring.CFCombinatorics import minimum_degree
+        
+        assert minimum_degree(various_graphs['k4']) == 3  # All vertices have degree 3
+        assert minimum_degree(various_graphs['path']) == 1  # End vertices have degree 1
+        assert minimum_degree(various_graphs['star']) == 1  # Leaf vertices have degree 1
+    
+    def test_maximum_degree(self, various_graphs):
+        """Test maximum degree function."""
+        from chipfiring.CFCombinatorics import maximum_degree
+        
+        assert maximum_degree(various_graphs['k4']) == 3  # All vertices have degree 3
+        assert maximum_degree(various_graphs['path']) == 2  # Middle vertices have degree 2
+        assert maximum_degree(various_graphs['star']) == 4  # Center vertex has degree 4
+
+
+class TestBipartiteDetection:
+    """Test bipartite graph detection."""
+    
+    def test_is_bipartite_true_cases(self):
+        """Test bipartite detection for bipartite graphs."""
+        from chipfiring.CFCombinatorics import is_bipartite
+        
+        # Path graph (bipartite)
+        path = CFGraph({"0", "1", "2", "3"}, 
+                      [("0", "1", 1), ("1", "2", 1), ("2", "3", 1)])
+        assert is_bipartite(path)
+        
+        # Complete bipartite K_{2,3}
+        k23 = CFGraph({"a1", "a2", "b1", "b2", "b3"}, 
+                     [("a1", "b1", 1), ("a1", "b2", 1), ("a1", "b3", 1),
+                      ("a2", "b1", 1), ("a2", "b2", 1), ("a2", "b3", 1)])
+        assert is_bipartite(k23)
+        
+        # Single edge
+        edge = CFGraph({"0", "1"}, [("0", "1", 1)])
+        assert is_bipartite(edge)
+    
+    def test_is_bipartite_false_cases(self):
+        """Test bipartite detection for non-bipartite graphs."""
+        from chipfiring.CFCombinatorics import is_bipartite
+        
+        # Triangle (odd cycle, not bipartite)
+        triangle = CFGraph({"0", "1", "2"}, 
+                          [("0", "1", 1), ("1", "2", 1), ("0", "2", 1)])
+        assert not is_bipartite(triangle)
+        
+        # Complete graph K4 (not bipartite)
+        k4 = CFGraph({"0", "1", "2", "3"}, 
+                    [("0", "1", 1), ("0", "2", 1), ("0", "3", 1),
+                     ("1", "2", 1), ("1", "3", 1), ("2", "3", 1)])
+        assert not is_bipartite(k4)
+
+
+class TestBrambleOrderLowerBound:
+    """Test bramble order lower bound function."""
+    
+    def test_bramble_order_complete_graphs(self):
+        """Test bramble order for complete graphs."""
+        from chipfiring.CFCombinatorics import bramble_order_lower_bound
+        
+        # K3 (triangle)
+        k3 = CFGraph({"0", "1", "2"}, 
+                    [("0", "1", 1), ("1", "2", 1), ("0", "2", 1)])
+        assert bramble_order_lower_bound(k3) == 3  # K3 has treewidth 2, bramble order 3
+        
+        # K4 (tetrahedron)
+        k4 = CFGraph({"0", "1", "2", "3"}, 
+                    [("0", "1", 1), ("0", "2", 1), ("0", "3", 1),
+                     ("1", "2", 1), ("1", "3", 1), ("2", "3", 1)])
+        assert bramble_order_lower_bound(k4) == 4  # K4 has treewidth 3, bramble order 4
+    
+    def test_bramble_order_bipartite_graphs(self):
+        """Test bramble order for bipartite graphs."""
+        from chipfiring.CFCombinatorics import bramble_order_lower_bound
+        
+        # Complete bipartite K_{2,2}
+        k22 = CFGraph({"a1", "a2", "b1", "b2"}, 
+                     [("a1", "b1", 1), ("a1", "b2", 1),
+                      ("a2", "b1", 1), ("a2", "b2", 1)])
+        bramble_bound = bramble_order_lower_bound(k22)
+        assert bramble_bound >= 2  # Should give reasonable lower bound
+    
+    def test_bramble_order_paths_and_cycles(self):
+        """Test bramble order for paths and cycles."""
+        from chipfiring.CFCombinatorics import bramble_order_lower_bound
+        
+        # Path graph (treewidth 1)
+        path = CFGraph({"0", "1", "2", "3"}, 
+                      [("0", "1", 1), ("1", "2", 1), ("2", "3", 1)])
+        assert bramble_order_lower_bound(path) >= 1  # Path has treewidth 1
+        
+        # 4-cycle (treewidth 2)
+        cycle4 = CFGraph({"0", "1", "2", "3"}, 
+                        [("0", "1", 1), ("1", "2", 1), ("2", "3", 1), ("3", "0", 1)])
+        assert bramble_order_lower_bound(cycle4) >= 2  # 4-cycle has treewidth 2
+
+
+class TestEnhancedGonalityBounds:
+    """Test enhanced gonality bounds with new theoretical results."""
+    
+    @pytest.fixture
+    def octahedron_graph(self):
+        """Create octahedron graph for testing."""
+        return CFGraph({"v0", "v1", "v2", "v3", "v4", "v5"}, 
+                      [("v0", "v2", 1), ("v0", "v3", 1), ("v0", "v4", 1), ("v0", "v5", 1),
+                       ("v1", "v2", 1), ("v1", "v3", 1), ("v1", "v4", 1), ("v1", "v5", 1),
+                       ("v2", "v4", 1), ("v2", "v5", 1), ("v3", "v4", 1), ("v3", "v5", 1)])
+    
+    @pytest.fixture
+    def triangle(self):
+        """Create triangle graph for testing."""
+        return CFGraph({"v0", "v1", "v2"}, 
+                      [("v0", "v1", 1), ("v1", "v2", 1), ("v2", "v0", 1)])
+    
+    def test_enhanced_gonality_bounds_octahedron(self, octahedron_graph):
+        """Test enhanced gonality bounds for octahedron."""
+        bounds = gonality_theoretical_bounds(octahedron_graph)
+        
+        # Check new bounds are present
+        assert 'independence_upper_bound' in bounds
+        assert 'minimum_degree_bound' in bounds
+        assert 'bramble_order_bound' in bounds
+        
+        # Check octahedron-specific values
+        assert bounds['independence_upper_bound'] == 4  # n - α(G) = 6 - 2
+        assert bounds['minimum_degree_bound'] == 4  # δ(G) = 4
+        assert bounds['bramble_order_bound'] >= 4  # Bramble construction
+        
+        # Check bound consistency
+        assert bounds['lower_bound'] <= 4  # Should be consistent with gonality = 4
+        assert bounds['upper_bound'] >= 4
+    
+    def test_all_bounds_present(self, triangle):
+        """Test that all expected bounds are present."""
+        bounds = gonality_theoretical_bounds(triangle)
+        
+        expected_bounds = [
+            'trivial_lower_bound', 'trivial_upper_bound', 'independence_upper_bound',
+            'treewidth_lower_bound', 'minimum_degree_bound', 'bramble_order_bound',
+            'genus_bound', 'scramble_bound', 'connectivity_bound',
+            'lower_bound', 'upper_bound'
+        ]
+        
+        for bound_name in expected_bounds:
+            assert bound_name in bounds, f"Missing bound: {bound_name}"
+    
+    def test_bounds_reasonableness(self, triangle):
+        """Test that bounds are reasonable."""
+        bounds = gonality_theoretical_bounds(triangle)
+        
+        # Basic sanity checks
+        assert bounds['trivial_lower_bound'] == 1
+        assert bounds['trivial_upper_bound'] == 2  # n - 1 = 3 - 1
+        assert bounds['lower_bound'] >= 1
+        assert bounds['upper_bound'] <= 2
+        assert bounds['lower_bound'] <= bounds['upper_bound']
 
 
 if __name__ == "__main__":

@@ -14,3 +14,4 @@ This section contains the complete API documentation for the chipfiring package.
    firing_script
    algo
    rank
+   gonality_game

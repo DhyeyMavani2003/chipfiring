@@ -12,7 +12,8 @@ from chipfiring.CFGonality import (
 )
 from chipfiring.CFPlatonicSolids import (
     tetrahedron, cube, octahedron, dodecahedron, icosahedron,
-    complete_graph, platonic_solid_gonality_bounds, complete_graph_gonality
+    complete_graph, platonic_solid_gonality_bounds, complete_graph_gonality,
+    verify_octahedron_gonality, verify_theoretical_bounds_consistency
 )
 from chipfiring.CFGonalityDhar import (
     GonalityDharAlgorithm, enhanced_dhar_gonality_test, batch_gonality_analysis
@@ -223,6 +224,10 @@ class TestPlatonicSolids:
         # Check that every vertex has degree 3 (connected to all others)
         for vertex in graph.vertices:
             assert graph.get_valence(vertex.name) == 3
+            
+        # Calculate gonality for tetrahedron
+        result = gonality(graph)
+        assert result.gonality == 3  # Known gonality for K4 (tetrahedron)
     
     def test_cube(self):
         """Test cube graph generation."""
@@ -276,7 +281,7 @@ class TestPlatonicSolids:
             assert len(graph.vertices) == n
             # CFGraph stores edges implicitly in an adjacency list.
             # total_valence counts each edge once for undirected graphs.
-            assert graph.total_valence == n * (n - 1) // 2 # This implies total_valence is 2*num_edges if it means sum of degrees, or num_edges if it means num_edges.\n                                                            # Given n*(n-1)/2 is num_edges for K_n, this line means graph.total_valence == num_edges.\n                                                            # Let's assume total_valence is indeed number of edges based on this assertion.\n                                                            # However, CFGraph.py usually has total_valence as sum of degrees (2*E).\n                                                            # The previous fix `graph.total_valence == n * (n-1) // 2` was for K_n, where n*(n-1)/2 is the number of edges.\n                                                            # If total_valence is sum of degrees, it should be `n * (n-1)`. Let's stick to the existing assertion for now.\n            \n            # Check that each vertex has degree n-1
+            assert graph.total_valence == n * (n - 1) // 2 # This implies total_valence is 2*num_edges if it means sum of degrees, or num_edges if it means num_edges.\n                                                            # Given n*(n-1)/2 is num_edges for K_n, this line means graph.total_valence == num_edges.\n                                                            # Let's assume total_valence is indeed number of edges based on this assertion.\n            \n            # Check that each vertex has degree n-1
             for vertex in graph.vertices: # Iterate through Vertex objects
                 assert graph.get_valence(vertex.name) == n - 1
     
@@ -486,6 +491,257 @@ class TestGonalityIntegration:
         # For K4, gonality is 3. Both methods should yield this.
         assert result1.gonality == dhar_gonality_value
         assert result1.gonality == 3 # Explicitly check for K4's known gonality
+
+
+class TestOctahedronTheory:
+    """Test theoretical concepts from octahedron section of Beougher et al."""
+    
+    def test_octahedron_independence_number(self):
+        """Test that octahedron independence number is 2."""
+        from chipfiring.CFCombinatorics import octahedron_independence_number, independence_number
+        
+        # Test theoretical function
+        alpha_theory = octahedron_independence_number()
+        assert alpha_theory == 2
+        
+        # Test computed independence number matches theory
+        graph = octahedron()
+        alpha_computed = independence_number(graph)
+        assert alpha_computed == 2
+        assert alpha_theory == alpha_computed
+    
+    def test_octahedron_bramble_construction(self):
+        """Test octahedron bramble construction proves treewidth >= 4."""
+        from chipfiring.CFCombinatorics import octahedron_bramble_construction, bramble_order_lower_bound
+        
+        # Test bramble construction
+        bramble = octahedron_bramble_construction()
+        assert bramble['order'] == 5
+        assert bramble['separators'] == 4
+        assert len(bramble['bramble_sets']) == 6  # Number of bramble sets in construction
+        
+        # Test bramble order lower bound
+        graph = octahedron()
+        bramble_bound = bramble_order_lower_bound(graph)
+        assert bramble_bound >= 4  # Should prove treewidth >= 4
+    
+    def test_complete_multipartite_gonality_formula(self):
+        """Test complete multipartite gonality formula gon(K_{n1,n2,...,nk}) = n - nk."""
+        from chipfiring.CFCombinatorics import complete_multipartite_gonality
+        
+        # Test octahedron as K_{2,2,2}
+        gon_222 = complete_multipartite_gonality([2, 2, 2])
+        assert gon_222 == 4  # n - nk = 6 - 2 = 4
+        
+        # Test other cases
+        gon_31 = complete_multipartite_gonality([3, 1])
+        assert gon_31 == 3  # n - nk = 4 - 1 = 3
+        
+        gon_321 = complete_multipartite_gonality([3, 2, 1])
+        assert gon_321 == 5  # n - nk = 6 - 1 = 5
+        
+        gon_1111 = complete_multipartite_gonality([1, 1, 1, 1])
+        assert gon_1111 == 3  # n - nk = 4 - 1 = 3
+    
+    def test_theoretical_bounds_consistency(self):
+        """Test that theoretical bounds are consistent."""
+        from chipfiring.CFCombinatorics import gonality_theoretical_bounds
+        
+        graph = octahedron()
+        bounds = gonality_theoretical_bounds(graph)
+        
+        # Check all bounds are present
+        expected_bounds = [
+            'trivial_lower_bound', 'trivial_upper_bound', 'independence_upper_bound',
+            'treewidth_lower_bound', 'minimum_degree_bound', 'bramble_order_bound',
+            'genus_bound', 'scramble_bound', 'connectivity_bound',
+            'lower_bound', 'upper_bound'
+        ]
+        for bound_name in expected_bounds:
+            assert bound_name in bounds
+        
+        # Check bound relationships
+        assert bounds['lower_bound'] <= bounds['upper_bound']
+        assert bounds['trivial_lower_bound'] == 1
+        assert bounds['trivial_upper_bound'] == 5  # n - 1 = 6 - 1 = 5
+        assert bounds['independence_upper_bound'] == 4  # n - α(G) = 6 - 2 = 4
+        assert bounds['minimum_degree_bound'] == 4  # δ(G) = 4 for octahedron
+        assert bounds['bramble_order_bound'] >= 4  # Bramble construction
+    
+    def test_octahedron_gonality_verification(self):
+        """Test complete octahedron gonality verification."""
+        results = verify_octahedron_gonality()
+        
+        # Check main results
+        assert results['gonality'] == 4
+        assert results['independence_number'] == 2
+        assert results['computed_independence_number'] == 2
+        assert results['independence_upper_bound'] == 4  # n - α(G) = 6 - 2
+        assert results['minimum_degree'] == 4
+        assert results['multipartite_gonality'] == 4
+        assert results['bramble_order'] >= 4
+        
+        # Check verification passed
+        assert results['verification_passed']
+        
+        # Check bramble construction
+        bramble = results['bramble_construction']
+        assert bramble['order'] == 5
+        assert bramble['separators'] == 4
+    
+    def test_theorem_1_independence_upper_bound(self):
+        """Test Theorem 1: gon(G) <= n - α(G)."""
+        from chipfiring.CFCombinatorics import independence_number
+        
+        # Test for octahedron
+        graph = octahedron()
+        alpha = independence_number(graph)
+        n = len(graph.vertices)
+        upper_bound = n - alpha
+        
+        assert alpha == 2
+        assert n == 6
+        assert upper_bound == 4
+        
+        # The octahedron gonality is exactly 4, so the bound is tight
+        assert upper_bound == 4  # This matches the theoretical gonality
+    
+    def test_theorem_2_treewidth_lower_bound(self):
+        """Test Theorem 2: tw(G) <= gon(G)."""
+        from chipfiring.CFCombinatorics import bramble_order_lower_bound
+        
+        graph = octahedron()
+        
+        # Bramble construction gives treewidth lower bound
+        bramble_bound = bramble_order_lower_bound(graph)
+        
+        # The bramble construction should prove treewidth >= 4
+        # bramble_bound is the bramble order, which equals treewidth + 1
+        # So if bramble_bound = 5, then treewidth >= 4
+        assert bramble_bound >= 5  # Bramble order 5 proves treewidth >= 4
+        
+        # Since gonality is 4, we have tw(G) <= gon(G) = 4
+        # Combined with bramble bound tw(G) >= 4, we get tw(G) = 4
+        treewidth_lower_bound = bramble_bound - 1  # Convert bramble order to treewidth
+        assert treewidth_lower_bound >= 4  # treewidth >= 4
+        assert treewidth_lower_bound <= 4  # Should be exactly 4 for octahedron
+    
+    def test_minimum_degree_bounds(self):
+        """Test minimum degree bounds: δ(G) <= tw(G) <= gon(G)."""
+        from chipfiring.CFCombinatorics import minimum_degree, bramble_order_lower_bound
+        
+        graph = octahedron()
+        min_deg = minimum_degree(graph)
+        bramble_bound = bramble_order_lower_bound(graph)
+        
+        assert min_deg == 4  # Each vertex in octahedron has degree 4
+        assert bramble_bound >= 5  # Bramble order >= 5, so treewidth >= 4
+        
+        # We have δ(G) = 4, tw(G) >= 4, gon(G) = 4
+        # So δ(G) <= tw(G) <= gon(G) with equality throughout
+        treewidth_lower = bramble_bound - 1  # Convert bramble order to treewidth
+        assert min_deg <= treewidth_lower  # δ(G) <= tw(G)
+        assert treewidth_lower <= 4  # tw(G) <= gon(G) = 4
+        # This verifies δ(G) = tw(G) = gon(G) = 4
+    
+    def test_platonic_solids_theoretical_bounds_consistency(self):
+        """Test theoretical bounds consistency for all Platonic solids."""
+        results = verify_theoretical_bounds_consistency()
+        
+        # All solids should have consistent bounds
+        for solid_name, is_consistent in results.items():
+            assert is_consistent, f"Bounds inconsistent for {solid_name}"
+        
+        # Specifically check octahedron
+        assert results['octahedron']
+
+
+class TestCompleteMultipartiteGonality:
+    """Test complete multipartite gonality formula."""
+    
+    def test_complete_multipartite_gonality_examples(self):
+        """Test gonality formula for various complete multipartite graphs."""
+        from chipfiring.CFCombinatorics import complete_multipartite_gonality
+        
+        # Test cases from theory
+        test_cases = [
+            ([2, 2, 2], 4),    # K_{2,2,2} (octahedron)
+            ([3, 3], 3),       # K_{3,3} 
+            ([4, 2], 4),       # K_{4,2}
+            ([5, 1], 5),       # K_{5,1} (star graph)
+            ([2, 2, 1, 1], 5), # K_{2,2,1,1}
+            ([1, 1, 1, 1, 1], 4), # K_{1,1,1,1,1}
+        ]
+        
+        for partition, expected_gonality in test_cases:
+            computed_gonality = complete_multipartite_gonality(partition)
+            assert computed_gonality == expected_gonality, \
+                f"K_{{{','.join(map(str, partition))}}} should have gonality {expected_gonality}, got {computed_gonality}"
+    
+    def test_complete_multipartite_gonality_formula_verification(self):
+        """Verify the formula gon(K_{n1,n2,...,nk}) = n - nk holds."""
+        from chipfiring.CFCombinatorics import complete_multipartite_gonality
+        
+        partitions = [
+            [5, 3, 2, 1],  # n=11, nk=1, so gonality = 10
+            [4, 4, 2],     # n=10, nk=2, so gonality = 8
+            [3, 3, 3],     # n=9, nk=3, so gonality = 6
+            [6, 2],        # n=8, nk=2, so gonality = 6
+            [7, 1],        # n=8, nk=1, so gonality = 7
+        ]
+        
+        for partition in partitions:
+            n = sum(partition)
+            nk = min(partition)  # Smallest part
+            expected = n - nk
+            
+            computed = complete_multipartite_gonality(partition)
+            assert computed == expected, \
+                f"K_{{{','.join(map(str, partition))}}} should have gonality {expected}, got {computed}"
+
+
+class TestBrambleTheory:
+    """Test bramble theory and treewidth bounds."""
+    
+    def test_bramble_order_lower_bound_examples(self):
+        """Test bramble order lower bound for various graphs."""
+        from chipfiring.CFCombinatorics import bramble_order_lower_bound
+        
+        # Test complete graphs
+        k4 = complete_graph(4)
+        bramble_k4 = bramble_order_lower_bound(k4)
+        assert bramble_k4 == 4  # Complete graph K4 has treewidth 3, so bramble order >= 4
+        
+        # Test octahedron
+        oct = octahedron()
+        bramble_oct = bramble_order_lower_bound(oct)
+        assert bramble_oct >= 4  # Our construction shows treewidth >= 4
+        
+        # Test bipartite graphs
+        from chipfiring.CFGraph import CFGraph
+        k23 = CFGraph({"a1", "a2", "b1", "b2", "b3"}, 
+                     [("a1", "b1", 1), ("a1", "b2", 1), ("a1", "b3", 1),
+                      ("a2", "b1", 1), ("a2", "b2", 1), ("a2", "b3", 1)])
+        bramble_k23 = bramble_order_lower_bound(k23)
+        assert bramble_k23 >= 2  # K_{2,3} should have reasonable bramble bound
+    
+    def test_octahedron_specific_bramble_construction(self):
+        """Test the specific bramble construction for octahedron."""
+        from chipfiring.CFCombinatorics import octahedron_bramble_construction
+        
+        bramble = octahedron_bramble_construction()
+        
+        # Check structure
+        assert bramble['order'] == 5
+        assert bramble['separators'] == 4
+        assert len(bramble['bramble_sets']) == 6  # Corrected: 6 bramble sets
+        
+        # Check description
+        assert 'description' in bramble
+        assert 'K_{2,2,2}' in bramble['description']
+        
+        # Check that this proves treewidth >= 4
+        assert bramble['order'] - 1 == 4  # Bramble order k means treewidth >= k-1
 
 
 if __name__ == '__main__':
