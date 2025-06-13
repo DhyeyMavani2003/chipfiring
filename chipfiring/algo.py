@@ -5,10 +5,11 @@ from .CFLaplacian import CFLaplacian
 from .CFDhar import DharAlgorithm
 from .CFOrientation import CFOrientation
 from typing import Tuple, Optional
+from .CFEWDVisualizer import EWDVisualizer
 
 
 def EWD(
-    graph: CFGraph, divisor: CFDivisor, optimized: bool = False
+    graph: CFGraph, divisor: CFDivisor, optimized: bool = False, visualize: bool = False
 ) -> Tuple[bool, Optional[CFDivisor], Optional[CFOrientation]]:
     """Determine if a given chip-firing configuration is winnable using the Efficient Winnability Detection (EWD) algorithm.
 
@@ -23,6 +24,7 @@ def EWD(
         graph: The chip-firing graph (CFGraph instance).
         divisor: The initial chip distribution (CFDivisor instance).
         optimized: Whether to run EWD in optimized mode. (default: False). Note: if you choose to run in optimized mode, you might not get the associated induced orientation and q-reduced divisor because of the shortcuts taken by the algorithm to determine winnability.
+        visualize: Whether to visualize the EWD algorithm. (default: False).
 
     Returns:
         A tuple containing:
@@ -66,17 +68,35 @@ def EWD(
         >>> reduced is None and orient is None  # Optimized mode returns None for these
         True
     """
+    # Initialize visualizer if requested
+    visualizer = EWDVisualizer() if visualize else None
+
     # Run EWD in optimized mode if requested.
     # With this mode, we use theorems, lemmas, and properties to determine winnability if possible.
     if optimized:
         # If total degree is negative, return False
-        if divisor.get_total_degree() < 0:
+        total_degree = divisor.get_total_degree()
+        if total_degree < 0:
+            if visualizer:
+                visualizer.add_step(divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree}. Not winnable.", source_function="EWD Optimized Mode Check: Negative total degree implies unwinnable")
+                visualizer.visualize()
             return False, None, None
+        else:
+            if visualizer:
+                visualizer.add_step(divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree}. Continue.", source_function="EWD Optimized Mode Check: Negative total degree implies unwinnable")
 
         # Apply Proposition 4.1.14 (2) from Dhyey Mavani's thesis if possible:
         #   If D is a maximal unwinnable divisor, then deg(D) = g − 1. Thus, deg(D) ≥ g implies D is winnable
-        if divisor.get_total_degree() >= graph.get_genus():
+        genus = graph.get_genus()
+        if total_degree >= genus:
+            if visualizer:
+                visualizer.add_step(divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree} and genus is {genus} Winnable.", source_function="EWD Optimized Mode Check: deg(D) ≥ g implies D is winnable (Proposition 4.1.14 (2) from Dhyey Mavani's thesis)")
+                visualizer.visualize()
             return True, None, None
+        else:
+            if visualizer:
+                visualizer.add_step(divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree} and genus is {genus}. Continue.", source_function="EWD Optimized Mode Check: deg(D) ≥ g implies D is winnable (Proposition 4.1.14 (2) from Dhyey Mavani's thesis)")
+
 
     # 1. q is the Vertex object with the minimum degree.
     # min() is applied to (Vertex, degree) pairs from divisor.degrees.items().
@@ -85,6 +105,9 @@ def EWD(
     # - [0] extracts the Vertex object (the first element) from the (Vertex, degree) tuple
     #   that corresponds to the minimum degree.
     q = min(divisor.degrees.items(), key=lambda item: item[1])[0]
+
+    if visualizer:
+        visualizer.add_step(divisor, CFOrientation(graph, []), q=q.name, description="Initial state with q selected.", source_function="EWD")
 
     # Apply the reduced matrix optimization to the divisor with respect to q (if optimized is True)
     if optimized:
@@ -99,8 +122,11 @@ def EWD(
         config_degrees_list.append((q.name, divisor.get_total_degree() - config_degree))
         divisor = CFDivisor(graph, config_degrees_list)
 
+        if visualizer:
+            visualizer.add_step(divisor, CFOrientation(graph, []), q=q.name, description="", source_function="EWD Optimized Mode: Reduced Matrix Optimization")
+
     # Create a DharAlgorithm instance
-    dhar = DharAlgorithm(graph, divisor, q.name)
+    dhar = DharAlgorithm(graph, divisor, q.name, visualizer)
 
     # 2. Initially run Dhar's to get the set of unburnt vertices and orientation
     unburnt_vertices, orientation = dhar.run()
@@ -108,8 +134,18 @@ def EWD(
     # 3. Iteratively fire maximal legal sets until q-reduced or no more sets can be fired.
     # The loop continues as long as Dhar's algorithm identifies a non-empty set of unburnt vertices.
     # This means there are still vertices that can be part of a legal firing sequence originating from q.
+    counter = 1
     while len(unburnt_vertices) > 0:
+        if visualizer:
+            # Show the firing set *before* the firing happens.
+            visualizer.add_step(dhar.configuration.divisor, CFOrientation(graph, []), set(), unburnt_vertices, q.name, description=f"Initiating set fire for run #{counter}.", source_function="EWD")
+        
         dhar.legal_set_fire(unburnt_vertices)
+
+        if visualizer:
+            visualizer.add_step(dhar.configuration.divisor, CFOrientation(graph, []), set(), unburnt_vertices, q.name, description=f"Set fire for run #{counter} completed.", source_function="EWD")
+
+        counter += 1
 
         unburnt_vertices, new_orientation = dhar.run()
         # Update orientation with new orientations
@@ -124,10 +160,16 @@ def EWD(
         raise RuntimeError(
             "The final orientation is not full. Some edges remain unoriented."
         )
-
+    
     if deg_q >= 0:
+        if visualizer:
+            visualizer.add_step(q_reduced_divisor, orientation, q=q.name, description="q is non-negative. The graph is winnable.", source_function="EWD")
+            visualizer.visualize()
         return True, q_reduced_divisor, orientation
     else:
+        if visualizer:
+            visualizer.add_step(q_reduced_divisor, orientation, q=q.name, description="q is negative. The graph is not winnable.", source_function="EWD")
+            visualizer.visualize()
         return False, q_reduced_divisor, orientation
 
 

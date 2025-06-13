@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import List, Tuple, Dict, Set
 from .CFGraph import CFGraph, Vertex
 
-
 # TODO: Implement 0-divisors and 1-divisors
 class CFDivisor:
     """Represents a divisor (chip configuration) on a chip-firing graph.

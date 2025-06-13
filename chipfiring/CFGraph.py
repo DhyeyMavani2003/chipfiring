@@ -442,3 +442,10 @@ class CFGraph:
                         raise ValueError("Self-loops are not allowed")
 
         return {"vertices": vertex_names, "edges": edge_list}
+
+    def get_vertex_by_name(self, name: str) -> typing.Optional[Vertex]:
+        """Find a vertex in the graph by its name."""
+        for vertex in self.vertices:
+            if vertex.name == name:
+                return vertex
+        return None

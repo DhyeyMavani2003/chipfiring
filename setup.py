@@ -21,7 +21,8 @@ INSTALL_REQUIRES = [
   "coverage",
   "dash",
   "dash-cytoscape",
-  
+  "dash-bootstrap-components",
+  "networkx",
 ]
 ENTRY_POINTS = {
   

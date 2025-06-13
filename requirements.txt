@@ -11,3 +11,4 @@ mypy
 ruff
 dash
 dash-cytoscape
+dash-bootstrap-components

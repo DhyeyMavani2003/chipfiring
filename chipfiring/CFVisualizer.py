@@ -123,6 +123,33 @@ BASE_STYLESHEET = [
         }
     },
     {
+        'selector': 'node[is_q = "true"]',
+        'style': {
+            'border-width': '3px',
+            'border-color': '#007bff' # Blue border for q
+        }
+    },
+    {
+        'selector': 'node[is_unburnt = "true"]',
+        'style': {
+            'background-color': '#ffc107' # Yellow for unburnt
+        }
+    },
+    {
+        'selector': 'node[is_burnt = "true"]',
+        'style': {
+            'background-color': '#6c757d' # Dark gray for burnt
+        }
+    },
+    {
+        'selector': 'node[is_in_firing_set = "true"]',
+        'style': {
+            'border-width': '5px',
+            'border-color': '#ffc107',
+            'border-style': 'solid'
+        }
+    },
+    {
         'selector': 'edge',
         'style': {
             'line-color': '#9DBFB5',
