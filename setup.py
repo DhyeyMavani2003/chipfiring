@@ -19,6 +19,7 @@ INSTALL_REQUIRES = [
   "pandas",
   "pytest",
   "coverage",
+  "matplotlib",
   "dash",
   "dash-cytoscape",
   "dash-bootstrap-components",

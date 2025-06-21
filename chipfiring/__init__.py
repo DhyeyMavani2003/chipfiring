@@ -13,6 +13,8 @@ from .CFDhar import DharAlgorithm
 from .algo import EWD, linear_equivalence, is_winnable, q_reduction, is_q_reduced
 from .CFRank import rank
 from .CFDataProcessor import CFDataProcessor
+from .CFEWDVisualizer import EWDVisualizer
+from .CFVisualizer import visualize
 from .CFGonality import gonality, play_gonality_game, CFGonality, GonalityGameResult, GonalityResult
 from .CFPlatonicSolids import (
     tetrahedron, cube, octahedron, dodecahedron, icosahedron,
@@ -39,6 +41,8 @@ __all__ = [
     "is_q_reduced",
     "rank",
     "CFDataProcessor",
+    "EWDVisualizer",
+    "visualize",
     "gonality",
     "play_gonality_game",
     "CFGonality",
