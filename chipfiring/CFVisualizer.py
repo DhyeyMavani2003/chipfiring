@@ -4,7 +4,6 @@ import dash_cytoscape as cyto
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
 from .CFOrientation import CFOrientation
-from .CFiringScript import CFiringScript
 
 def _graph_to_cytoscape_elements(graph: CFGraph):
     """Converts a CFGraph object to a list of elements for Dash Cytoscape."""
@@ -89,24 +88,6 @@ def _orientation_to_cytoscape_elements(orientation_obj: CFOrientation):
                 # The stylesheet will hide the arrow for these.
     return elements
 
-def _firingscript_to_cytoscape_elements(script_obj: CFiringScript):
-    """Converts a CFiringScript object to a list of elements for Dash Cytoscape."""
-    elements = _graph_to_cytoscape_elements(script_obj.graph)
-    for element in elements:
-        if 'source' in element.get('data', {}): # It's an edge
-            element['data']['arrow_shape'] = 'none'
-        elif 'id' in element.get('data', {}) and 'label' in element.get('data', {}) and 'firing_type' in element.get('data', {}): # It's a node
-            node_id = element['data']['id']
-            firings = script_obj.get_firings(node_id)
-            element['data']['label'] = f"{node_id}\n{firings}"
-            if firings > 0:
-                element['data']['firing_type'] = 'firing'
-            elif firings < 0:
-                element['data']['firing_type'] = 'borrowing'
-            else:
-                element['data']['firing_type'] = 'neutral'
-    return elements
-
 # Base stylesheet for all visualizations
 BASE_STYLESHEET = [
     {
@@ -126,30 +107,6 @@ BASE_STYLESHEET = [
         }
     },
     {
-        'selector': 'node[firing_type = "firing"]',
-        'style': {
-            'background-color': '#28a745', # Green for positive firing
-            'text-outline-color': '#28a745',
-            'color': '#ffffff' # White text for dark green
-        }
-    },
-    {
-        'selector': 'node[firing_type = "borrowing"]',
-        'style': {
-            'background-color': '#dc3545', # Red for negative firing
-            'text-outline-color': '#dc3545',
-            'color': '#ffffff' # White text for red
-        }
-    },
-    {
-        'selector': 'node[firing_type = "neutral"]',
-        'style': {
-            'background-color': '#808080', # Gray for zero firing
-            'text-outline-color': '#808080',
-            'color': '#ffffff' # White text for gray
-        }
-    },
-    {
         'selector': 'node[divisor_sign = "non-negative"]',
         'style': {
             'background-color': '#28a745', # Green for non-negative divisor
@@ -163,6 +120,33 @@ BASE_STYLESHEET = [
             'background-color': '#dc3545', # Red for negative divisor
             'text-outline-color': '#dc3545',
             'color': '#ffffff' 
+        }
+    },
+    {
+        'selector': 'node[is_q = "true"]',
+        'style': {
+            'border-width': '3px',
+            'border-color': '#007bff' # Blue border for q
+        }
+    },
+    {
+        'selector': 'node[is_unburnt = "true"]',
+        'style': {
+            'background-color': '#ffc107' # Yellow for unburnt
+        }
+    },
+    {
+        'selector': 'node[is_burnt = "true"]',
+        'style': {
+            'background-color': '#6c757d' # Dark gray for burnt
+        }
+    },
+    {
+        'selector': 'node[is_in_firing_set = "true"]',
+        'style': {
+            'border-width': '5px',
+            'border-color': '#ffc107',
+            'border-style': 'solid'
         }
     },
     {
@@ -182,7 +166,7 @@ def visualize(cf_object: any):
     """ Creates and runs a Dash app to visualize a chip-firing object.
     
     Args:
-        cf_object: The chip-firing object (CFGraph, CFDivisor, CFOrientation, CFiringScript).
+        cf_object: The chip-firing object (CFGraph, CFDivisor, CFOrientation).
         debug: Whether to run the Dash app in debug mode.
         
     Raises:
@@ -203,9 +187,6 @@ def visualize(cf_object: any):
     elif isinstance(cf_object, CFOrientation):
         title = "Orientation Visualization"
         elements = _orientation_to_cytoscape_elements(cf_object)
-    elif isinstance(cf_object, CFiringScript):
-        title = "Firing Script Visualization"
-        elements = _firingscript_to_cytoscape_elements(cf_object)
     else:
         raise TypeError(f"Visualization not supported for object of type {type(cf_object).__name__}")
         

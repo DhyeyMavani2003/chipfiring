@@ -31,7 +31,7 @@ class DharAlgorithm:
         True
     """
 
-    def __init__(self, graph: CFGraph, initial_divisor: CFDivisor, q_name: str):
+    def __init__(self, graph: CFGraph, initial_divisor: CFDivisor, q_name: str, visualizer=None):
         """Initialize Dhar's Algorithm for finding a maximal legal firing set.
 
         Args:
@@ -39,6 +39,7 @@ class DharAlgorithm:
             initial_divisor: A CFDivisor object representing the initial chip configuration on G.
                              This divisor will be modified by the algorithm (e.g., by send_debt_to_q).
             q_name: The name of the distinguished vertex (fire source).
+            visualizer: An optional EWDVisualizer instance for visualization.
 
         Raises:
             ValueError: If q_name is not found in the graph.
@@ -71,6 +72,7 @@ class DharAlgorithm:
         # Operations on self.configuration (like borrowing) will modify initial_divisor.
         self.configuration = CFConfig(initial_divisor, q_name)
         self.q_vertex = self.configuration.q_vertex # Convenience alias
+        self.visualizer = visualizer
 
     def outdegree_S(self, vertex: Vertex, S: Set[Vertex]) -> int:
         """
@@ -165,6 +167,8 @@ class DharAlgorithm:
         for v_name in vertices_to_process_names:
             while self.configuration.get_degree_at(v_name) < 0:
                 self.configuration.borrowing_move(v_name)
+                if self.visualizer:
+                    self.visualizer.add_step(self.configuration.divisor, CFOrientation(self.graph, []), q=self.q_vertex.name, description=f"{v_name} performs a borrowing move.", source_function="Sending debt to q...")
 
 
     def run(self) -> Tuple[Set[str], CFOrientation]:
@@ -204,6 +208,9 @@ class DharAlgorithm:
                                                                     
         orientation = CFOrientation(self.graph, []) # Initialize with no specific orientations
         
+        if self.visualizer:
+            self.visualizer.add_step(self.configuration.divisor, orientation, set(v for v in unburnt_vertex_names), q=self.q_vertex.name, description="Starting burn process.", source_function="Dhar (run)")
+
         changed = True
         while changed:
             changed = False
@@ -230,7 +237,10 @@ class DharAlgorithm:
                             if neighbor_obj in burnt_vertices and neighbor_obj != v_obj: 
                                 if v_obj in self.graph.graph.get(neighbor_obj, {}): 
                                      orientation.set_orientation(neighbor_obj, v_obj, OrientationState.SOURCE_TO_SINK)
-        
+                    
+                    if self.visualizer:
+                        self.visualizer.add_step(self.configuration.divisor, orientation, set(v for v in unburnt_vertex_names), q=self.q_vertex.name, description=f"Vertex {v_name} burns.", source_function="Dhar (run)")
+
         return unburnt_vertex_names, orientation
 
     def get_maximal_legal_firing_set(self) -> Set[str]:

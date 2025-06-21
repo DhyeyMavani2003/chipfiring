@@ -1,12 +1,11 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from chipfiring import CFGraph, Vertex, CFDivisor, CFOrientation, CFiringScript
+from chipfiring import CFGraph, Vertex, CFDivisor, CFOrientation
 from chipfiring.CFVisualizer import (
     _graph_to_cytoscape_elements,
     _divisor_to_cytoscape_elements,
     _orientation_to_cytoscape_elements,
-    _firingscript_to_cytoscape_elements,
     visualize,
     BASE_STYLESHEET
 )
@@ -50,7 +49,6 @@ def test_graph_to_cytoscape_single_node_no_edges():
     node = elements[0]
     assert node['data']['id'] == V1.name
     assert node['data']['label'] == V1.name
-    assert node['data']['firing_type'] == 'neutral'
     assert node['data']['divisor_sign'] == 'neutral_divisor_sign'
 
 def test_graph_to_cytoscape_simple_graph(simple_graph):
@@ -67,7 +65,6 @@ def test_graph_to_cytoscape_simple_graph(simple_graph):
     assert node_names == {V1.name, V2.name}
     for node in nodes:
         assert node['data']['label'] == node['data']['id']
-        assert node['data']['firing_type'] == 'neutral'
         assert node['data']['divisor_sign'] == 'neutral_divisor_sign'
 
     # Check edge
@@ -248,90 +245,25 @@ def test_orientation_to_cytoscape_no_orientation_defaults():
     assert edge['data']['arrow_shape'] == 'none'
 
 def test_orientation_to_cytoscape_parallel_edges_behavior(orientation_with_parallel_edges):
-    """
-    Tests how orientation is applied to parallel edges.
-    CFOrientation.get_orientation(u,v) returns a single orientation for the (u,v) pair.
-    _orientation_to_cytoscape_elements applies this to ALL cytoscape edges generated for that pair.
-    """
     elements = _orientation_to_cytoscape_elements(orientation_with_parallel_edges)
     edges = [el for el in elements if 'source' in el['data']]
-    
     v1_v2_edges = [e for e in edges if V1.name in e['data']['id'] and V2.name in e['data']['id']]
-    v2_v3_edges = [e for e in edges if V2.name in e['data']['id'] and V3.name in e['data']['id']]
+    v2_v3_edge = next(e for e in edges if V2.name in e['data']['id'] and V3.name in e['data']['id'])
 
     assert len(v1_v2_edges) == 2
-    assert len(v2_v3_edges) == 1
-
-    # V1-V2 edges were oriented V1 -> V2 by set_orientation(V1, V2, ...)
-    # All parallel edges between V1 and V2 should reflect this one orientation.
+    
+    # All V1-V2 edges will be V1->V2 due to CFOrientation behavior with multi-edges
     for edge in v1_v2_edges:
         assert edge['data']['source'] == V1.name
         assert edge['data']['target'] == V2.name
         assert edge['data']['oriented']
         assert edge['data']['arrow_shape'] == 'triangle'
 
-    # V2-V3 edge was oriented V2 -> V3
-    edge_v2_v3 = v2_v3_edges[0]
-    assert edge_v2_v3['data']['source'] == V2.name
-    assert edge_v2_v3['data']['target'] == V3.name
-    assert edge_v2_v3['data']['oriented']
-    assert edge_v2_v3['data']['arrow_shape'] == 'triangle' 
-
-# Tests for _firingscript_to_cytoscape_elements
-
-@pytest.fixture
-def simple_firingscript(simple_graph):
-    fs = CFiringScript(simple_graph)
-    fs.set_firings(V1.name, 2)
-    fs.set_firings(V2.name, -1)
-    return fs
-
-@pytest.fixture
-def firingscript_with_zero_unspecified(graph_with_three_vertices_two_edges):
-    fs = CFiringScript(graph_with_three_vertices_two_edges)
-    fs.set_firings(V1.name, 3) # Positive
-    fs.set_firings(V2.name, 0)  # Neutral
-    # V3 remains unspecified, should default to 0 and neutral
-    return fs
-
-def test_firingscript_to_cytoscape_elements(simple_firingscript):
-    elements = _firingscript_to_cytoscape_elements(simple_firingscript)
-    nodes = {el['data']['id']: el['data'] for el in elements if 'source' not in el['data']}
-    edges = [el for el in elements if 'source' in el['data']]
-
-    assert len(nodes) == 2
-    assert len(edges) == 1
-
-    # Check V1
-    assert nodes[V1.name]['label'] == f"{V1.name}\n2"
-    assert nodes[V1.name]['firing_type'] == 'firing'
-    
-    # Check V2
-    assert nodes[V2.name]['label'] == f"{V2.name}\n-1"
-    assert nodes[V2.name]['firing_type'] == 'borrowing'
-
-    # Check edge
-    for edge in edges:
-        assert edge['data']['arrow_shape'] == 'none'
-        assert not edge['data']['oriented']
-
-def test_firingscript_to_cytoscape_zero_and_unspecified(firingscript_with_zero_unspecified):
-    elements = _firingscript_to_cytoscape_elements(firingscript_with_zero_unspecified)
-    nodes = {el['data']['id']: el['data'] for el in elements if 'source' not in el['data']}
-    
-    assert len(nodes) == 3
-
-    # V1 (Positive)
-    assert nodes[V1.name]['label'] == f"{V1.name}\n3"
-    assert nodes[V1.name]['firing_type'] == 'firing'
-
-    # V2 (Neutral from 0)
-    assert nodes[V2.name]['label'] == f"{V2.name}\n0"
-    assert nodes[V2.name]['firing_type'] == 'neutral'
-
-    # V3 (Neutral from unspecified, defaults to 0)
-    assert nodes[V3.name]['label'] == f"{V3.name}\n0"
-    assert nodes[V3.name]['firing_type'] == 'neutral' 
+    # V2-V3 edge will be V2->V3
+    assert v2_v3_edge['data']['source'] == V2.name
+    assert v2_v3_edge['data']['target'] == V3.name
+    assert v2_v3_edge['data']['oriented']
+    assert v2_v3_edge['data']['arrow_shape'] == 'triangle'
 
 # Tests for visualize function
 
@@ -425,23 +357,6 @@ def test_visualize_cforientation(
     mock_orientation_to_elements.assert_called_once_with(simple_orientation)
     mock_dash.assert_called_once_with("chipfiring.CFVisualizer")
     assert any(child.children == "Orientation Visualization" for child in mock_app_instance.layout.children if hasattr(child, 'children') and isinstance(child.children, str))
-    mock_app_instance.run.assert_called_once_with(debug=False)
-
-@patch('chipfiring.CFVisualizer.Dash')
-@patch('chipfiring.CFVisualizer.cyto.Cytoscape')
-@patch('chipfiring.CFVisualizer._firingscript_to_cytoscape_elements')
-def test_visualize_cfiringscript(
-    mock_script_to_elements, mock_cytoscape, mock_dash, simple_firingscript
-):
-    mock_app_instance = MagicMock()
-    mock_dash.return_value = mock_app_instance
-    mock_script_to_elements.return_value = [{'data': {'id': 'test_script'}}]
-
-    visualize(simple_firingscript)
-
-    mock_script_to_elements.assert_called_once_with(simple_firingscript)
-    mock_dash.assert_called_once_with("chipfiring.CFVisualizer")
-    assert any(child.children == "Firing Script Visualization" for child in mock_app_instance.layout.children if hasattr(child, 'children') and isinstance(child.children, str))
     mock_app_instance.run.assert_called_once_with(debug=False)
 
 def test_visualize_unsupported_type():
