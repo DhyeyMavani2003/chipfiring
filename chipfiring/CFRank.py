@@ -73,7 +73,7 @@ class CFRank:
 
         # 1. Call EWD on the divisor; if unwinnable, return -1
         self.log("Step 1: Checking initial winnability through EWD algorithm...")
-        initial_winnable, _, _ = EWD(graph, divisor, optimized=True)
+        initial_winnable, _, _, _ = EWD(graph, divisor, optimized=True)
         if not initial_winnable:
             self.log("Initial divisor is not winnable. So, rank: -1")
             self._rank_value = -1
@@ -189,7 +189,7 @@ class CFRank:
                 self.log(f"  Starting sequential processing for k={k}...")
                 for sub_divisor in generate_valid_test_divisors_for_current_k():
                     num_divisors_processed_for_k += 1
-                    winnable_res, _, _ = EWD(
+                    winnable_res, _, _, _ = EWD(
                         sub_divisor.graph, sub_divisor, optimized=True
                     )
                     self.log(

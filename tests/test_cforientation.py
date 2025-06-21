@@ -435,7 +435,7 @@ def test_ewd_with_orientation_tracking(dhar_test_graph):
     config = CFDivisor(dhar_test_graph, [("A", 3), ("B", -1), ("C", 0), ("D", 0)])
 
     # Run EWD
-    is_winnable, q_reduced, orientation = EWD(dhar_test_graph, config)
+    is_winnable, q_reduced, orientation, _ = EWD(dhar_test_graph, config)
 
     # Check that the orientation is full
     assert orientation.check_fullness()
@@ -460,7 +460,7 @@ def test_ewd_orientation_fire_spread(dhar_test_graph):
     config = CFDivisor(dhar_test_graph, [("A", 2), ("B", 0), ("C", 1), ("D", 2)])
 
     # Run EWD
-    _, _, orientation = EWD(dhar_test_graph, config)
+    _, _, orientation, _ = EWD(dhar_test_graph, config)
 
     assert orientation.get_orientation("A", "B") == ("B", "A")
     assert orientation.get_orientation("A", "C") == ("C", "A")

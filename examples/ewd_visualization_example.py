@@ -13,10 +13,11 @@ def main():
 
     # Run the EWD algorithm with visualization enabled.
     # The EWD function will now handle the visualization directly.
-    is_winnable, _, _ = EWD(graph, divisor, optimized=True, visualize=True)
+    is_winnable, _, _, visualizer = EWD(graph, divisor, optimized=True, visualize=True)
 
-    # This print statement will execute after you close the visualization window.
     print(f"Is the divisor winnable? {is_winnable}")
+
+    visualizer.visualize()
 
 if __name__ == "__main__":
     main()

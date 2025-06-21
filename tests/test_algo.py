@@ -41,7 +41,7 @@ def test_ewd_example(sequence_test_graph, sequence_test_initial_divisor):
     expected_q_reduced_divisor = CFDivisor(
         sequence_test_graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)]
     )
-    is_win, reduced_div, orientation = EWD(
+    is_win, reduced_div, orientation, _ = EWD(
         sequence_test_graph, sequence_test_initial_divisor
     )
     assert is_win == expected_result
@@ -55,10 +55,10 @@ def test_ewd_example_optimized(sequence_test_graph, sequence_test_initial_diviso
     expected_q_reduced_divisor = CFDivisor(
         sequence_test_graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)]
     )
-    is_win, reduced_div, orientation = EWD(
+    is_win, reduced_div, orientation, _ = EWD(
         sequence_test_graph, sequence_test_initial_divisor, optimized=True
     )
-    is_win_non_optimized, reduced_div_non_optimized, orientation_non_optimized = EWD(
+    is_win_non_optimized, reduced_div_non_optimized, orientation_non_optimized, _ = EWD(
         sequence_test_graph, sequence_test_initial_divisor, optimized=False
     )
     assert is_win == expected_result
@@ -78,10 +78,10 @@ def test_ewd_optimized_example(sequence_test_graph):
     extremal_divisor2 = CFDivisor(
         sequence_test_graph, [("Alice", 4), ("Bob", -3), ("Charlie", 4), ("Elise", -1)]
     )
-    is_win1, reduced_div1, orientation1 = EWD(
+    is_win1, reduced_div1, orientation1, _ = EWD(
         sequence_test_graph, extremal_divisor1, optimized=True
     )
-    is_win2, reduced_div2, orientation2 = EWD(
+    is_win2, reduced_div2, orientation2, _ = EWD(
         sequence_test_graph, extremal_divisor2, optimized=True
     )
     assert is_win1 == expected_result1
