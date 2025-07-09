@@ -10,8 +10,13 @@ This section contains the complete API documentation for the chipfiring package.
    graph
    divisor
    laplacian
+   config
    orientation
    firing_script
    algo
+   greedy_algorithm
+   dhar_algorithm
    rank
+   visualize
+   data_processor
    gonality_game

@@ -61,4 +61,4 @@ __all__ = [
     "batch_gonality_analysis",
 ]
 
-__version__ = "0.1.2"
+__version__ = "1.0.0"
