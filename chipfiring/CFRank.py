@@ -9,14 +9,11 @@ The implementation uses the Efficient Winnability Detection (EWD) algorithm as a
 block and provides both standard and optimized calculation modes.
 """
 from __future__ import annotations
-from .CFGraph import Vertex
 from .CFDivisor import CFDivisor
 from .CFOrientation import CFOrientation
-from .algo import EWD, is_winnable
-
+from .algo import EWD
 import itertools
 from multiprocessing import Pool, cpu_count
-from typing import List, Dict, Tuple
 from collections import Counter
 
 

@@ -215,16 +215,16 @@ def test_rank_pflueger_counterexample():
     """
 
     def chainOfCycles(cycle_lengths: list[int]):
-        vertices = {f"z_{i+1}_{j}" for i, l in enumerate(cycle_lengths) for j in range(l)}
+        vertices = {f"z_{i+1}_{j}" for i, length in enumerate(cycle_lengths) for j in range(length)}
         edges = [
-            (f"z_{i+1}_{j}", f"z_{i+1}_{(j+1)%l}", 1)
-            for i, l in enumerate(cycle_lengths)
-            for j in range(l)
+            (f"z_{i+1}_{j}", f"z_{i+1}_{(j+1)%length}", 1)
+            for i, length in enumerate(cycle_lengths)
+            for j in range(length)
         ]
-        for i, l in enumerate(cycle_lengths):
+        for i, length in enumerate(cycle_lengths):
             if i == 0:
                 continue
-            edges.append((f"z_{i}_0", f"z_{i+1}_{l-1}", 1))
+            edges.append((f"z_{i}_0", f"z_{i+1}_{length-1}", 1))
 
         return CFGraph(vertices, edges)
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 from .CFGraph import CFGraph
 from .CFDivisor import CFDivisor
-from .CFLaplacian import CFLaplacian
 from .CFDhar import DharAlgorithm
 from .CFOrientation import CFOrientation
 from typing import Tuple, Optional
