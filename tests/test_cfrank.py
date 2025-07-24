@@ -4,6 +4,7 @@ from chipfiring.CFGraph import CFGraph
 from chipfiring.CFDivisor import CFDivisor
 from chipfiring.CFOrientation import CFOrientation
 from chipfiring.algo import is_winnable
+from typing import List
 
 
 @pytest.fixture
@@ -214,7 +215,7 @@ def test_rank_pflueger_counterexample():
     This test ensures that the bug discovered is caught in the future.
     """
 
-    def chainOfCycles(cycle_lengths: list[int]):
+    def chainOfCycles(cycle_lengths: List[int]):
         vertices = {f"z_{i+1}_{j}" for i, length in enumerate(cycle_lengths) for j in range(length)}
         edges = [
             (f"z_{i+1}_{j}", f"z_{i+1}_{(j+1)%length}", 1)
