@@ -208,6 +208,51 @@ def test_rank_sequence_test_graph(sequence_test_initial_divisor):
     assert rank(sequence_test_initial_divisor).rank == 0
 
 
+def test_rank_pflueger_counterexample():
+    """
+    Test the rank calculation for the counterexample provided by Professor Pflueger.
+    This test ensures that the bug discovered is caught in the future.
+    """
+
+    def chainOfCycles(cycle_lengths: list[int]):
+        vertices = {f"z_{i+1}_{j}" for i, l in enumerate(cycle_lengths) for j in range(l)}
+        edges = [
+            (f"z_{i+1}_{j}", f"z_{i+1}_{(j+1)%l}", 1)
+            for i, l in enumerate(cycle_lengths)
+            for j in range(l)
+        ]
+        for i, l in enumerate(cycle_lengths):
+            if i == 0:
+                continue
+            edges.append((f"z_{i}_0", f"z_{i+1}_{l-1}", 1))
+
+        return CFGraph(vertices, edges)
+
+    # The counterexample graph
+    G = chainOfCycles([3, 3, 4, 3, 3])
+
+    def Ddeg(v):
+        if str(v) == "z_1_0":
+            return 3
+        else:
+            return 0
+
+    def Edeg(v):
+        if str(v) == "z_5_0":
+            return 1
+        else:
+            return 0
+
+    D = CFDivisor(G, [(str(v), Ddeg(v)) for v in G.vertices])
+    E = CFDivisor(G, [(str(v), Edeg(v)) for v in G.vertices])
+
+    # The rank of D should be 0, not 1.
+    assert rank(D).rank == 0
+
+    # The divisor D-E should not be winnable.
+    assert not is_winnable(D - E)
+
+
 def test_rank_sequence_test_graph_riemann_roch_theorem(
     sequence_test_graph, sequence_test_initial_divisor
 ):

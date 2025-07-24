@@ -339,6 +339,15 @@ class CFLaplacian:
                 # reduced_matrix[v_row] is a Dict[Vertex, int]
                 Lq_np[r_idx, c_idx] = reduced_matrix[v_row].get(v_col, 0)
 
+        # Check for singularity before attempting to invert
+        if np.linalg.det(Lq_np) == 0:
+            # If the matrix is singular, this optimization cannot be applied.
+            # Return the original divisor's degrees for the reduced vertices.
+            return [
+                (v.name, initial_degrees_on_reduced_vertices.get(v, 0))
+                for v in ordered_reduced_vertices
+            ]
+
         # 2. Create vector c_np from divisor.degrees for ordered_reduced_vertices
         c_np = np.zeros(num_reduced_vertices, dtype=float)
         for idx, v_obj in enumerate(ordered_reduced_vertices):

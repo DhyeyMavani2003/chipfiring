@@ -343,7 +343,7 @@ class CFGraph:
             >>> graph.get_genus()
             2
         """
-        return self.total_valence - len(self.graph) + 1
+        return self.total_valence - len(self.vertices) + 1
 
     def remove_vertex(self, vertex_name: str) -> "CFGraph":
         """Create a copy of the graph without the specified vertex.

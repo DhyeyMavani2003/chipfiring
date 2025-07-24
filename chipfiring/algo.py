@@ -73,7 +73,7 @@ def EWD(
 
     # Run EWD in optimized mode if requested.
     # With this mode, we use theorems, lemmas, and properties to determine winnability if possible.
-    if optimized:
+    if optimized: 
         # If total degree is negative, return False
         total_degree = divisor.get_total_degree()
         if total_degree < 0:
@@ -108,6 +108,9 @@ def EWD(
         visualizer.add_step(divisor, CFOrientation(graph, []), q=q.name, description="Initial state with q selected.", source_function="EWD")
 
     # Apply the reduced matrix optimization to the divisor with respect to q (if optimized is True)
+    """
+    # This is the code for the reduced matrix optimization.
+    # It is not used in the optimized mode because it is experimental and not fully stress tested.
     if optimized:
         laplacian = CFLaplacian(graph)
         reduced_laplacian = laplacian.get_reduced_matrix(q)
@@ -122,7 +125,8 @@ def EWD(
 
         if visualizer:
             visualizer.add_step(divisor, CFOrientation(graph, []), q=q.name, description="", source_function="EWD Optimized Mode: Reduced Matrix Optimization")
-
+    """
+    
     # Create a DharAlgorithm instance
     dhar = DharAlgorithm(graph, divisor, q.name, visualizer)
 

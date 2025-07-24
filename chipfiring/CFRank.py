@@ -15,8 +15,9 @@ from .CFOrientation import CFOrientation
 from .algo import EWD, is_winnable
 
 import itertools
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from typing import List, Dict, Tuple
+from collections import Counter
 
 
 class CFRank:
@@ -73,7 +74,7 @@ class CFRank:
 
         # 1. Call EWD on the divisor; if unwinnable, return -1
         self.log("Step 1: Checking initial winnability through EWD algorithm...")
-        initial_winnable, _, _, _ = EWD(graph, divisor, optimized=True)
+        initial_winnable, _, _, _ = EWD(graph, divisor, optimized=False)
         if not initial_winnable:
             self.log("Initial divisor is not winnable. So, rank: -1")
             self._rank_value = -1
@@ -114,66 +115,60 @@ class CFRank:
         self.log("Step 2: Iteratively removing k chips and checking winnability.")
         while True:
             self.log(f"\n-- Current k: {k} --")
+
+            def generate_sub_divisors_for_k():
+                """
+                Generates all divisors D-E where E is an effective divisor of degree k.
+                """
+                # Create all effective divisors E of degree k.
+                # An effective divisor is a sum of vertices, so we can get all of them
+                # by taking combinations with replacement of the vertices.
+                for combination_of_vertices in itertools.combinations_with_replacement(
+                    sorted_vertices, k
+                ):
+                    vertex_counts = Counter(v.name for v in combination_of_vertices)
+
+                    # Create the divisor E to subtract
+                    subtraction_divisor = CFDivisor(
+                        graph, list(vertex_counts.items())
+                    )
+
+                    # Return D - E
+                    yield self._divisor - subtraction_divisor
+
             any_unwinnable_found_for_k = False
-            processed_at_least_one_valid_divisor = False
             num_divisors_processed_for_k = 0
 
-            # Nested generator for valid divisors for the current k
-            def generate_valid_test_divisors_for_current_k():
-                nonlocal processed_at_least_one_valid_divisor, num_divisors_processed_for_k  # To modify the flag in the outer scope
-                for (
-                    chosen_vertices_to_decrement_combo
-                ) in itertools.combinations_with_replacement(sorted_vertices, k):
-                    chips_to_remove_map: Dict[Vertex, int] = {
-                        v: 0 for v in sorted_vertices
-                    }
-                    for v_to_decrement in chosen_vertices_to_decrement_combo:
-                        chips_to_remove_map[v_to_decrement] += 1
-
-                    new_degrees_list: List[Tuple[str, int]] = []
-                    for v_obj in sorted_vertices:
-                        original_chips_at_v = divisor.get_degree(
-                            v_obj.name
-                        )  # Uses the original divisor
-                        num_chips_to_take = chips_to_remove_map[v_obj]
-                        new_degrees_list.append(
-                            (v_obj.name, original_chips_at_v - num_chips_to_take)
-                        )
-
-                    subtracted_divisor = CFDivisor(graph, new_degrees_list)
-
-                    if subtracted_divisor.get_total_degree() >= 0:
-                        processed_at_least_one_valid_divisor = (
-                            True  # A valid divisor is about to be yielded
-                        )
-                        yield subtracted_divisor
+            def _check_winnability(sub_divisor):
+                nonlocal num_divisors_processed_for_k
+                num_divisors_processed_for_k += 1
+                winnable, _, _, _ = EWD(
+                    sub_divisor.graph, sub_divisor, optimized=False
+                )
+                if not winnable:
+                    # Log from the worker process if an unwinnable divisor is found
+                    # This might not be perfectly sequential in the main log, but it's informative
+                    print(
+                        f"    Found unwinnable divisor for k={k}. Terminating pool for this k."
+                    )
+                return winnable
 
             try:
                 self.log(f"  Starting parallel processing for k={k}...")
-                # NOTE: Using Pool inside a loop like this creates and destroys pools repeatedly.
-                # For many iterations of k, it might be more efficient to manage a single pool.
-                with Pool() as pool:
+                with Pool(processes=cpu_count()) as pool:
+                    # The number of divisors can be large, so use imap_unordered for lazy evaluation
                     results_iterator = pool.imap_unordered(
-                        is_winnable,  # This function now needs to exist or be defined for the pool to call
-                        generate_valid_test_divisors_for_current_k(),  # Call the generator
+                        _check_winnability,
+                        generate_sub_divisors_for_k(),
                     )
 
-                    # Need to map results back to divisors if we want to print the divisor itself
-                    # For now, we just get winnability. To print divisor, _is_winnable_for_rank would need to return (divisor_str, winnable)
-                    # Or, re-generate/pass the divisors along with the winnability check call if printing is critical here.
-                    for winnable_result in results_iterator:
-                        num_divisors_processed_for_k += 1
-                        self.log(
-                            f"    Processed (k={k}, item {num_divisors_processed_for_k}): Winnable -> {winnable_result}"
-                        )
-                        if not winnable_result:
+                    for i, winnable_res in enumerate(results_iterator):
+                        self.log(f"    Processed (k={k}, item {i+1}): Winnable -> {winnable_res}")
+                        if not winnable_res:
                             any_unwinnable_found_for_k = True
-                            self.log(
-                                f"    Found unwinnable divisor for k={k}. Terminating pool for this k."
-                            )
-                            pool.terminate()  # Stop other tasks
-                            pool.join()  # Wait for pool to clean up
+                            pool.terminate()  # Stop processing further items for this k
                             break
+
                 self.log(f"  Parallel processing finished for k={k}.")
 
             except Exception as e:
@@ -181,16 +176,13 @@ class CFRank:
                     f"  Multiprocessing failed for k={k}: {e}. Falling back to sequential execution."
                 )
                 any_unwinnable_found_for_k = False  # Reset for sequential run
-                processed_at_least_one_valid_divisor = (
-                    False  # Reset for sequential run, generator will set it
-                )
                 num_divisors_processed_for_k = 0  # Reset for sequential run
 
                 self.log(f"  Starting sequential processing for k={k}...")
-                for sub_divisor in generate_valid_test_divisors_for_current_k():
+                for sub_divisor in generate_sub_divisors_for_k():
                     num_divisors_processed_for_k += 1
                     winnable_res, _, _, _ = EWD(
-                        sub_divisor.graph, sub_divisor, optimized=True
+                        sub_divisor.graph, sub_divisor, optimized=False
                     )
                     self.log(
                         f"    Processed (k={k}, item {num_divisors_processed_for_k}): Divisor {sub_divisor.degrees_to_str()} -> Winnable: {winnable_res}"
@@ -202,13 +194,6 @@ class CFRank:
                         )
                         break
                 self.log(f"  Sequential processing finished for k={k}.")
-
-            if not processed_at_least_one_valid_divisor:
-                self.log(
-                    f"  For k={k}, no valid test divisors were generated (e.g., k too large). Rank: {k-1}"
-                )
-                self._rank_value = k - 1
-                return self
 
             if any_unwinnable_found_for_k:
                 self.log(
@@ -252,16 +237,12 @@ def rank(divisor: CFDivisor, optimized: bool = False) -> CFRank:
     The rank is computed as follows:
 
     1. If EWD(divisor) is not winnable, return -1.
-    2. Starting with k = 1, consider all possible ways to remove k chips from
-       the divisor such that the resulting divisor is effective (has non-negative chips).
-    3. For each such resulting divisor, call EWD. These calls are done in parallel for a given k.
-    4. If all EWD calls for the current k return winnable, increment k and repeat step 2.
-    5. Otherwise (if any EWD call returns not winnable for the current k), return k - 1.
-    6. If for a given k, no valid (effective) divisors can be formed by removing k chips (e.g., k is
-       larger than the total number of chips in the original divisor), then all (zero) such ways are
-       considered "winnable", and the rank is k-1. This effectively means the rank is the
-       largest k' (equal to the current k-1) for which all removals were winnable.
-
+    2. Starting with k = 1, consider all effective divisors E of degree k.
+    3. For each such divisor E, check if D-E is winnable using the EWD algorithm. These checks
+       are performed in parallel for a given k.
+    4. If all checks for the current k are winnable, increment k and repeat step 2.
+    5. Otherwise (if any check for D-E returns not winnable), the rank is k-1.
+    
     Args:
         divisor: The CFDivisor object for which to calculate the rank.
         optimized: Whether to use optimized rank calculation. (default: False)
