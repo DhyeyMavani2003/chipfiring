@@ -258,3 +258,25 @@ def rank(divisor: CFDivisor, optimized: bool = False) -> CFRank:
         >>> print(result.get_log_summary())
     """
     return CFRank()._calculate_rank(divisor, optimized)
+
+
+def r(divisor : CFDivisor, optimized: bool = False) -> int:
+    """
+    Calculate the rank of the given divisor, as in the funciton "rank." This funcion returns only the
+    rank itself, as an integer, without the logs. Implemented as a wrapper around "rank."
+
+    Args:
+        divisor: The CFDivisor object for which to calculate the rank.
+        optimized: Whether to use optimized rank calculation. (default: False)
+                   If True, theoretical shortcuts like Corollary 4.4.3 from
+                   Dhyey Mavani's thesis will be used when applicable to speed up
+                   calculations. The log will indicate when these optimizations are used.
+
+    Returns:
+        int: The rank of the divisor.
+
+    Example:
+        >>> result = r(divisor)
+        >>> print(f"Rank: {result}")
+    """
+    return CFRank()._calculate_rank(divisor, optimized).rank

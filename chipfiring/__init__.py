@@ -3,7 +3,7 @@ Chip firing package for simulating graph-based chip firing games.
 """
 from __future__ import annotations
 from .CFGraph import CFGraph, Vertex, Edge
-from .CFDivisor import CFDivisor
+from .CFDivisor import CFDivisor, chip
 from .CFConfig import CFConfig
 from .CFLaplacian import CFLaplacian
 from .CFOrientation import CFOrientation, OrientationState
@@ -11,7 +11,7 @@ from .CFiringScript import CFiringScript
 from .CFGreedyAlgorithm import GreedyAlgorithm
 from .CFDhar import DharAlgorithm
 from .algo import EWD, linear_equivalence, is_winnable, q_reduction, is_q_reduced
-from .CFRank import rank
+from .CFRank import rank, r
 from .CFDataProcessor import CFDataProcessor
 from .CFEWDVisualizer import EWDVisualizer
 from .CFVisualizer import visualize
@@ -30,6 +30,7 @@ __all__ = [
     "CFConfig",
     "CFLaplacian",
     "CFOrientation",
+    "chip",
     "OrientationState",
     "CFiringScript",
     "DharAlgorithm",
@@ -40,6 +41,7 @@ __all__ = [
     "q_reduction",
     "is_q_reduced",
     "rank",
+    "r",
     "CFDataProcessor",
     "EWDVisualizer",
     "visualize",

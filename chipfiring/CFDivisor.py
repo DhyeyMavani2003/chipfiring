@@ -634,3 +634,104 @@ class CFDivisor:
             new_degrees_list.append((v_obj.name, deg1 - deg2))
 
         return CFDivisor(self.graph, new_degrees_list)
+
+    def __neg__(self) -> "CFDivisor":
+        """Return the additive inverse of the divisor (negate all degrees).
+
+        Returns:
+            A new CFDivisor with all degrees negated.
+
+        Example:
+            >>> vertices = {"A", "B"}
+            >>> edges = [("A", "B", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> divisor = CFDivisor(graph, [("A", 3), ("B", -2)])
+            >>> neg_divisor = -divisor
+            >>> neg_divisor.get_degree("A")
+            -3
+            >>> neg_divisor.get_degree("B")
+            2
+        """
+        neg_degrees = [(v.name, -deg) for v, deg in self.degrees.items()]
+        return CFDivisor(self.graph, neg_degrees)
+    
+    def __rmul__(self, n: int) -> "CFDivisor":
+        """Multiply all vertex degrees by an integer n.
+
+        Args:
+            n: The integer to multiply each degree by.
+
+        Returns:
+            A new CFDivisor with all degrees multiplied by n.
+
+        Raises:
+            TypeError: If n is not an integer.
+
+        Example:
+            >>> vertices = {"A", "B"}
+            >>> edges = [("A", "B", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> divisor = CFDivisor(graph, [("A", 2), ("B", -3)])
+            >>> double_divisor = 2 * divisor
+            >>> double_divisor.get_degree("A")
+            4
+            >>> double_divisor.get_degree("B")
+            -6
+        """
+        if not isinstance(n, int):
+            raise TypeError("Can only multiply a CFDivisor by an integer.")
+        new_degrees = [(v.name, n * deg) for v, deg in self.degrees.items()]
+        return CFDivisor(self.graph, new_degrees)
+
+    def __str__(self):
+        """
+        Returns a string representation of the divisor, displaying each vertex and its degree in a human-readable format.
+        The output lists all nonzero degree vertices in sorted order. Positive degrees are prefixed with '+' (except the first term), 
+        negative degrees with '-', and degree 1 or -1 omits the number. Each term is shown as (vertex_name).
+        If all degrees are zero, returns "0".
+        Returns:
+            str: The formatted string representation of the divisor.
+        """
+        
+        res = ""
+        piles = list(self.degrees.items())
+        piles.sort()
+        for v,deg in piles:
+            if deg == 0: continue
+            if len(res) > 0 and deg > 0:
+                res += "+"
+            if deg == -1:
+                res += "-"
+            elif deg != 1:
+                res += f"{deg}"
+            res += f"({v.name})"
+        if len(res) == 0:
+            return "0"
+        else:
+            return res
+
+    def __repr__(self):
+        """
+        Return a string representation of the divisor. Identical to __str__.
+        Returns:
+            str: The formatted string representation of the divisor.
+        """
+
+        return str(self)
+
+
+def zero(graph: "CFGraph") -> "CFDivisor":
+    """
+    The zero, or additive identity, divisor on the given graph.
+    Returns:
+        CFDivisor: A divisor D with all vertex degrees 0.
+    """
+    return CFDivisor(graph,[])
+            
+def chip(graph: "CFGraph", vertex_name: str) -> "CFDivisor":
+    """
+    Return a degree-1 effective divisor, consisting of a single chip at the specified vertex.
+    Returns:
+        CFDivisor: A divisor D with degree 1 at vertex_name and 0 elsewhere.
+    """
+    return CFDivisor(graph,[(vertex_name,1)])
