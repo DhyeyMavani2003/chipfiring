@@ -697,7 +697,8 @@ class CFDivisor:
         piles = list(self.degrees.items())
         piles.sort()
         for v,deg in piles:
-            if deg == 0: continue
+            if deg == 0: 
+                continue
             if len(res) > 0 and deg > 0:
                 res += "+"
             if deg == -1:
