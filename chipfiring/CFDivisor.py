@@ -689,8 +689,17 @@ class CFDivisor:
         The output lists all nonzero degree vertices in sorted order. Positive degrees are prefixed with '+' (except the first term), 
         negative degrees with '-', and degree 1 or -1 omits the number. Each term is shown as (vertex_name).
         If all degrees are zero, returns "0".
+
         Returns:
             str: The formatted string representation of the divisor.
+
+        Example:
+            >>> vertices = {"A", "B"}
+            >>> edges = [("A","B",1)]
+            >>> graph = CFGraph(vertices,edges)
+            >>> divisor = CFDivisor(graph, [("A",2),("B",-3)])
+            >>> print(divisor)
+            2(A)-3(B)
         """
         
         res = ""
@@ -714,8 +723,17 @@ class CFDivisor:
     def __repr__(self):
         """
         Return a string representation of the divisor. Identical to __str__.
+
         Returns:
             str: The formatted string representation of the divisor.
+
+        Example:
+            >>> vertices = {"A", "B"}
+            >>> edges = [("A","B",1)]
+            >>> graph = CFGraph(vertices,edges)
+            >>> divisor = CFDivisor(graph, [("A",2),("B",-3)])
+            >>> divisor
+            2(A)-3(B)
         """
 
         return str(self)
@@ -724,6 +742,7 @@ class CFDivisor:
 def zero(graph: "CFGraph") -> "CFDivisor":
     """
     The zero, or additive identity, divisor on the given graph.
+
     Returns:
         CFDivisor: A divisor D with all vertex degrees 0.
     """
@@ -732,7 +751,16 @@ def zero(graph: "CFGraph") -> "CFDivisor":
 def chip(graph: "CFGraph", vertex_name: str) -> "CFDivisor":
     """
     Return a degree-1 effective divisor, consisting of a single chip at the specified vertex.
+
     Returns:
         CFDivisor: A divisor D with degree 1 at vertex_name and 0 elsewhere.
+
+    Example:
+        >>> vertices = {"A", "B"}
+        >>> edges = [("A","B",1)]
+        >>> graph = CFGraph(vertices,edges)
+        >>> D = 3*chip(graph,"A") + 2*chip(graph,"B")
+        >>> D
+        3(A)+2(B)
     """
     return CFDivisor(graph,[(vertex_name,1)])
