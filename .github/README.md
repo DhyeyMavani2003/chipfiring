@@ -7,6 +7,7 @@
 [![Documentation Status](https://readthedocs.org/projects/chipfiring/badge/?version=latest)](https://chipfiring.readthedocs.io/en/latest/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/github/DhyeyMavani2003/chipfiring/badge.svg)](https://coveralls.io/github/DhyeyMavani2003/chipfiring?branch=master)
 [![Built with PyPi Template](https://img.shields.io/badge/PyPi_Template-v0.8.0-blue.svg)](https://github.com/christophevg/pypi-template)
+[![PyPI Downloads](https://static.pepy.tech/badge/chipfiring)](https://pepy.tech/projects/chipfiring)
 
 A Python implementation of the chip-firing game (also known as the dollar game) on graphs. This package provides a mathematical framework for studying and experimenting with chip-firing games, with a focus on the dollar game variant.
 
