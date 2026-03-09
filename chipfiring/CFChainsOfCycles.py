@@ -39,21 +39,21 @@ Examples
 
 # Basic chain of cycles, in which the attachment points are always positions -1 and 0, and only cycle lenghts are specifiied.
 def basicChain(cycle_lengths: list[int]):
-    if not all(isinstance(l, int) and l >= 2 for l in cycle_lengths):
+    if not all(isinstance(n, int) and n >= 2 for n in cycle_lengths):
         raise ValueError(
             "All cycle lengths must be integers greater than or equal to 2."
         )
-    vertices = {f"z_{i+1}_{j}" for i, l in enumerate(cycle_lengths) for j in range(l)}
-    # edges = [(f"z_{i+1}_{j}",f"z_{i+1}_{(j+1)%l}",1) for i,l in enumerate(cycle_lengths) for j in range(l)]
+    vertices = {f"z_{i+1}_{j}" for i, n in enumerate(cycle_lengths) for j in range(n)}
+    # edges = [(f"z_{i+1}_{j}",f"z_{i+1}_{(j+1)%n}",1) for i,n in enumerate(cycle_lengths) for j in range(n)]
     edges = []
-    for i, l in enumerate(cycle_lengths):
-        if l == 2:
+    for i, n in enumerate(cycle_lengths):
+        if n == 2:
             edges.append((f"z_{i+1}_0", f"z_{i+1}_1", 2))
         else:
-            for j in range(l):
-                edges.append((f"z_{i+1}_{j}", f"z_{i+1}_{(j+1)%l}", 1))
-    for i, l in enumerate(cycle_lengths):
+            for j in range(n):
+                edges.append((f"z_{i+1}_{j}", f"z_{i+1}_{(j+1)%n}", 1))
+    for i, n in enumerate(cycle_lengths):
         if i == 0:
             continue
-        edges.append((f"z_{i}_0", f"z_{i+1}_{l-1}", 1))
+        edges.append((f"z_{i}_0", f"z_{i+1}_{n-1}", 1))
     return cf.CFGraph(vertices, edges)

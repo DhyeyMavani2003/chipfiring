@@ -33,13 +33,20 @@ def _graph_from_spec(spec: dict, initial_graph: CFGraph) -> CFGraph:
     if not spec or spec.get('type') == 'initial':
         return initial_graph
     t = spec['type']
-    if t == 'tetrahedron': return tetrahedron()
-    if t == 'cube':        return cube()
-    if t == 'octahedron':  return octahedron()
-    if t == 'dodecahedron':return dodecahedron()
-    if t == 'icosahedron': return icosahedron()
-    if t == 'complete':    return complete_graph(spec['n'])
-    if t == 'chain':       return basicChain(spec['lengths'])
+    if t == 'tetrahedron':
+        return tetrahedron()
+    if t == 'cube':
+        return cube()
+    if t == 'octahedron':
+        return octahedron()
+    if t == 'dodecahedron':
+        return dodecahedron()
+    if t == 'icosahedron':
+        return icosahedron()
+    if t == 'complete':
+        return complete_graph(spec['n'])
+    if t == 'chain':
+        return basicChain(spec['lengths'])
     raise ValueError(f"Unknown graph spec type: {t}")
 
 
@@ -600,11 +607,16 @@ def visualize(cf_object: any):
     # ── Helpers shared by multiple callbacks ─────────────────────────────
     def _build_graph(graph_type, param_n, param_cycles):
         """Return a CFGraph from selector values; raises on bad input."""
-        if   graph_type == 'tetrahedron': return tetrahedron()
-        elif graph_type == 'cube':        return cube()
-        elif graph_type == 'octahedron':  return octahedron()
-        elif graph_type == 'dodecahedron':return dodecahedron()
-        elif graph_type == 'icosahedron': return icosahedron()
+        if graph_type == 'tetrahedron':
+            return tetrahedron()
+        elif graph_type == 'cube':
+            return cube()
+        elif graph_type == 'octahedron':
+            return octahedron()
+        elif graph_type == 'dodecahedron':
+            return dodecahedron()
+        elif graph_type == 'icosahedron':
+            return icosahedron()
         elif graph_type == 'complete':
             return complete_graph(int(param_n) if param_n else 5)
         elif graph_type == 'chain':
