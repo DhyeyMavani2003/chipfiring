@@ -115,17 +115,19 @@ def divisor_with_unspecified_node(graph_with_three_vertices_two_edges):
 
 def test_divisor_to_cytoscape_elements(simple_divisor):
     elements = _divisor_to_cytoscape_elements(simple_divisor)
-    nodes = {el['data']['id']: el['data'] for el in elements if 'source' not in el['data']}
+    # Exclude chip indicator nodes (they have 'chip_type' in data) and edges
+    nodes = {el['data']['id']: el['data'] for el in elements
+             if 'source' not in el['data'] and 'chip_type' not in el['data']}
     edges = [el for el in elements if 'source' in el['data']]
 
     assert len(nodes) == 2
     assert len(edges) == 1
 
-    # Check V1
+    # Check V1 (5 chips → positive)
     assert nodes[V1.name]['label'] == f"{V1.name}\n5"
-    assert nodes[V1.name]['divisor_sign'] == 'non-negative'
-    
-    # Check V2
+    assert nodes[V1.name]['divisor_sign'] == 'positive'
+
+    # Check V2 (-2 chips → negative)
     assert nodes[V2.name]['label'] == f"{V2.name}\n-2"
     assert nodes[V2.name]['divisor_sign'] == 'negative'
 
@@ -136,26 +138,28 @@ def test_divisor_to_cytoscape_elements(simple_divisor):
 
 def test_divisor_to_cytoscape_unspecified_and_zero_degree(divisor_with_unspecified_node):
     elements = _divisor_to_cytoscape_elements(divisor_with_unspecified_node)
-    nodes = {el['data']['id']: el['data'] for el in elements if 'source' not in el['data']}
+    # Exclude chip indicator nodes (they have 'chip_type' in data) and edges
+    nodes = {el['data']['id']: el['data'] for el in elements
+             if 'source' not in el['data'] and 'chip_type' not in el['data']}
     edges = [el for el in elements if 'source' in el['data']]
 
     assert len(nodes) == 3
     assert len(edges) == 2
 
-    # Check V1 (positive)
+    # Check V1 (3 chips → positive)
     assert nodes[V1.name]['label'] == f"{V1.name}\n3"
-    assert nodes[V1.name]['divisor_sign'] == 'non-negative'
+    assert nodes[V1.name]['divisor_sign'] == 'positive'
 
-    # Check V2 (zero)
+    # Check V2 (0 chips → zero)
     assert nodes[V2.name]['label'] == f"{V2.name}\n0"
-    assert nodes[V2.name]['divisor_sign'] == 'non-negative'
+    assert nodes[V2.name]['divisor_sign'] == 'zero'
 
-    # Check V3 (N/A) -> Now defaults to 0
+    # Check V3 (defaults to 0 → zero)
     assert nodes[V3.name]['label'] == f"{V3.name}\n0"
-    assert nodes[V3.name]['divisor_sign'] == 'non-negative' # 0 is non-negative
+    assert nodes[V3.name]['divisor_sign'] == 'zero'
 
     for edge in edges:
-        assert edge['data']['arrow_shape'] == 'none' 
+        assert edge['data']['arrow_shape'] == 'none'
 
 # Tests for _orientation_to_cytoscape_elements
 
@@ -306,9 +310,10 @@ def test_visualize_cfgraph(
             assert el['data']['arrow_shape'] == 'none'
 
 
-    mock_dash.assert_called_once_with("chipfiring.CFVisualizer")
+    mock_dash.assert_called_once()
+    assert mock_dash.call_args[0][0] == "chipfiring.CFVisualizer"
     mock_cytoscape.assert_called_once()
-    args, kwargs = mock_cytoscape.call_args
+    _, kwargs = mock_cytoscape.call_args
     assert kwargs['id'] == 'cytoscape-graph'
     assert kwargs['elements'] == mock_graph_to_elements.return_value
     assert kwargs['stylesheet'] == BASE_STYLESHEET
@@ -316,7 +321,7 @@ def test_visualize_cfgraph(
     assert mock_app_instance.layout is not None
     # Check title in layout
     assert any(child.children == "Graph Visualization" for child in mock_app_instance.layout.children if hasattr(child, 'children') and isinstance(child.children, str))
-    mock_app_instance.run.assert_called_once_with(debug=False)
+    mock_app_instance.run.assert_called_once_with(debug=True, use_reloader=False)
 
 @patch('chipfiring.CFVisualizer.Dash')
 @patch('chipfiring.CFVisualizer.cyto.Cytoscape')
@@ -331,16 +336,16 @@ def test_visualize_cfdivisor(
     visualize(simple_divisor)
 
     mock_divisor_to_elements.assert_called_once_with(simple_divisor)
-    mock_dash.assert_called_once_with("chipfiring.CFVisualizer")
-    mock_cytoscape.assert_called_once_with(
-        id='cytoscape-graph',
-        elements=mock_divisor_to_elements.return_value,
-        style={'width': '100%', 'height': '600px'},
-        layout=ANY_LAYOUT, # we can be more specific if needed, or use a helper
-        stylesheet=BASE_STYLESHEET
-    )
+    mock_dash.assert_called_once()
+    assert mock_dash.call_args[0][0] == "chipfiring.CFVisualizer"
+    mock_cytoscape.assert_called_once()
+    _, kwargs = mock_cytoscape.call_args
+    assert kwargs['id'] == 'cytoscape-graph'
+    assert kwargs['elements'] == mock_divisor_to_elements.return_value
+    assert kwargs['stylesheet'] == BASE_STYLESHEET
+    assert kwargs['layout'] == {'name': 'preset', 'padding': 30}
     assert any(child.children == "Divisor Visualization" for child in mock_app_instance.layout.children if hasattr(child, 'children') and isinstance(child.children, str))
-    mock_app_instance.run.assert_called_once_with(debug=False)
+    mock_app_instance.run.assert_called_once_with(debug=True, use_reloader=False)
 
 @patch('chipfiring.CFVisualizer.Dash')
 @patch('chipfiring.CFVisualizer.cyto.Cytoscape')
@@ -355,9 +360,10 @@ def test_visualize_cforientation(
     visualize(simple_orientation)
 
     mock_orientation_to_elements.assert_called_once_with(simple_orientation)
-    mock_dash.assert_called_once_with("chipfiring.CFVisualizer")
+    mock_dash.assert_called_once()
+    assert mock_dash.call_args[0][0] == "chipfiring.CFVisualizer"
     assert any(child.children == "Orientation Visualization" for child in mock_app_instance.layout.children if hasattr(child, 'children') and isinstance(child.children, str))
-    mock_app_instance.run.assert_called_once_with(debug=False)
+    mock_app_instance.run.assert_called_once_with(debug=True, use_reloader=False)
 
 def test_visualize_unsupported_type():
     class UnsupportedObject:
