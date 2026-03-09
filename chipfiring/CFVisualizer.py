@@ -636,8 +636,10 @@ def visualize(cf_object: any):
     def toggle_params(graph_type):
         show_il = {'display': 'inline-block', 'vertical-align': 'middle',
                    'margin-right': '8px'}
-        if graph_type == 'complete': return show_il, _hide
-        if graph_type == 'chain':   return _hide, show_il
+        if graph_type == 'complete':
+            return show_il, _hide
+        if graph_type == 'chain':
+            return _hide, show_il
         return _hide, _hide
 
     # Load graph from selector (divisor-mode button)
