@@ -3,6 +3,9 @@ from unittest.mock import patch, MagicMock
 
 from chipfiring import CFGraph, Vertex, CFDivisor, CFOrientation
 from chipfiring.CFVisualizer import (
+    _graph_from_inputs,
+    _graph_spec_from_inputs,
+    _make_initial_graph_spec,
     _graph_to_cytoscape_elements,
     _divisor_to_cytoscape_elements,
     _orientation_to_cytoscape_elements,
@@ -37,6 +40,24 @@ def graph_with_parallel_edges():
     return CFGraph(vertices, edges)
 
 # Tests for _graph_to_cytoscape_elements
+
+def test_graph_spec_helpers_complete_defaults():
+    spec = _graph_spec_from_inputs('complete', None, None)
+    assert spec == {'type': 'complete', 'n': 5}
+
+    graph, graph_spec = _graph_from_inputs('complete', None, None)
+    assert graph_spec == spec
+    assert len(graph.vertices) == 5
+
+
+def test_graph_spec_helpers_chain_round_trip():
+    graph, graph_spec = _graph_from_inputs('chain', None, '3, 4, 3')
+    assert graph_spec == {'type': 'chain', 'lengths': [3, 4, 3]}
+    assert len(graph.vertices) == 10
+
+
+def test_make_initial_graph_spec():
+    assert _make_initial_graph_spec() == {'type': 'initial'}
 
 def test_graph_to_cytoscape_empty_graph(empty_graph):
     elements = _graph_to_cytoscape_elements(empty_graph)
@@ -321,7 +342,7 @@ def test_visualize_cfgraph(
     assert mock_app_instance.layout is not None
     # Check title in layout
     assert any(child.children == "Graph Visualization" for child in mock_app_instance.layout.children if hasattr(child, 'children') and isinstance(child.children, str))
-    mock_app_instance.run.assert_called_once_with(debug=True, use_reloader=False)
+    mock_app_instance.run.assert_called_once_with(debug=False, use_reloader=False)
 
 @patch('chipfiring.CFVisualizer.Dash')
 @patch('chipfiring.CFVisualizer.cyto.Cytoscape')
@@ -345,7 +366,7 @@ def test_visualize_cfdivisor(
     assert kwargs['stylesheet'] == BASE_STYLESHEET
     assert kwargs['layout'] == {'name': 'preset', 'padding': 30}
     assert any(child.children == "Divisor Visualization" for child in mock_app_instance.layout.children if hasattr(child, 'children') and isinstance(child.children, str))
-    mock_app_instance.run.assert_called_once_with(debug=True, use_reloader=False)
+    mock_app_instance.run.assert_called_once_with(debug=False, use_reloader=False)
 
 @patch('chipfiring.CFVisualizer.Dash')
 @patch('chipfiring.CFVisualizer.cyto.Cytoscape')
@@ -357,7 +378,7 @@ def test_visualize_cforientation(
     mock_dash.return_value = mock_app_instance
     mock_orientation_to_elements.return_value = [{'data': {'id': 'test_orient'}}]
 
-    visualize(simple_orientation)
+    visualize(simple_orientation, debug=True)
 
     mock_orientation_to_elements.assert_called_once_with(simple_orientation)
     mock_dash.assert_called_once()

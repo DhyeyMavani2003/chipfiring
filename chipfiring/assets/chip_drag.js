@@ -27,6 +27,7 @@
 
     var travelCounter = 0;
     var isFiring      = false;
+    var burnAnimation = { runId: 0, timeouts: [] };
 
     // ── Cytoscape instance discovery ──────────────────────────────────────
 
@@ -74,7 +75,16 @@
 
     // ── Vertex state update ────────────────────────────────────────────────
 
-    function updateVertex(cy, nodeId, newChips) {
+    function cancelBurnAnimation() {
+        burnAnimation.runId += 1;
+        burnAnimation.timeouts.forEach(function (timeoutId) { clearTimeout(timeoutId); });
+        burnAnimation.timeouts = [];
+    }
+
+    function updateVertex(cy, nodeId, newChips, options) {
+        if (!options || !options.preserveBurnState) {
+            clearBurnVisuals(cy);
+        }
         var node = cy.getElementById(nodeId);
         node.data('chips_count', newChips);
         node.data('label', nodeId + '\n' + newChips);
@@ -148,13 +158,13 @@
 
         nodeIds.forEach(function (vid) {
             if (deltas[vid] !== undefined) {
-                updateVertex(cy, vid, chipsSnap[vid] + deltas[vid]);
+                updateVertex(cy, vid, chipsSnap[vid] + deltas[vid], { preserveBurnState: true });
             }
         });
 
         if (animations.length === 0) {
             Object.keys(deltas).forEach(function (id) {
-                if (!inSet[id]) updateVertex(cy, id, chipsSnap[id] + deltas[id]);
+                if (!inSet[id]) updateVertex(cy, id, chipsSnap[id] + deltas[id], { preserveBurnState: true });
             });
             isFiring = false;
             return;
@@ -166,7 +176,7 @@
         function onChipArrived() {
             if (++done < total) return;
             Object.keys(deltas).forEach(function (id) {
-                if (!inSet[id]) updateVertex(cy, id, chipsSnap[id] + deltas[id]);
+                if (!inSet[id]) updateVertex(cy, id, chipsSnap[id] + deltas[id], { preserveBurnState: true });
             });
             isFiring = false;
         }
@@ -268,6 +278,7 @@
     // ── Burn visuals ──────────────────────────────────────────────────────
 
     function clearBurnVisuals(cy) {
+        cancelBurnAnimation();
         cy.nodes().filter(function (n) { return !n.data('chip_type'); })
           .removeStyle('overlay-color overlay-opacity overlay-padding');
         cy.edges().removeStyle('line-color width');
@@ -303,15 +314,18 @@
         clearBurnVisuals(cy);
         cy.nodes().unselect();
 
+        var runId = burnAnimation.runId;
         var steps = data.steps;
 
         steps.forEach(function (step, i) {
-            setTimeout(function () {
+            var timeoutId = setTimeout(function () {
+                if (runId !== burnAnimation.runId) return;
                 burnVertex(cy, step, i === 0 /* isQ */);
 
                 // After the last step, show result
                 if (i === steps.length - 1) {
-                    setTimeout(function () {
+                    var resultTimeoutId = setTimeout(function () {
+                        if (runId !== burnAnimation.runId) return;
                         var resultEl = document.getElementById('burn-result');
                         if (resultEl) {
                             if (data.result === 'all_burned') {
@@ -343,8 +357,10 @@
                             }
                         }
                     }, DHAR_STEP_DELAY_MS / 2);
+                    burnAnimation.timeouts.push(resultTimeoutId);
                 }
             }, i * DHAR_STEP_DELAY_MS);
+            burnAnimation.timeouts.push(timeoutId);
         });
     }
 

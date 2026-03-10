@@ -4,6 +4,7 @@ import dash_cytoscape as cyto
 import math
 import os
 import networkx as nx
+from typing import Any, Optional
 from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
 from .CFOrientation import CFOrientation
@@ -28,9 +29,26 @@ def _make_canonical_divisor(graph: CFGraph) -> CFDivisor:
     ])
 
 
-def _graph_from_spec(spec: dict, initial_graph: CFGraph) -> CFGraph:
-    """Reconstruct a CFGraph from a stored spec dict (as saved in current-graph-spec store)."""
+def _make_initial_graph_spec() -> dict:
+    """Return the sentinel graph spec representing the original input graph."""
+    return {'type': 'initial'}
+
+
+def _graph_spec_from_inputs(graph_type: str, param_n, param_cycles) -> dict:
+    """Build a serializable graph spec from UI input values."""
+    spec = {'type': graph_type}
+    if graph_type == 'complete':
+        spec['n'] = int(param_n) if param_n else 5
+    elif graph_type == 'chain':
+        spec['lengths'] = [int(x.strip()) for x in str(param_cycles).split(',')]
+    return spec
+
+
+def _graph_from_spec(spec: dict, initial_graph: Optional[CFGraph]) -> CFGraph:
+    """Reconstruct a CFGraph from a stored graph spec."""
     if not spec or spec.get('type') == 'initial':
+        if initial_graph is None:
+            raise ValueError("Initial graph spec requires an initial graph instance.")
         return initial_graph
     t = spec['type']
     if t == 'tetrahedron':
@@ -48,6 +66,12 @@ def _graph_from_spec(spec: dict, initial_graph: CFGraph) -> CFGraph:
     if t == 'chain':
         return basicChain(spec['lengths'])
     raise ValueError(f"Unknown graph spec type: {t}")
+
+
+def _graph_from_inputs(graph_type: str, param_n, param_cycles) -> tuple[CFGraph, dict]:
+    """Build a graph and its serialized spec from selector values."""
+    spec = _graph_spec_from_inputs(graph_type, param_n, param_cycles)
+    return _graph_from_spec(spec, None), spec
 
 
 def _compute_spring_layout(graph: CFGraph, width: int = 800, height: int = 600, padding: int = 100):
@@ -401,11 +425,12 @@ COSE_LAYOUT = {
 }
 
 
-def visualize(cf_object: any):
+def visualize(cf_object: Any, debug: bool = False):
     """ Creates and runs a Dash app to visualize a chip-firing object.
 
     Args:
         cf_object: The chip-firing object (CFGraph, CFDivisor, CFOrientation).
+        debug: Whether to run the Dash app in debug mode.
 
     Raises:
         TypeError: If the object type is not supported for visualization.
@@ -592,7 +617,7 @@ def visualize(cf_object: any):
         # Hidden mode indicator read by chip_drag.js
         html.Div(id='viz-mode', children=initial_mode, style=_hide),
         # Hidden store tracking which graph is currently displayed
-        dcc.Store(id='current-graph-spec', data={'type': 'initial'}),
+        dcc.Store(id='current-graph-spec', data=_make_initial_graph_spec()),
         graph_only_controls,
         divisor_controls,
         cyto.Cytoscape(
@@ -605,24 +630,6 @@ def visualize(cf_object: any):
     ])
 
     # ── Helpers shared by multiple callbacks ─────────────────────────────
-    def _build_graph(graph_type, param_n, param_cycles):
-        """Return a CFGraph from selector values; raises on bad input."""
-        if graph_type == 'tetrahedron':
-            return tetrahedron()
-        elif graph_type == 'cube':
-            return cube()
-        elif graph_type == 'octahedron':
-            return octahedron()
-        elif graph_type == 'dodecahedron':
-            return dodecahedron()
-        elif graph_type == 'icosahedron':
-            return icosahedron()
-        elif graph_type == 'complete':
-            return complete_graph(int(param_n) if param_n else 5)
-        elif graph_type == 'chain':
-            return basicChain([int(x.strip()) for x in str(param_cycles).split(',')])
-        raise ValueError(f'Unknown graph type: {graph_type}')
-
     _preset_layout = {'name': 'preset', 'padding': 30}
 
     # ── Callbacks ────────────────────────────────────────────────────────
@@ -658,11 +665,7 @@ def visualize(cf_object: any):
         if not graph_type:
             return no_update, no_update, 'Select a graph type first.', no_update
         try:
-            graph = _build_graph(graph_type, param_n, param_cycles)
-            spec  = {'type': graph_type,
-                     **(({'n': int(param_n)} if param_n else {}) if graph_type == 'complete' else {}),
-                     **(({'lengths': [int(x.strip()) for x in str(param_cycles).split(',')]})
-                        if graph_type == 'chain' else {})}
+            graph, spec = _graph_from_inputs(graph_type, param_n, param_cycles)
             return (_divisor_to_cytoscape_elements(_make_zero_divisor(graph)),
                     _preset_layout, '', spec)
         except Exception as exc:
@@ -718,4 +721,4 @@ def visualize(cf_object: any):
         Input('viz-mode', 'children'),
     )
 
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=debug, use_reloader=False)
