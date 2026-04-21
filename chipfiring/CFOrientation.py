@@ -521,6 +521,201 @@ class CFOrientation:
         # Create and return the new divisor object
         return CFDivisor(self.graph, canonical_degrees)
 
+    def is_partial(self) -> bool:
+        """Check whether this orientation is partial (i.e. has at least one unoriented edge).
+
+        Partial orientations are central to the framework of Backman,
+        *Riemann–Roch theory for graph orientations* (arXiv:1401.3309), where
+        edges may be left unoriented in addition to being oriented in either
+        direction.
+
+        Returns:
+            True if at least one edge of the underlying graph has no
+            orientation, False if the orientation is full.
+
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> CFOrientation(graph, [("v1", "v2")]).is_partial()
+            True
+            >>> CFOrientation(graph, [("v1", "v2"), ("v2", "v3"), ("v1", "v3")]).is_partial()
+            False
+        """
+        if not self.is_full_checked:
+            self.check_fullness()
+        return not self.is_full
+
+    def oriented_edge_count(self) -> int:
+        """Return the total number of oriented edges (counted with multiplicity).
+
+        Each edge of valence ``k`` contributes ``k`` to the count when oriented.
+
+        Returns:
+            Sum of valences over all oriented edges.
+
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 2), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> CFOrientation(graph, [("v1", "v2")]).oriented_edge_count()
+            2
+        """
+        # Each oriented edge is captured by exactly one in_degree entry.
+        return sum(self.in_degree.values())
+
+    def unoriented_edge_count(self) -> int:
+        """Return the total number of unoriented edges (counted with multiplicity).
+
+        Returns:
+            Total valence minus the number of oriented edges.
+
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 2), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> CFOrientation(graph, [("v1", "v2")]).unoriented_edge_count()
+            2
+        """
+        return self.graph.total_valence - self.oriented_edge_count()
+
+    def sources(self) -> typing.Set[str]:
+        """Return the names of vertices that are sources of the (partial) orientation.
+
+        Following Backman (arXiv:1401.3309), a vertex ``v`` is a source of a
+        partial orientation ``O`` when no oriented edge points into ``v``
+        (i.e. ``indeg_O(v) == 0``). Equivalently, every edge incident to ``v``
+        that has been oriented points away from ``v``.
+
+        Returns:
+            The set of names of source vertices.
+
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> sorted(CFOrientation(graph, [("v1", "v2"), ("v1", "v3"), ("v2", "v3")]).sources())
+            ['v1']
+        """
+        return {v.name for v in self.graph.vertices if self.in_degree[v] == 0}
+
+    def sinks(self) -> typing.Set[str]:
+        """Return the names of vertices that are sinks of the (partial) orientation.
+
+        A vertex ``v`` is a sink of a partial orientation ``O`` when no oriented
+        edge points out of ``v`` (i.e. ``outdeg_O(v) == 0``).
+
+        Returns:
+            The set of names of sink vertices.
+
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> sorted(CFOrientation(graph, [("v1", "v2"), ("v1", "v3"), ("v2", "v3")]).sinks())
+            ['v3']
+        """
+        return {v.name for v in self.graph.vertices if self.out_degree[v] == 0}
+
+    def is_acyclic(self) -> bool:
+        """Check whether the (partial) orientation contains no directed cycle.
+
+        Acyclicity is computed on the directed sub-orientation: only edges
+        with state ``SOURCE_TO_SINK`` (or equivalently ``SINK_TO_SOURCE``)
+        contribute. Unoriented edges are ignored, which matches the
+        definition of an acyclic partial orientation used by Backman in
+        *Riemann–Roch theory for graph orientations* (arXiv:1401.3309).
+
+        Multi-edges between the same two endpoints in the same direction do
+        not create a cycle, but a pair of opposite edges does not arise here
+        because each edge is oriented in at most one direction.
+
+        Returns:
+            True if there is no directed cycle in the oriented sub-graph,
+            False otherwise.
+
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # v1 -> v2 -> v3, v1 -> v3 is a DAG
+            >>> CFOrientation(graph, [("v1", "v2"), ("v2", "v3"), ("v1", "v3")]).is_acyclic()
+            True
+            >>> # v1 -> v2 -> v3 -> v1 is a directed 3-cycle
+            >>> CFOrientation(graph, [("v1", "v2"), ("v2", "v3"), ("v3", "v1")]).is_acyclic()
+            False
+        """
+        # Iterative DFS with three-color marking on the oriented sub-graph.
+        WHITE, GRAY, BLACK = 0, 1, 2
+        color: typing.Dict[Vertex, int] = {v: WHITE for v in self.graph.vertices}
+
+        for start in self.graph.vertices:
+            if color[start] != WHITE:
+                continue
+            # Stack entries: (vertex, iterator over outgoing oriented neighbors)
+            stack: typing.List[typing.Tuple[Vertex, typing.Iterator[Vertex]]] = [
+                (start, iter(
+                    n for n, st in self.orientation[start].items()
+                    if st == OrientationState.SOURCE_TO_SINK
+                ))
+            ]
+            color[start] = GRAY
+            while stack:
+                v, it = stack[-1]
+                next_neighbor = next(it, None)
+                if next_neighbor is None:
+                    color[v] = BLACK
+                    stack.pop()
+                    continue
+                c = color[next_neighbor]
+                if c == GRAY:
+                    return False  # back-edge -> cycle
+                if c == WHITE:
+                    color[next_neighbor] = GRAY
+                    stack.append((
+                        next_neighbor,
+                        iter(
+                            n for n, st in self.orientation[next_neighbor].items()
+                            if st == OrientationState.SOURCE_TO_SINK
+                        ),
+                    ))
+        return True
+
+    def partial_divisor(self) -> CFDivisor:
+        """Return the divisor associated with this (possibly partial) orientation.
+
+        Following Backman (arXiv:1401.3309, Definition 3.1), the divisor of a
+        partial orientation ``O`` is
+
+            D_O(v) = indeg_O(v) - 1,
+
+        counting only edges that have been oriented. For full orientations
+        this coincides with :meth:`divisor`; unlike :meth:`divisor`, this
+        method does not require the orientation to be full.
+
+        Returns:
+            A new :class:`CFDivisor` with degree ``indeg_O(v) - 1`` at each
+            vertex ``v``.
+
+        Example:
+            >>> vertices = {"v1", "v2", "v3"}
+            >>> edges = [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> # Only v1 -> v2 oriented; v2-v3 and v1-v3 unoriented
+            >>> partial = CFOrientation(graph, [("v1", "v2")])
+            >>> div = partial.partial_divisor()
+            >>> div.get_degree("v1")
+            -1
+            >>> div.get_degree("v2")
+            0
+            >>> div.get_degree("v3")
+            -1
+        """
+        divisor_degrees = [
+            (v.name, self.in_degree[v] - 1) for v in self.graph.vertices
+        ]
+        return CFDivisor(self.graph, divisor_degrees)
+
     def to_dict(self) -> typing.Dict[str, typing.Any]:
         """Converts the CFOrientation instance to a dictionary representation.
 

@@ -581,3 +581,100 @@ def test_reverse_updates_fullness_check(fully_oriented_k3):
     # The reversed orientation should be full and have the flag set
     assert reversed_orientation.is_full is True
     assert reversed_orientation.is_full_checked is True
+
+
+# ---------------------------------------------------------------------------
+# Tests for partial-orientation utilities (Backman, arXiv:1401.3309).
+# ---------------------------------------------------------------------------
+
+
+def test_is_partial(fully_oriented_k3, partially_oriented_k3, simple_graph_k3):
+    """is_partial should distinguish full and partial orientations."""
+    assert fully_oriented_k3.is_partial() is False
+    assert partially_oriented_k3.is_partial() is True
+    # Empty orientation on a non-trivial graph is partial.
+    empty = CFOrientation(simple_graph_k3, [])
+    assert empty.is_partial() is True
+
+
+def test_oriented_and_unoriented_edge_counts(graph_with_multi_edges, simple_graph_k3):
+    """oriented_edge_count and unoriented_edge_count reflect valences."""
+    # graph_with_multi_edges: a==(2)==b, b==(3)==c => total valence 5
+    full = CFOrientation(graph_with_multi_edges, [("a", "b"), ("c", "b")])
+    assert full.oriented_edge_count() == 5
+    assert full.unoriented_edge_count() == 0
+
+    partial = CFOrientation(graph_with_multi_edges, [("a", "b")])
+    assert partial.oriented_edge_count() == 2  # only a-b (valence 2) oriented
+    assert partial.unoriented_edge_count() == 3  # b-c (valence 3) unoriented
+
+    empty = CFOrientation(simple_graph_k3, [])
+    assert empty.oriented_edge_count() == 0
+    assert empty.unoriented_edge_count() == 3
+
+
+def test_sources_and_sinks(simple_graph_k3, partially_oriented_k3):
+    """sources/sinks identify vertices with empty in/out oriented degree."""
+    # Full DAG v1->v2, v2->v3, v1->v3 => unique source v1, unique sink v3
+    full = CFOrientation(simple_graph_k3, [("v1", "v2"), ("v2", "v3"), ("v1", "v3")])
+    assert full.sources() == {"v1"}
+    assert full.sinks() == {"v3"}
+
+    # Partial v1->v2 only: v1 and v3 both have indeg 0; v2 and v3 both have outdeg 0.
+    assert partially_oriented_k3.sources() == {"v1", "v3"}
+    assert partially_oriented_k3.sinks() == {"v2", "v3"}
+
+
+def test_is_acyclic_full(simple_graph_k3):
+    """is_acyclic detects directed cycles in full orientations."""
+    dag = CFOrientation(simple_graph_k3, [("v1", "v2"), ("v2", "v3"), ("v1", "v3")])
+    assert dag.is_acyclic() is True
+
+    cycle = CFOrientation(simple_graph_k3, [("v1", "v2"), ("v2", "v3"), ("v3", "v1")])
+    assert cycle.is_acyclic() is False
+
+
+def test_is_acyclic_partial(simple_graph_k3, partially_oriented_k3):
+    """is_acyclic ignores unoriented edges."""
+    # The empty orientation has no oriented edges, hence no cycle.
+    empty = CFOrientation(simple_graph_k3, [])
+    assert empty.is_acyclic() is True
+
+    # Single oriented edge cannot form a cycle.
+    assert partially_oriented_k3.is_acyclic() is True
+
+
+def test_is_acyclic_longer_cycle():
+    """is_acyclic detects cycles in larger graphs (>3 vertices)."""
+    vertices = {"a", "b", "c", "d"}
+    edges = [("a", "b", 1), ("b", "c", 1), ("c", "d", 1), ("d", "a", 1)]
+    g = CFGraph(vertices, edges)
+    cycle4 = CFOrientation(g, [("a", "b"), ("b", "c"), ("c", "d"), ("d", "a")])
+    assert cycle4.is_acyclic() is False
+
+    # Break the cycle by reversing one edge.
+    path4 = CFOrientation(g, [("a", "b"), ("b", "c"), ("c", "d"), ("a", "d")])
+    assert path4.is_acyclic() is True
+
+    # Leave the closing edge unoriented: still acyclic by definition.
+    open_path = CFOrientation(g, [("a", "b"), ("b", "c"), ("c", "d")])
+    assert open_path.is_acyclic() is True
+
+
+def test_partial_divisor_full_matches_divisor(fully_oriented_k3):
+    """partial_divisor agrees with divisor() for full orientations."""
+    full_div = fully_oriented_k3.divisor()
+    partial_div = fully_oriented_k3.partial_divisor()
+    for v in ("v1", "v2", "v3"):
+        assert full_div.get_degree(v) == partial_div.get_degree(v)
+
+
+def test_partial_divisor_partial(partially_oriented_k3):
+    """partial_divisor uses indeg_O(v) - 1 over the oriented sub-orientation."""
+    div = partially_oriented_k3.partial_divisor()
+    # Oriented edges: v1 -> v2 (valence 1). indeg(v1)=0, indeg(v2)=1, indeg(v3)=0.
+    assert div.get_degree("v1") == -1
+    assert div.get_degree("v2") == 0
+    assert div.get_degree("v3") == -1
+    # Unlike divisor(), partial_divisor does not require fullness.
+    # (No exception expected.)
