@@ -11,6 +11,7 @@ guarantee a win in the Gonality Game, regardless of where Player B places the -1
 from __future__ import annotations
 from .CFGraph import CFGraph
 from .CFDivisor import CFDivisor
+from .CFDhar import DharAlgorithm
 from .algo import is_winnable
 from typing import List, Dict, Tuple, Optional
 import itertools
@@ -138,12 +139,61 @@ class CFGonality:
     
     def _find_winning_sequence(self, divisor: CFDivisor) -> List[str]:
         """
-        Find a sequence of chip-firing moves that wins the Dollar Game.
-        This is a simplified implementation - a full implementation would use
-        more sophisticated algorithms.
+        Find a sequence of vertex firings that resolves the debt of a winnable divisor.
+
+        This runs an EWD-style iteration: pick the vertex ``q`` with the minimum
+        degree as the fire source, repeatedly use Dhar's burning algorithm to find
+        a maximal legal firing set on ``V - {q}``, and fire that set. The returned
+        list flattens these firings so that each entry names a single vertex that
+        was fired (in the order it appears in successive firing rounds). When the
+        divisor is winnable (no vertex has negative debt after q-reduction), this
+        sequence brings the configuration to an effective divisor (every vertex
+        has a non-negative number of chips).
+
+        Args:
+            divisor: A winnable CFDivisor on this graph.
+
+        Returns:
+            List[str]: An ordered list of vertex names that were fired. The list
+            is empty if the divisor is already effective (no firings are needed)
+            or if the divisor is not winnable.
         """
-        # For now, return empty list - this could be enhanced with actual sequence finding
-        return []
+        # If the divisor is already effective, no firing is required.
+        if all(deg >= 0 for deg in divisor.degrees.values()):
+            return []
+
+        # Work on a copy so we don't mutate the caller's divisor; DharAlgorithm
+        # modifies the divisor it is initialized with.
+        degrees_copy = [(v.name, deg) for v, deg in divisor.degrees.items()]
+        working_divisor = CFDivisor(self.graph, degrees_copy)
+
+        # Choose q as the vertex with the minimum (most negative) degree, which
+        # matches the convention used by the EWD algorithm.
+        q_vertex = min(working_divisor.degrees.items(), key=lambda item: item[1])[0]
+
+        dhar = DharAlgorithm(self.graph, working_divisor, q_vertex.name)
+
+        sequence: List[str] = []
+        # Defensive upper bound on iterations. EWD on a connected graph
+        # converges in at most O(|V|^2) firing rounds; the +1 ensures we
+        # still execute at least one round on tiny graphs.
+        max_iterations = max(1, len(self.graph.vertices)) ** 2 + 1
+
+        unburnt_vertices, _ = dhar.run()
+        iterations = 0
+        while unburnt_vertices and iterations < max_iterations:
+            # Record this firing round; sort for deterministic ordering.
+            sequence.extend(sorted(unburnt_vertices))
+            dhar.legal_set_fire(unburnt_vertices)
+            unburnt_vertices, _ = dhar.run()
+            iterations += 1
+
+        # If after q-reduction q still carries debt, the divisor was not
+        # actually winnable and there is no winning sequence to return.
+        if dhar.configuration.get_q_underlying_degree() < 0:
+            return []
+
+        return sequence
     
     def test_n_chip_strategy(self, n_chips: int, placement: CFDivisor) -> Tuple[bool, List[str]]:
         """
