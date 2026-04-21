@@ -21,6 +21,8 @@ from .CFPlatonicSolids import (
     complete_graph, platonic_solid_gonality_bounds, complete_graph_gonality
 )
 from .CFGonalityDhar import GonalityDharAlgorithm, enhanced_dhar_gonality_test, batch_gonality_analysis
+from .CFSmithNormalForm import smith_normal_form, elementary_divisors
+from .CFPicardJacobian import JacobianGroup, PicardGroup
 
 __all__ = [
     "CFGraph",
@@ -61,6 +63,10 @@ __all__ = [
     "GonalityDharAlgorithm",
     "enhanced_dhar_gonality_test",
     "batch_gonality_analysis",
+    "smith_normal_form",
+    "elementary_divisors",
+    "JacobianGroup",
+    "PicardGroup",
 ]
 
 __version__ = "1.1.3"

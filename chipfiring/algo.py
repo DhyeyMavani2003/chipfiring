@@ -172,20 +172,39 @@ def EWD(
         return False, q_reduced_divisor, orientation, visualizer
 
 
-def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
+def linear_equivalence(
+    divisor1: CFDivisor, divisor2: CFDivisor, method: str = "ewd"
+) -> bool:
     """Check if two divisors are linearly equivalent.
 
     Two divisors are linearly equivalent if they can be transformed into each other
     by a sequence of lending and borrowing moves.
 
-    This is checked by determining the winnability of their difference divisor (divisor1 - divisor2).
+    Two algorithms are supported:
+
+    * ``method="ewd"`` (default): test winnability of ``divisor1 - divisor2``
+      using the Efficient Winnability Detection algorithm.  This preserves
+      the historical behaviour of this function.
+    * ``method="smith"``: test whether ``divisor1 - divisor2`` lies in the
+      image of the graph Laplacian directly, using the Smith Normal Form of
+      the Laplacian.  This is purely linear-algebraic and avoids any
+      chip-firing dynamics; it is typically faster and is robust on
+      disconnected graphs.  Note that this constructs a fresh
+      :class:`~chipfiring.CFPicardJacobian.PicardGroup` (and recomputes the
+      SNF of the Laplacian) on every call; for many equivalence checks on
+      the same graph, instantiate :class:`PicardGroup` once and reuse its
+      :meth:`~chipfiring.CFPicardJacobian.PicardGroup.equivalent` method.
 
     Args:
         divisor1: The first CFDivisor object.
         divisor2: The second CFDivisor object.
+        method: Either ``"ewd"`` or ``"smith"``.  Defaults to ``"ewd"``.
 
     Returns:
-        A tuple containing a boolean indicating if the divisors are linearly equivalent, and the q-reduced divisor if they are.
+        ``True`` iff the two divisors are linearly equivalent.
+
+    Raises:
+        ValueError: If ``method`` is not one of the supported algorithms.
 
     Example:
         >>> # Create a simple graph
@@ -197,6 +216,9 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
         >>> divisor2 = CFDivisor(graph, [("v1", 1), ("v2", 2), ("v3", 1)])  # Obtained by firing v1
         >>> # Check linear equivalence
         >>> linear_equivalence(divisor1, divisor2)  # These should be linearly equivalent
+        True
+        >>> # The Smith Normal Form based algorithm gives the same answer
+        >>> linear_equivalence(divisor1, divisor2, method="smith")
         True
         >>> # Same total degree but not linearly equivalent
         >>> divisor3 = CFDivisor(graph, [("v1", 0), ("v2", 0), ("v3", 4)])
@@ -223,6 +245,19 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
     # Condition 3: If degrees are identical (and graphs are same from above), they are trivially equivalent.
     if divisor1.degrees == divisor2.degrees:
         return True
+
+    if method == "smith":
+        # Use the Smith Normal Form of the Laplacian to decide membership of
+        # (divisor1 - divisor2) in the image of L.  This avoids the EWD
+        # heuristic and provides an algebraic (linear-algebra-only) check.
+        from .CFPicardJacobian import PicardGroup
+        return PicardGroup(graph).equivalent(divisor1, divisor2)
+
+    if method != "ewd":
+        raise ValueError(
+            f"Unknown linear_equivalence method '{method}'. "
+            "Expected 'ewd' or 'smith'."
+        )
 
     # Condition 4: Check winnability of the difference divisor.
     difference_divisor = divisor1 - divisor2
