@@ -402,6 +402,126 @@ class CFGraph:
         # Create new graph with remaining vertices and edges
         return CFGraph(remaining_vertices, remaining_edges)
 
+    @staticmethod
+    def subdivision_vertex_name(
+        v1_name: str, v2_name: str, step: int, copy: int = 0
+    ) -> str:
+        """Return the canonical name of an internal vertex created by uniform subdivision.
+
+        For uniform subdivision with parameter ``k``, an edge between ``v1_name``
+        and ``v2_name`` is replaced by a path of length ``k``. The internal
+        vertices of that path are indexed by ``step`` from ``1`` to ``k-1``,
+        counted starting from the lexicographically smaller endpoint.
+
+        When the original edge has valence greater than 1, each parallel edge
+        is subdivided independently; ``copy`` (zero-indexed) selects which of
+        the parallel paths the internal vertex belongs to.
+
+        Args:
+            v1_name: Name of one endpoint of the original edge.
+            v2_name: Name of the other endpoint of the original edge.
+            step: Position along the subdivided path (``1 <= step <= k-1``),
+                counted from the lexicographically smaller endpoint.
+            copy: Zero-indexed identifier for which parallel copy of the edge
+                this vertex belongs to (used when the original valence > 1).
+
+        Returns:
+            The canonical name for the internal subdivision vertex.
+
+        Example:
+            >>> CFGraph.subdivision_vertex_name("A", "B", 1)
+            'A-B_s1'
+            >>> CFGraph.subdivision_vertex_name("B", "A", 2)  # Order is normalized
+            'A-B_s2'
+            >>> CFGraph.subdivision_vertex_name("A", "B", 1, copy=1)
+            'A-B#c1_s1'
+        """
+        u, v = (v1_name, v2_name) if v1_name <= v2_name else (v2_name, v1_name)
+        if copy == 0:
+            return f"{u}-{v}_s{step}"
+        return f"{u}-{v}#c{copy}_s{step}"
+
+    def uniform_subdivision(self, k: int) -> "CFGraph":
+        """Return the uniform ``k``-subdivision of the graph.
+
+        The uniform ``k``-subdivision replaces every edge of the graph with a
+        path of length ``k``, by inserting ``k-1`` new internal vertices on each
+        edge. Edges with valence ``m > 1`` are treated as ``m`` parallel edges
+        and each is subdivided independently into its own path of length ``k``.
+
+        This operation is the standard combinatorial model of taking the
+        :math:`\\frac{1}{k}`-th refinement of the underlying metric graph: as
+        ``k`` grows, the resulting finite graph approximates the metric graph
+        more finely. The genus of the graph (``|E| - |V| + 1``) is preserved
+        under uniform subdivision.
+
+        Args:
+            k: Subdivision parameter; a positive integer. ``k = 1`` returns a
+               graph isomorphic to the original.
+
+        Returns:
+            A new :class:`CFGraph` that is the uniform ``k``-subdivision of
+            ``self``. Original vertex names are preserved; internal vertices are
+            named using :meth:`subdivision_vertex_name`.
+
+        Raises:
+            ValueError: If ``k`` is not a positive integer.
+
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 1), ("B", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> sub = graph.uniform_subdivision(3)
+            >>> # 3 original vertices + 2 internal per edge * 2 edges = 7
+            >>> len(sub.vertices)
+            7
+            >>> # 3 edges per original edge * 2 edges = 6
+            >>> sub.total_valence
+            6
+            >>> # Genus is preserved
+            >>> sub.get_genus() == graph.get_genus()
+            True
+        """
+        if not isinstance(k, int) or k < 1:
+            raise ValueError("Subdivision parameter k must be a positive integer")
+
+        # Start with the original vertex names.
+        new_vertices: typing.Set[str] = {v.name for v in self.vertices}
+        new_edges: typing.List[typing.Tuple[str, str, int]] = []
+
+        # Iterate over each undirected edge exactly once.
+        processed_pairs: typing.Set[typing.Tuple[str, str]] = set()
+        for v1 in self.vertices:
+            for v2, valence in self.graph[v1].items():
+                pair = tuple(sorted((v1.name, v2.name)))
+                if pair in processed_pairs:
+                    continue
+                processed_pairs.add(pair)
+
+                u_name, w_name = pair  # canonical (smaller, larger) ordering
+
+                if k == 1:
+                    # No subdivision: edges are preserved as-is.
+                    new_edges.append((u_name, w_name, valence))
+                    continue
+
+                # Subdivide each of the ``valence`` parallel edges independently.
+                for copy_idx in range(valence):
+                    # Build the chain u -- s1 -- s2 -- ... -- s_{k-1} -- w
+                    internal_names = [
+                        self.subdivision_vertex_name(
+                            u_name, w_name, step, copy=copy_idx
+                        )
+                        for step in range(1, k)
+                    ]
+                    new_vertices.update(internal_names)
+
+                    chain = [u_name] + internal_names + [w_name]
+                    for a, b in zip(chain[:-1], chain[1:]):
+                        new_edges.append((a, b, 1))
+
+        return CFGraph(new_vertices, new_edges)
+
     @classmethod
     def from_dict(cls, data: typing.Dict[str, typing.Any]) -> "CFGraph":
         """Creates a CFGraph instance from a dictionary representation.
