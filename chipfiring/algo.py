@@ -189,7 +189,11 @@ def linear_equivalence(
       image of the graph Laplacian directly, using the Smith Normal Form of
       the Laplacian.  This is purely linear-algebraic and avoids any
       chip-firing dynamics; it is typically faster and is robust on
-      disconnected graphs.
+      disconnected graphs.  Note that this constructs a fresh
+      :class:`~chipfiring.CFPicardJacobian.PicardGroup` (and recomputes the
+      SNF of the Laplacian) on every call; for many equivalence checks on
+      the same graph, instantiate :class:`PicardGroup` once and reuse its
+      :meth:`~chipfiring.CFPicardJacobian.PicardGroup.equivalent` method.
 
     Args:
         divisor1: The first CFDivisor object.
