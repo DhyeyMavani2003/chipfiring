@@ -290,3 +290,60 @@ def test_rank_sequence_optimized_corollary_4_4_3(sequence_test_graph):
     print(rank(D, optimized=True).get_log_summary())
     # Check if Corollary 4.4.3 is called in the optimized rank calculation logs
     assert "Corollary 4.4.3" in rank(D, optimized=True).get_log_summary()
+
+
+# ---------------------------------------------------------------------------
+# Tests for Backman-style optimizations (arXiv:1401.3309).
+# ---------------------------------------------------------------------------
+
+
+def test_rank_optimized_negative_degree_shortcut(simple_graph):
+    """Optimized mode short-circuits to rank = -1 when total degree < 0."""
+    # deg = -1 < 0 => unwinnable, hence rank = -1.
+    degrees = [("v1", 0), ("v2", 0), ("v3", -1)]
+    divisor = CFDivisor(simple_graph, degrees)
+
+    result = rank(divisor, optimized=True)
+    assert result.rank == -1
+    summary = result.get_log_summary()
+    # The optimized log message should mention the negative-degree shortcut.
+    assert "negative" in summary.lower()
+    # And the EWD step should have been skipped.
+    assert "Step 1" not in summary
+
+    # The unoptimized path must still arrive at the same answer.
+    assert rank(divisor, optimized=False).rank == -1
+
+
+def test_rank_optimized_matches_unoptimized(sequence_test_initial_divisor):
+    """Optimized mode (with new heuristics) must match unoptimized rank."""
+    assert (
+        rank(sequence_test_initial_divisor, optimized=True).rank
+        == rank(sequence_test_initial_divisor, optimized=False).rank
+    )
+
+
+def test_rank_optimized_riemann_roch_lower_bound(sequence_test_graph):
+    """Optimized mode uses the Riemann-Roch lower bound r(D) >= deg(D) - g.
+
+    On the sequence test graph, genus g = 3. We pick deg(D) = 4 so that
+    deg(D) - g = 1 >= 1, triggering the lower-bound skip in the search loop.
+    The optimized and unoptimized results must agree.
+    """
+    # deg = 4: lower bound r(D) >= 4 - 3 = 1, so the search skips k=1.
+    D = CFDivisor(
+        sequence_test_graph,
+        [("Alice", 4), ("Bob", 0), ("Charlie", 0), ("Elise", 0)],
+    )
+
+    # Sanity: degree exceeds the genus, but is at most 2g - 2 = 4 so the
+    # Corollary 4.4.3 shortcut does not fire and we exercise the lower bound.
+    assert D.get_total_degree() == 4
+    assert D.get_total_degree() <= 2 * sequence_test_graph.get_genus() - 2
+
+    optimized_result = rank(D, optimized=True)
+    unoptimized_result = rank(D, optimized=False)
+
+    assert optimized_result.rank == unoptimized_result.rank
+    # The log should mention the Riemann-Roch lower bound.
+    assert "Riemann-Roch" in optimized_result.get_log_summary()

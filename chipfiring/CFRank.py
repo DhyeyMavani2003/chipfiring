@@ -69,6 +69,19 @@ class CFRank:
         self._divisor = divisor
         graph = divisor.graph
 
+        if optimized:
+            # Heuristic shortcut from Backman, Riemann-Roch theory for graph
+            # orientations (arXiv:1401.3309): a divisor of negative total
+            # degree cannot be linearly equivalent to an effective divisor,
+            # so its rank is -1 without invoking EWD.
+            if divisor.get_total_degree() < 0:
+                self.log(
+                    "Optimized mode: total degree of D is negative, so D is not "
+                    "equivalent to any effective divisor. Skipping EWD; rank: -1."
+                )
+                self._rank_value = -1
+                return self
+
         # 1. Call EWD on the divisor; if unwinnable, return -1
         self.log("Step 1: Checking initial winnability through EWD algorithm...")
         initial_winnable, _, _, _ = EWD(graph, divisor, optimized=False)
@@ -78,37 +91,63 @@ class CFRank:
             return self
         self.log("Initial divisor is winnable. Proceeding to step 2.")
 
+        # Lower bound k0 from which we may safely start the search. By
+        # convention the search begins at k=1.
+        k_start = 1
+
         if optimized:
             self.log(
                 "Optimized mode is enabled. Checking if we can apply theoretical shortcuts before proceeding."
             )
 
             D = self._divisor
+            g = graph.get_genus()
+
             # Using Corollary 4.4.3 from Dhyey Mavani's Math thesis:
-            if D.get_total_degree() > 2 * graph.get_genus() - 2:
+            if D.get_total_degree() > 2 * g - 2:
                 self.log(
                     "Optimized mode: D has degree > 2g-2. Using Corollary 4.4.3 from Dhyey Mavani's Math thesis to skip step 2, and return rank(D) = degree(D) - genus(G)."
                 )
-                self._rank_value = D.get_total_degree() - graph.get_genus()
+                self._rank_value = D.get_total_degree() - g
                 return self
 
-            # Check if the degree of (K-D) < degree of D, if so, run next step on (K-D)
-            orientation = CFOrientation(graph, [])
-            K = orientation.canonical_divisor()
-            if (K - D).get_total_degree() < D.get_total_degree():
+            # Riemann-Roch lower bound (Backman, arXiv:1401.3309, building on
+            # the Baker-Norine Riemann-Roch theorem for graphs):
+            #   r(D) >= deg(D) - g
+            # When deg(D) >= g + 1 this gives a strictly positive lower bound
+            # on r(D), so the search can skip all k <= deg(D) - g: for any
+            # effective E with deg(E) <= deg(D) - g the divisor D - E is
+            # automatically winnable. We apply this directly to D (rather
+            # than to K-D) so that the loop computes r(D).
+            deg_D = D.get_total_degree()
+            rr_lower = deg_D - g
+            if rr_lower >= 1:
+                k_start = rr_lower + 1
                 self.log(
-                    "Optimized mode: (K-D) has lower degree than D. Running next step on (K-D)."
+                    f"Optimized mode: Riemann-Roch gives r(D) >= deg(D) - g = "
+                    f"{deg_D} - {g} = {rr_lower}. Starting search at k={k_start} "
+                    f"instead of k=1."
                 )
-                self._divisor = K - D
             else:
-                self.log(
-                    "Optimized mode: (K-D) has degree >= that of D. Running next step on D itself."
-                )
+                # No useful Riemann-Roch lower bound; fall back to the
+                # existing K-D heuristic which can shrink the search space
+                # when deg(K-D) < deg(D).
+                orientation = CFOrientation(graph, [])
+                K = orientation.canonical_divisor()
+                if (K - D).get_total_degree() < D.get_total_degree():
+                    self.log(
+                        "Optimized mode: (K-D) has lower degree than D. Running next step on (K-D)."
+                    )
+                    self._divisor = K - D
+                else:
+                    self.log(
+                        "Optimized mode: (K-D) has degree >= that of D. Running next step on D itself."
+                    )
 
         # 2. Sort the vertices by name
         sorted_vertices = sorted(list(graph.vertices), key=lambda v: v.name)
 
-        k = 1
+        k = k_start
         self.log("Step 2: Iteratively removing k chips and checking winnability.")
         while True:
             self.log(f"\n-- Current k: {k} --")
