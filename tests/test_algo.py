@@ -6,6 +6,7 @@ from chipfiring.algo import (
     linear_equivalence,
     is_winnable,
     q_reduction,
+    q_reduction_with_root,
     is_q_reduced,
 )
 from chipfiring.CFOrientation import CFOrientation
@@ -14,6 +15,12 @@ from chipfiring.CFOrientation import CFOrientation
 def degree_snapshot(divisor):
     """Return a name-keyed snapshot suitable for mutation assertions."""
     return {vertex.name: degree for vertex, degree in divisor.degrees.items()}
+
+
+def test_q_reduction_with_root_is_publicly_exported():
+    import chipfiring
+
+    assert chipfiring.q_reduction_with_root is q_reduction_with_root
 
 
 @pytest.fixture
@@ -140,17 +147,44 @@ def test_explicit_q_changes_q_reduction_and_predicate():
     assert degree_snapshot(divisor) == initial_snapshot
 
 
-def test_default_q_breaks_minimum_degree_ties_by_vertex_name():
-    """Automatic q selection must not depend on hash/set iteration order."""
+def test_q_reduction_with_root_supports_later_predicate_check():
+    graph = CFGraph({"0", "1"}, [("0", "1", 1)])
+    divisor = CFDivisor(graph, [("0", -1), ("1", 2)])
+
+    reduced, q_name = q_reduction_with_root(divisor)
+
+    assert q_name == "0"
+    assert degree_snapshot(reduced) == {"0": 1, "1": 0}
+    assert is_q_reduced(reduced, q_name=q_name) is True
+
+
+def test_default_reduction_q_breaks_debt_ties_by_vertex_name():
+    """The historical most-indebted default has a deterministic tie-break."""
     graph = CFGraph(
         {"a", "b", "c"},
         [("a", "b", 2), ("b", "c", 1)],
     )
     divisor = CFDivisor(graph, [("a", 0), ("b", 1), ("c", 0)])
 
+    reduced, q_name = q_reduction_with_root(divisor)
+    assert q_name == "a"
     assert is_q_reduced(divisor) is True
     assert q_reduction(divisor) == divisor
+    assert reduced == divisor
     assert is_q_reduced(divisor, q_name="c") is False
+
+
+def test_default_reduction_preserves_historical_most_indebted_root():
+    graph = CFGraph(
+        {"A", "B", "C"},
+        [("A", "B", 1), ("B", "C", 1), ("C", "A", 1)],
+    )
+    divisor = CFDivisor(graph, [("A", 2), ("B", -3), ("C", 1)])
+
+    default_reduced = q_reduction(divisor)
+    explicit_reduced = q_reduction(divisor, q_name="B")
+
+    assert default_reduced == explicit_reduced
 
 
 def test_explicit_q_is_validated_before_optimized_shortcuts(simple_graph):

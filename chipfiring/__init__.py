@@ -10,7 +10,14 @@ from .CFOrientation import CFOrientation, OrientationState
 from .CFiringScript import CFiringScript
 from .CFGreedyAlgorithm import GreedyAlgorithm
 from .CFDhar import DharAlgorithm
-from .algo import EWD, linear_equivalence, is_winnable, q_reduction, is_q_reduced
+from .algo import (
+    EWD,
+    is_q_reduced,
+    is_winnable,
+    linear_equivalence,
+    q_reduction,
+    q_reduction_with_root,
+)
 from .CFRank import rank, r
 from .CFDataProcessor import CFDataProcessor
 from .CFEWDVisualizer import EWDVisualizer
@@ -39,6 +46,7 @@ __all__ = [
     "linear_equivalence",
     "is_winnable",
     "q_reduction",
+    "q_reduction_with_root",
     "is_q_reduced",
     "rank",
     "r",
