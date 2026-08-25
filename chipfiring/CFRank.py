@@ -175,34 +175,45 @@ class CFRank:
 
             any_unwinnable_found_for_k = False
             num_divisors_processed_for_k = 0
+            pool = None
 
             try:
                 self.log(
                     f"  Starting parallel processing for k={k} "
                     f"with {worker_count} workers..."
                 )
-                with Pool(processes=worker_count) as pool:
-                    # The number of divisors can be large, so use imap_unordered for lazy evaluation
-                    results_iterator = pool.imap_unordered(
-                        _is_rank_candidate_winnable,
-                        generate_sub_divisors_for_k(),
-                    )
+                pool = Pool(processes=worker_count)
+                # The number of divisors can be large, so use imap_unordered for lazy evaluation
+                results_iterator = pool.imap_unordered(
+                    _is_rank_candidate_winnable,
+                    generate_sub_divisors_for_k(),
+                )
 
-                    for winnable_res in results_iterator:
-                        num_divisors_processed_for_k += 1
-                        self.log(
-                            f"    Processed (k={k}, "
-                            f"item {num_divisors_processed_for_k}): "
-                            f"Winnable -> {winnable_res}"
-                        )
-                        if not winnable_res:
-                            any_unwinnable_found_for_k = True
-                            pool.terminate()  # Stop processing further items for this k
-                            break
+                for winnable_res in results_iterator:
+                    num_divisors_processed_for_k += 1
+                    self.log(
+                        f"    Processed (k={k}, "
+                        f"item {num_divisors_processed_for_k}): "
+                        f"Winnable -> {winnable_res}"
+                    )
+                    if not winnable_res:
+                        any_unwinnable_found_for_k = True
+                        pool.terminate()
+                        pool.join()
+                        pool = None
+                        break
+
+                if pool is not None:
+                    pool.close()
+                    pool.join()
+                    pool = None
 
                 self.log(f"  Parallel processing finished for k={k}.")
 
             except Exception as e:
+                if pool is not None:
+                    pool.terminate()
+                    pool.join()
                 self.log(
                     f"  Multiprocessing failed for k={k}: {e}. Falling back to sequential execution."
                 )
