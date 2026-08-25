@@ -1,7 +1,5 @@
 numpy
 networkx
-matplotlib
-pandas
 pytest
 pytest-cov
 pytest-mock

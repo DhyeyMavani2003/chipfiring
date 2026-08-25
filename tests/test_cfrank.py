@@ -249,11 +249,8 @@ def test_rank_sequence_test_graph(sequence_test_initial_divisor):
     assert rank(sequence_test_initial_divisor).rank == 0
 
 
-def test_rank_pflueger_counterexample():
-    """
-    Test the rank calculation for the counterexample provided by Professor Pflueger.
-    This test ensures that the bug discovered is caught in the future.
-    """
+def test_rank_chain_of_cycles_regression():
+    """Verify rank on the [3, 3, 4, 3, 3] chain-of-cycles regression case."""
 
     def chainOfCycles(cycle_lengths: List[int]):
         vertices = {f"z_{i+1}_{j}" for i, length in enumerate(cycle_lengths) for j in range(length)}
@@ -348,8 +345,8 @@ def test_rank_optimized_matches_standard_on_small_banana_graphs(
     assert rank(divisor, optimized=True).rank == rank(divisor).rank
 
 
-def test_rank_sequence_optimized_corollary_4_4_3(sequence_test_graph):
-    """Test rank for the sequence test graph using optimized rank calculation and Corollary 4.4.3."""
+def test_rank_sequence_optimized_high_degree_riemann_roch(sequence_test_graph):
+    """Test the high-degree graph Riemann-Roch shortcut."""
     D = CFDivisor(
         sequence_test_graph, [("Alice", 5), ("Bob", -3), ("Charlie", 4), ("Elise", -1)]
     )
@@ -357,6 +354,4 @@ def test_rank_sequence_optimized_corollary_4_4_3(sequence_test_graph):
         rank(D, optimized=True).rank
         == D.get_total_degree() - sequence_test_graph.get_genus()
     )
-    print(rank(D, optimized=True).get_log_summary())
-    # Check if Corollary 4.4.3 is called in the optimized rank calculation logs
-    assert "Corollary 4.4.3" in rank(D, optimized=True).get_log_summary()
+    assert "degree(D) > 2g-2" in rank(D, optimized=True).get_log_summary()

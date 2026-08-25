@@ -37,7 +37,7 @@ The goal is to find a sequence of moves that makes everyone debt-free. If such a
 
 ## Installation
 
-You can install the chipfiring package directly from PyPI using pip:
+Python 3.8 or newer is required. Install the package from PyPI using pip:
 
 ```bash
 pip install chipfiring

@@ -1,11 +1,13 @@
 include CHANGELOG.md
+include .coveragerc
 include LICENSE.txt
 include Makefile
+include pyproject.toml
 include README.md
 include requirements.txt
 include requirements.docs.txt
 include tox.ini
-recursive-include docs *.md *.rst *.py *.txt
+graft docs
 recursive-include examples *.md *.py *.txt
 recursive-include tests *.json *.py *.tex *.txt
 prune docs/_build

@@ -2,22 +2,22 @@
 
 > Unified interface for visualization and analysis of chip firing games and related algorithms.
 
-[![Latest Version on PyPI](https://img.shields.io/pypi/v/chipfiring.svg)](https://pypi.python.org/pypi/chipfiring/)
+[![Latest Version on PyPI](https://img.shields.io/pypi/v/chipfiring.svg)](https://pypi.org/project/chipfiring/)
 [![Build Status](https://github.com/DhyeyMavani2003/chipfiring/actions/workflows/test.yaml/badge.svg)](https://github.com/DhyeyMavani2003/chipfiring/actions/workflows/test.yaml)
 [![Documentation Status](https://readthedocs.org/projects/chipfiring/badge/?version=latest)](https://chipfiring.readthedocs.io/en/latest/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/github/DhyeyMavani2003/chipfiring/badge.svg?branch=main)](https://coveralls.io/github/DhyeyMavani2003/chipfiring?branch=main)
-[![Built with PyPi Template](https://img.shields.io/badge/PyPi_Template-v0.8.0-blue.svg)](https://github.com/christophevg/pypi-template)
 [![PyPI Downloads](https://static.pepy.tech/badge/chipfiring)](https://pepy.tech/projects/chipfiring)
 
 A Python implementation of the chip-firing game (also known as the dollar game) on graphs. This package provides a mathematical framework for studying and experimenting with chip-firing games, with a focus on the dollar game variant.
 
 ## Documentation
 
-Visit [Read the Docs](https://chipfiring.readthedocs.org) for the full
+Visit [Read the Docs](https://chipfiring.readthedocs.io/en/latest/) for the full
 documentation, including overviews and several examples. Repository-specific
-guides are available in the [changelog](CHANGELOG.md),
-[contributing guide](docs/contributing.md), and
-[examples directory](examples/README.md).
+guides are available in the
+[changelog](https://github.com/DhyeyMavani2003/chipfiring/blob/main/CHANGELOG.md),
+[contributing guide](https://github.com/DhyeyMavani2003/chipfiring/blob/main/docs/contributing.md),
+and [examples directory](https://github.com/DhyeyMavani2003/chipfiring/tree/main/examples).
 
 ## Overview
 
@@ -31,6 +31,8 @@ The chip-firing game is a mathematical model that can be used to study various p
 The goal is to find a sequence of moves that makes everyone debt-free. If such a sequence exists, the game is said to be *winnable*.
 
 ## Installation
+
+`chipfiring` requires Python 3.8 or newer.
 
 ```bash
 pip install chipfiring
@@ -64,12 +66,13 @@ print(is_q_reduced(bob_reduced, q_name="Bob"))
 ```
 
 The predicate and reduction helpers operate on a copy and do not mutate the
-supplied divisor. If `q_name` is omitted, reduction preserves the historical
-behavior of selecting a minimum-degree vertex.
+supplied divisor. If `q_name` is omitted, `q_reduction` preserves the
+historical most-indebted-vertex heuristic. Use `q_reduction_with_root` when the
+automatically chosen root is needed for a later `is_q_reduced` check.
 
 ## Mathematical Background
 
-The implementation follows the mathematical formalization described in the LaTeX writeup, which includes:
+The package uses the standard divisor theory of finite graphs, including:
 
 1. **Graph Structure**: Finite, connected, undirected multigraphs without loop edges
 2. **Divisors**: Elements of the free abelian group on vertices

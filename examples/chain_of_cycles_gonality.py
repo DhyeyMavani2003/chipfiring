@@ -1,8 +1,9 @@
-"""Reproduce the genus-5 chain-of-cycles computation from the chipfiring paper.
+"""Explore gonality on a family of genus-5 chains of cycles.
 
-The paper run uses the default cycle lengths 2, 3, 4, and 5, hence 4^5 =
-1024 exhaustive gonality computations. It can take several hours. Use
-``--limit`` for a quick smoke test without changing the construction.
+The default cycle lengths 2, 3, 4, and 5 give 4^5 = 1024 exhaustive
+computations. Expected values follow the genus-5 chain-of-cycles formula in
+Jensen and Lehmann, "Scrollar Invariants of Tropical Curves." Use ``--limit``
+for a quick smoke test.
 """
 
 from __future__ import annotations
@@ -15,10 +16,16 @@ from typing import Iterable, List, Sequence, Tuple
 from chipfiring import CFGraph, gonality
 
 
-def chain(cycle_lengths: Sequence[int]) -> CFGraph:
-    """Build the unit-edge chain of cycles used in the paper."""
-    if not all(isinstance(length, int) and length >= 2 for length in cycle_lengths):
+def _validate_cycle_lengths(cycle_lengths: Sequence[int]) -> None:
+    if not cycle_lengths or not all(
+        type(length) is int and length >= 2 for length in cycle_lengths
+    ):
         raise ValueError("Cycle lengths must be integers at least 2.")
+
+
+def chain(cycle_lengths: Sequence[int]) -> CFGraph:
+    """Build a unit-edge chain of cycles."""
+    _validate_cycle_lengths(cycle_lengths)
 
     vertices = {
         f"z_{i + 1}_{j}"
@@ -43,9 +50,10 @@ def chain(cycle_lengths: Sequence[int]) -> CFGraph:
 
 
 def expected_gonality(cycle_lengths: Sequence[int]) -> int:
-    """Return the genus-5 value from Jensen--Lehmann Corollaries 4.2/4.4."""
+    """Return the expected genus-5 gonality for this chain construction."""
     if len(cycle_lengths) != 5:
-        raise ValueError("The paper verification requires exactly five cycles.")
+        raise ValueError("The expected formula requires exactly five cycles.")
+    _validate_cycle_lengths(cycle_lengths)
     if tuple(cycle_lengths[1:4]) == (2, 2, 2):
         return 2
     if (

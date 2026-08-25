@@ -12,5 +12,3 @@ myst-parser
 docutils
 numpy
 networkx
-matplotlib
-pandas

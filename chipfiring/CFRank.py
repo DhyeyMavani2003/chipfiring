@@ -110,10 +110,12 @@ class CFRank:
             )
 
             D = self._divisor
-            # Using Corollary 4.4.3 from Dhyey Mavani's Math thesis:
+            # Graph Riemann-Roch gives r(D) = deg(D) - g when deg(D) > 2g - 2.
             if D.get_total_degree() > 2 * graph.get_genus() - 2:
                 self.log(
-                    "Optimized mode: D has degree > 2g-2. Using Corollary 4.4.3 from Dhyey Mavani's Math thesis to skip step 2, and return rank(D) = degree(D) - genus(G)."
+                    "Optimized mode: Graph Riemann-Roch gives rank(D) = "
+                    "degree(D) - genus(G) when degree(D) > 2g-2; "
+                    "skipping enumeration."
                 )
                 self._rank_value = D.get_total_degree() - graph.get_genus()
                 return self
@@ -291,10 +293,8 @@ def rank(divisor: CFDivisor, optimized: bool = False) -> CFRank:
     
     Args:
         divisor: The CFDivisor object for which to calculate the rank.
-        optimized: Whether to use optimized rank calculation. (default: False)
-                   If True, theoretical shortcuts like Corollary 4.4.3 from
-                   Dhyey Mavani's thesis will be used when applicable to speed up
-                   calculations. The log will indicate when these optimizations are used.
+        optimized: Whether to use graph Riemann-Roch shortcuts when applicable.
+                   The log indicates when an optimization is used.
 
     Returns:
         CFRank: An object with the calculated rank accessible via .rank property
@@ -316,15 +316,13 @@ def rank(divisor: CFDivisor, optimized: bool = False) -> CFRank:
 
 def r(divisor : CFDivisor, optimized: bool = False) -> int:
     """
-    Calculate the rank of the given divisor, as in the funciton "rank." This funcion returns only the
+    Calculate the rank of the given divisor, as in the function ``rank``. This function returns only the
     rank itself, as an integer, without the logs. Implemented as a wrapper around "rank."
 
     Args:
         divisor: The CFDivisor object for which to calculate the rank.
-        optimized: Whether to use optimized rank calculation. (default: False)
-                   If True, theoretical shortcuts like Corollary 4.4.3 from
-                   Dhyey Mavani's thesis will be used when applicable to speed up
-                   calculations. The log will indicate when these optimizations are used.
+        optimized: Whether to use graph Riemann-Roch shortcuts when applicable.
+                   The log indicates when an optimization is used.
 
     Returns:
         int: The rank of the divisor.

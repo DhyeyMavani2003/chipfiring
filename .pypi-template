@@ -1,6 +1,17 @@
 a_description_for_the_package: A Python API for visualization and analysis of chip-firing
   games and related algorithms.
-classifiers: []
+classifiers:
+- 'Development Status :: 4 - Beta'
+- 'Intended Audience :: Science/Research'
+- 'Operating System :: OS Independent'
+- 'Programming Language :: Python :: 3'
+- 'Programming Language :: Python :: 3.8'
+- 'Programming Language :: Python :: 3.9'
+- 'Programming Language :: Python :: 3.10'
+- 'Programming Language :: Python :: 3.11'
+- 'Programming Language :: Python :: 3.12'
+- 'Programming Language :: Python :: 3.13'
+- 'Topic :: Scientific/Engineering :: Mathematics'
 console_scripts: []
 first_year_of_publication: '2025'
 github_account: DhyeyMavani2003
@@ -15,10 +26,6 @@ package_title: chipfiring
 readme: README.md
 requires:
 - numpy
-- pandas
-- pytest
-- coverage
-- matplotlib
 - dash
 - dash-cytoscape
 - dash-bootstrap-components

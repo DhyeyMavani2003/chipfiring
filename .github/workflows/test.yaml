@@ -42,8 +42,8 @@ jobs:
           python -m pip install build twine
           python -m build
           twine check dist/*
-          python -m venv --system-site-packages /tmp/chipfiring-wheel-smoke
-          /tmp/chipfiring-wheel-smoke/bin/pip install --no-deps --force-reinstall dist/*.whl
+          python -m venv /tmp/chipfiring-wheel-smoke
+          /tmp/chipfiring-wheel-smoke/bin/pip install dist/*.whl
           cd /tmp
           /tmp/chipfiring-wheel-smoke/bin/python -c "import pathlib, chipfiring; assert 'site-packages' in pathlib.Path(chipfiring.__file__).parts"
       - name: Coveralls
