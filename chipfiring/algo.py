@@ -40,9 +40,8 @@ def EWD(
         - The visualizer object if `visualize` is True, else None.
 
     Raises:
-        ValueError: If the divisor has no degrees mapping, making it impossible
-                    to determine the initial vertex 'q'.
-        ValueError: If the graph is disconnected.
+        ValueError: If the graph is empty or disconnected, or if ``q_name``
+            is not a graph vertex.
         RuntimeError: If the final orientation is not full (some edges remain unoriented).
 
     Example:
@@ -219,7 +218,11 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
         divisor2: The second CFDivisor object.
 
     Returns:
-        A tuple containing a boolean indicating if the divisors are linearly equivalent, and the q-reduced divisor if they are.
+        True if the divisors are linearly equivalent, False otherwise.
+
+    Raises:
+        ValueError: If a nontrivial comparison is attempted on a disconnected
+            graph.
 
     Example:
         >>> # Create a simple graph
@@ -278,6 +281,10 @@ def is_winnable(divisor: CFDivisor) -> bool:
     Returns:
         True if the configuration is winnable, False otherwise.
 
+    Raises:
+        ValueError: If the divisor is defined on an empty or disconnected
+            graph.
+
     Example:
         >>> # Create a simple graph
         >>> vertices = {"v1", "v2", "v3"}
@@ -315,7 +322,9 @@ def q_reduction(divisor: CFDivisor, q_name: Optional[str] = None) -> CFDivisor:
         The q-reduced divisor.
 
     Raises:
-        ValueError: If the EWD algorithm doesn't produce a valid q-reduced divisor.
+        ValueError: If the graph is empty or disconnected, if ``q_name`` is
+            not a graph vertex, or if EWD does not produce a valid q-reduced
+            divisor.
 
     Example:
         >>> # Create a simple graph
@@ -354,6 +363,10 @@ def is_q_reduced(divisor: CFDivisor, q_name: Optional[str] = None) -> bool:
 
     Returns:
         True if the divisor is q-reduced, False otherwise.
+
+    Raises:
+        ValueError: If the graph is empty or disconnected, or if ``q_name`` is
+            not a graph vertex.
 
     Example:
         >>> # Create a simple graph

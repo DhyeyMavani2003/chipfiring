@@ -9,6 +9,8 @@ non-interactive drivers have saved expected-output files in `expected/`.
 - `paper_chain_of_cycles.py` reproduces the paper's 1024-case genus-5
   chain-of-cycles experiment. The full default run can take several hours;
   use `python examples/paper_chain_of_cycles.py --limit 2` for a smoke test.
+  Pass `--lengths 2,3,4,5` to choose the cycle lengths included in the
+  five-cycle product.
 
 From the repository root, run the two deterministic drivers and compare their
 output with:

@@ -26,14 +26,20 @@ pip install -e .  # Install in development mode
 We use pytest for testing. To run the test suite:
 
 ```bash
-# Run all tests in the tests directory with verbose info locally
-pytest tests/ --verbose
+# Run the complete local test suite
+python -m pytest -q
 
 # Run specific tests
-pytest tests/test_graph.py
+python -m pytest tests/test_cfgraph.py -q
 
-# Run tests across all the supported Python versions
-make test
+# Run executable package examples and saved-output checks
+python -m pytest --doctest-modules chipfiring -q
+make check-example-outputs PYTHON=python
+
+# Run tests across all supported Python versions (requires tox and the
+# corresponding Python interpreters)
+python -m pip install tox
+python -m tox
 ```
 
 ## Building Documentation
@@ -41,15 +47,15 @@ make test
 The documentation is built using Sphinx:
 
 ```bash
-# Build documentation workflow
-make docs
+# Build the documentation from the repository root
+make -C docs html
 
 # View the documentation
-open _build/html/index.html  # On macOS
+open docs/_build/html/index.html  # On macOS
 # or
-xdg-open _build/html/index.html  # On Linux
+xdg-open docs/_build/html/index.html  # On Linux
 # or
-start _build/html/index.html  # On Windows
+start docs/_build/html/index.html  # On Windows
 ```
 
 ## Code Style

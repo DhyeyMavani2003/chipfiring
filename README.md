@@ -13,7 +13,11 @@ A Python implementation of the chip-firing game (also known as the dollar game) 
 
 ## Documentation
 
-Visit [Read the Docs](https://chipfiring.readthedocs.org) for the full documentation, including overviews and several examples.
+Visit [Read the Docs](https://chipfiring.readthedocs.org) for the full
+documentation, including overviews and several examples. Repository-specific
+guides are available in the [changelog](CHANGELOG.md),
+[contributing guide](docs/contributing.md), and
+[examples directory](examples/README.md).
 
 ## Overview
 
