@@ -5,7 +5,9 @@ This module provides functions for parking functions, independent sets,
 treewidth calculations, and scramble numbers as mentioned in the academic literature.
 """
 from __future__ import annotations
-from typing import List, Set, Dict, Optional
+import itertools
+import warnings
+from typing import Any, Dict, List, Optional, Set
 import networkx as nx
 from .CFGraph import CFGraph
 
@@ -198,8 +200,9 @@ def minimum_degree(graph: CFGraph) -> int:
     """
     Compute the minimum degree of a graph.
     
-    This provides a simple lower bound on treewidth and gonality:
-    δ(G) ≤ tw(G) ≤ gon(G)
+    For connected simple graphs, this provides a lower bound on treewidth and
+    gonality: ``δ(G) ≤ tw(G) ≤ gon(G)``. With parallel edges, this function
+    returns weighted valence and that inequality need not hold.
     
     Args:
         graph: The graph to analyze
@@ -280,8 +283,7 @@ def bramble_order_lower_bound(graph: CFGraph) -> int:
     """
     Compute a lower bound on the maximum bramble order.
     
-    Based on the theory from "Chip-firing on the Platonic solids",
-    this provides a lower bound on treewidth and thus gonality.
+    This uses the relation between bramble order, treewidth, and gonality.
     
     Args:
         graph: The graph to analyze
@@ -297,32 +299,24 @@ def bramble_order_lower_bound(graph: CFGraph) -> int:
         True
     """
     n = len(graph.vertices)
-    if n <= 1:
-        return 1
-    
-    # For complete graphs K_n, bramble order is n
-    expected_edges = n * (n - 1) // 2
-    actual_edges = sum(1 for v1 in graph.vertices 
-                      for v2, valence in graph.graph[v1].items() 
-                      if v1.name < v2.name)
-    
-    if actual_edges == expected_edges:
-        return n  # Complete graph has bramble order n
-    
-    # For bipartite graphs, use minimum degree + 1
-    if is_bipartite(graph):
-        return minimum_degree(graph) + 1
-    
-    # General lower bound based on minimum degree
-    return minimum_degree(graph) + 1
+    if n == 0:
+        return 0
+    if not graph.is_connected():
+        raise ValueError("Bramble bounds require a connected graph")
+
+    # Degeneracy is at most treewidth, and the minimum degree of the whole
+    # underlying simple graph is at most its degeneracy. Bramble order is
+    # treewidth + 1. Parallel-edge multiplicities do not affect treewidth.
+    simple_minimum_degree = min(len(graph.graph[vertex]) for vertex in graph.vertices)
+    return simple_minimum_degree + 1
 
 
 def complete_multipartite_gonality(partition_sizes: List[int]) -> int:
     """
     Compute the exact gonality of a complete multipartite graph K_{n1,n2,...,nk}.
-    
-    For k >= 2 partitions: gon(K_{n1,n2,...,nk}) = n - min(ni) where min(ni) is the smallest part.
-    For k = 1 partition: gon(K_n) = n - 1 (complete graph gonality).
+
+    For at least two nonempty parts,
+    ``gon(K_{n1,...,nk}) = n - max(ni)``.
     
     Args:
         partition_sizes: List of partition sizes
@@ -334,22 +328,14 @@ def complete_multipartite_gonality(partition_sizes: List[int]) -> int:
         >>> complete_multipartite_gonality([2, 2, 2])  # Octahedron K_{2,2,2}
         4
         >>> complete_multipartite_gonality([3, 4])  # K_{3,4}
-        4
-        >>> complete_multipartite_gonality([5])  # K_5 (complete graph)
-        4
+        3
     """
-    if not partition_sizes:
-        return 0
-    
-    n = sum(partition_sizes)
-    
-    # Special case: single partition = complete graph K_n
-    if len(partition_sizes) == 1:
-        return n - 1
-    
-    # General case: complete multipartite with k >= 2 partitions
-    nk = min(partition_sizes)  # Use smallest part
-    return n - nk
+    if len(partition_sizes) < 2:
+        raise ValueError("At least two nonempty parts are required")
+    if not all(type(size) is int and size > 0 for size in partition_sizes):
+        raise ValueError("Partition sizes must be positive integers")
+
+    return sum(partition_sizes) - max(partition_sizes)
 
 
 def octahedron_independence_number() -> int:
@@ -364,14 +350,14 @@ def octahedron_independence_number() -> int:
     return 2
 
 
-def octahedron_bramble_construction() -> Dict[str, any]:
+def octahedron_bramble_construction() -> Dict[str, Any]:
     """
     Construct the bramble of order 5 on the octahedron as described in the theory.
     
     This bramble proves that the treewidth of the octahedron is at least 4.
     
     Returns:
-        Dict[str, any]: Information about the bramble construction
+        Dict[str, Any]: Information about the bramble construction
     """
     # Label vertices u1, u2, v1, v2, w1, w2 where a vertex is connected 
     # only to those vertices with a different letter label
@@ -463,10 +449,7 @@ def treewidth_upper_bound(graph: CFGraph) -> int:
 
 def scramble_number_upper_bound(graph: CFGraph) -> int:
     """
-    Compute an upper bound for the scramble number of a graph.
-    
-    The scramble number is related to gonality and chip firing dynamics.
-    This provides a theoretical upper bound based on graph structure.
+    Return the trivial vertex-count upper bound for scramble number.
     
     Args:
         graph: The graph to analyze
@@ -482,22 +465,19 @@ def scramble_number_upper_bound(graph: CFGraph) -> int:
         True
     """
     n = len(graph.vertices)
-    if n <= 1:
+    if n == 0:
         return 0
-    
-    # Upper bound based on independence number and treewidth
-    alpha = independence_number(graph)
-    tw_bound = treewidth_upper_bound(graph)
-    
-    # Theoretical upper bound: min(n-1, α + tw + 1)
-    return min(n - 1, alpha + tw_bound + 1)
+    if not graph.is_connected():
+        raise ValueError("Scramble-number bounds require a connected graph")
+    return n
 
 
 def genus_upper_bound(graph: CFGraph) -> int:
     """
-    Compute an upper bound for the genus of a graph.
-    
-    The genus is related to gonality through various inequalities.
+    Return the chip-firing genus (first Betti number) of a connected graph.
+
+    The historical function name is retained for compatibility; the returned
+    value is exact, not merely an upper bound.
     
     Args:
         graph: The graph to analyze
@@ -512,29 +492,22 @@ def genus_upper_bound(graph: CFGraph) -> int:
         >>> genus_upper_bound(graph) >= 0
         True
     """
-    n = len(graph.vertices)
-    # Count total edges (considering multiple edges between vertices)
-    m = sum(valence for v1 in graph.vertices 
-            for v2, valence in graph.graph[v1].items() 
-            if v1.name < v2.name)
-    
-    if n <= 2:
+    if not graph.vertices:
         return 0
-    
-    # Use Euler's formula: V - E + F = 2 - 2g
-    # For a connected graph embedded in a surface of genus g
-    # Rearranging: g = 1 - (V - E + F)/2
-    # F ≥ 1 for connected graphs, so g ≤ 1 - (V - E + 1)/2 = (E - V + 1)/2
-    
-    return max(0, (m - n + 1) // 2)
+    if not graph.is_connected():
+        raise ValueError("Graph genus requires a connected graph")
+    return graph.get_genus()
 
 
 def gonality_theoretical_bounds(graph: CFGraph) -> Dict[str, int]:
     """
-    Compute various theoretical bounds for gonality.
-    
-    This includes bounds from independence number, treewidth, bramble order,
-    and minimum degree as described in the octahedron theory.
+    Compute certified divisorial-gonality bounds for a connected simple graph.
+
+    The lower bounds use vertex connectivity, minimum degree, and bramble
+    order. The upper bounds use the vertex count, independence number, and the
+    graph Riemann-Roch bound ``g + 1``. Multigraphs are rejected because the
+    simple-graph independence and treewidth inequalities used here do not
+    account for edge multiplicity.
     
     Args:
         graph: The graph to analyze
@@ -551,51 +524,69 @@ def gonality_theoretical_bounds(graph: CFGraph) -> Dict[str, int]:
         True
     """
     n = len(graph.vertices)
-    
-    if n <= 1:
-        return {'trivial_bound': 1}
-    
+    if n == 0:
+        raise ValueError("Gonality bounds require a nonempty connected graph")
+    if not graph.is_connected():
+        raise ValueError("Gonality bounds require a connected graph")
+    if any(valence != 1 for row in graph.graph.values() for valence in row.values()):
+        raise ValueError("These gonality bounds require a simple graph")
+
+    if n == 1:
+        return {
+            'trivial_bound': 1,
+            'trivial_lower_bound': 1,
+            'trivial_upper_bound': 1,
+            'independence_upper_bound': 1,
+            'treewidth_lower_bound': 0,
+            'treewidth_upper_estimate': 0,
+            'minimum_degree_bound': 0,
+            'bramble_order_bound': 1,
+            'genus_bound': 1,
+            'connectivity_bound': 0,
+            'lower_bound': 1,
+            'upper_bound': 1,
+        }
+
+    nx_graph = nx.Graph()
+    nx_graph.add_nodes_from(vertex.name for vertex in graph.vertices)
+    nx_graph.add_edges_from(
+        (vertex.name, neighbor.name)
+        for vertex in graph.vertices
+        for neighbor in graph.graph[vertex]
+        if vertex.name < neighbor.name
+    )
+
     alpha = independence_number(graph)
-    tw_bound = treewidth_upper_bound(graph)
-    genus_bound = genus_upper_bound(graph)
-    scramble_bound = scramble_number_upper_bound(graph)
     min_deg = minimum_degree(graph)
+    connectivity = nx.node_connectivity(nx_graph)
     bramble_bound = bramble_order_lower_bound(graph)
-    
+    certified_treewidth_lower = max(min_deg, connectivity, bramble_bound - 1)
+
     bounds = {
         'trivial_lower_bound': 1,
-        'trivial_upper_bound': n - 1,
-        'independence_upper_bound': n - alpha,  # Theorem 1: gon(G) ≤ n - α(G)
-        'treewidth_lower_bound': tw_bound,      # Theorem 2: tw(G) ≤ gon(G)
-        'minimum_degree_bound': min_deg,        # δ(G) ≤ tw(G) ≤ gon(G)
-        'bramble_order_bound': bramble_bound,   # Bramble order lower bound
-        'genus_bound': genus_bound + 1,
-        'scramble_bound': scramble_bound,
-        'connectivity_bound': min(3, n - 1)
+        'trivial_upper_bound': n,
+        'independence_upper_bound': n - alpha,
+        'treewidth_lower_bound': certified_treewidth_lower,
+        'treewidth_upper_estimate': treewidth_upper_bound(graph),
+        'minimum_degree_bound': min_deg,
+        'bramble_order_bound': bramble_bound,
+        'genus_bound': graph.get_genus() + 1,
+        'scramble_bound': scramble_number_upper_bound(graph),
+        'connectivity_bound': connectivity,
     }
-    
-    # Compute tighter bounds using the theoretical results
-    lower_bound_candidates = [
+    bounds['lower_bound'] = max(
         bounds['trivial_lower_bound'],
-        bounds['minimum_degree_bound'],
-        bounds['bramble_order_bound'] - 1,  # bramble order - 1 = treewidth lower bound
-        max(1, bounds['connectivity_bound'] - 1)
-    ]
-    
-    upper_bound_candidates = [
+        bounds['treewidth_lower_bound'],
+    )
+    bounds['upper_bound'] = min(
         bounds['trivial_upper_bound'],
         bounds['independence_upper_bound'],
-        bounds['treewidth_lower_bound'] + 1,  # rough upper bound from treewidth
-        bounds['scramble_bound']
-    ]
-    
-    bounds['lower_bound'] = max(lower_bound_candidates)
-    bounds['upper_bound'] = min(upper_bound_candidates)
-    
+        bounds['genus_bound'],
+    )
     return bounds
 
 
-def analyze_graph_properties(graph: CFGraph) -> Dict[str, any]:
+def analyze_graph_properties(graph: CFGraph) -> Dict[str, Any]:
     """
     Analyze various combinatorial properties relevant to gonality.
     
@@ -603,7 +594,7 @@ def analyze_graph_properties(graph: CFGraph) -> Dict[str, any]:
         graph: The graph to analyze
         
     Returns:
-        Dict[str, any]: Dictionary of properties and their values
+        Dict[str, Any]: Dictionary of properties and their values
         
     Examples:
         >>> vertices = {"0", "1", "2"}
@@ -619,17 +610,21 @@ def analyze_graph_properties(graph: CFGraph) -> Dict[str, any]:
             for v2, valence in graph.graph[v1].items() 
             if v1.name < v2.name)
     
+    connected = is_connected(graph)
+    graph_genus = genus_upper_bound(graph) if connected else None
+    scramble_upper = scramble_number_upper_bound(graph) if connected else None
+
     # Basic properties
     properties = {
         'num_vertices': n,
         'num_edges': m,
-        'is_connected': is_connected(graph),
-        'is_tree': m == n - 1 and is_connected(graph),
+        'is_connected': connected,
+        'is_tree': m == n - 1 and connected,
         'is_complete': m == n * (n - 1) // 2,
         'independence_number': independence_number(graph),
         'treewidth_upper_bound': treewidth_upper_bound(graph),
-        'genus_upper_bound': genus_upper_bound(graph),
-        'scramble_number_upper_bound': scramble_number_upper_bound(graph)
+        'genus_upper_bound': graph_genus,
+        'scramble_number_upper_bound': scramble_upper,
     }
     
     # Degree sequence
@@ -646,8 +641,12 @@ def analyze_graph_properties(graph: CFGraph) -> Dict[str, any]:
         'average_degree': sum(degrees) / len(degrees) if degrees else 0
     })
     
-    # Gonality bounds
-    properties['gonality_bounds'] = gonality_theoretical_bounds(graph)
+    try:
+        properties['gonality_bounds'] = gonality_theoretical_bounds(graph)
+        properties['gonality_bounds_unavailable_reason'] = None
+    except ValueError as error:
+        properties['gonality_bounds'] = None
+        properties['gonality_bounds_unavailable_reason'] = str(error)
     
     return properties
 
@@ -684,8 +683,7 @@ def icosahedron_independence_number() -> int:
     """
     Compute the independence number of the icosahedron.
     
-    As stated in "Chip-firing on the Platonic solids" by Beougher et al.,
-    the icosahedron has independence number α(I) = 3.
+    The icosahedron has independence number α(I) = 3.
     
     Returns:
         int: The independence number (3)
@@ -693,173 +691,221 @@ def icosahedron_independence_number() -> int:
     return 3
 
 
-def icosahedron_2_uniform_scramble() -> Dict[str, any]:
+def icosahedron_2_uniform_scramble() -> Dict[str, Any]:
     """
-    Implement the 2-uniform scramble construction for the icosahedron.
-    
-    From the paper: "The icosahedron has a 2-uniform scramble with ||S|| = 8."
-    This implements the theoretical construction showing the scramble number.
+    Return the all-edges 2-uniform scramble on the icosahedron.
+
+    Beougher et al., "Chip-firing on the Platonic solids: a primer for studying
+    graph gonality," use all 30 edges as the connected two-vertex eggs. Its
+    hitting number is 9 and its egg-cut number is 8, so its norm is 8.
     
     Returns:
         Dict containing scramble construction details
     """
-    # 2-uniform scramble construction
-    # The icosahedron can be partitioned into sets of size 2 with scramble number 8
+    nx_graph = nx.icosahedral_graph()
     scramble_sets = [
-        {"v0", "v6"},   # Opposite vertices on icosahedron
-        {"v1", "v7"},   
-        {"v2", "v8"},   
-        {"v3", "v9"},   
-        {"v4", "v10"},  
-        {"v5", "v11"}   # 6 pairs of opposite vertices
+        {f"v{source}", f"v{target}"}
+        for source, target in sorted(nx_graph.edges())
     ]
-    
-    # The 2-uniform scramble has norm ||S|| = 8
-    scramble_norm = 8
-    
+    hitting_number = 12 - icosahedron_independence_number()
+    egg_cut_number = icosahedron_egg_cut_number()['egg_cut_number']
+
     return {
         'scramble_sets': scramble_sets,
-        'scramble_norm': scramble_norm,
+        'hitting_number': hitting_number,
+        'egg_cut_number': egg_cut_number,
+        'scramble_norm': min(hitting_number, egg_cut_number),
         'is_2_uniform': True,
-        'description': '2-uniform scramble on icosahedron with ||S|| = 8',
+        'description': 'All-edge 2-uniform scramble on the icosahedron',
         'vertex_pairs': len(scramble_sets),
-        'construction_type': 'opposite_vertex_pairs'
+        'construction_type': 'all_edges'
     }
 
 
 def icosahedron_screewidth_bound() -> Dict[str, int]:
     """
-    Compute screewidth bounds for the icosahedron.
-    
-    From the paper: "scw(I) ≤ 8" where scw is the screewidth.
-    The screewidth is related to the scramble number.
+    Return the known scramble-number and screewidth values for the icosahedron.
+
+    The all-edge scramble gives ``sn(I) >= 8``. A width-8 tree-cut
+    decomposition gives ``scw(I) <= 8``, and ``sn(I) <= scw(I)``, so both
+    parameters equal 8.
     
     Returns:
         Dict containing screewidth bounds
     """
-    # From 2-uniform scramble construction
-    scramble_info = icosahedron_2_uniform_scramble()
-    screewidth_upper_bound = scramble_info['scramble_norm']  # 8
-    
     return {
-        'screewidth_upper_bound': screewidth_upper_bound,
-        'scramble_number_bound': screewidth_upper_bound,
-        'relation': 'scw(I) ≤ ||S|| = 8',
-        'tightness': 'upper_bound_from_scramble'
+        'screewidth_upper_bound': 8,
+        'screewidth': 8,
+        'scramble_number_bound': 8,
+        'scramble_number': 8,
+        'relation': '||S|| = 8 ≤ sn(I) ≤ scw(I) ≤ 8',
+        'tree_cut_decomposition_bags': [
+            ('v0', 'v1'),
+            ('v2', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11'),
+            ('v3', 'v4'),
+        ],
+        'tree_cut_edge_widths': [8, 8],
+        'tree_cut_decomposition_bag_sizes': [2, 8, 2],
+        'tightness': 'matching_scramble_and_tree_cut_bounds'
     }
 
 
-def icosahedron_lemma_3_subgraph_bounds() -> Dict[str, any]:
+def icosahedron_subgraph_outdegree_bounds() -> Dict[str, Any]:
     """
-    Implement Lemma 3 for subgraph outdegree bounds on the icosahedron.
-    
-    This lemma provides bounds on the outdegree of effective divisors
-    in subgraphs of the icosahedron, contributing to gonality analysis.
-    
+    Compute edge-boundary minima for vertex subsets of the icosahedron.
+
+    The reference lower bounds are 8 for subset orders 2 and 10, and 9
+    for orders 3 through 9. This function exhaustively computes the actual
+    minimum cut size for every nontrivial subset order and verifies those
+    bounds directly.
+
     Returns:
-        Dict containing Lemma 3 analysis
+        Dictionary containing actual and reference lower bounds by subset size.
     """
-    # Icosahedron parameters
-    n_vertices = 12
-    degree = 5  # Each vertex has degree 5
-    independence_number = 3
-    
-    # Lemma 3: For any subgraph H of the icosahedron,
-    # the outdegree bounds are related to vertex degrees and independence
-    max_outdegree_bound = min(degree, n_vertices - independence_number)
-    
-    # Analysis of critical subgraphs
-    critical_subgraphs = [
-        {
-            'name': 'triangle_subgraph',
-            'vertices': 3,
-            'max_outdegree': 2,
-            'contributes_to_gonality': True
-        },
-        {
-            'name': 'pentagon_subgraph', 
-            'vertices': 5,
-            'max_outdegree': 3,
-            'contributes_to_gonality': True
-        },
-        {
-            'name': 'complement_of_independence_set',
-            'vertices': n_vertices - independence_number,
-            'max_outdegree': max_outdegree_bound,
-            'contributes_to_gonality': True
-        }
-    ]
-    
+    graph = nx.icosahedral_graph()
+    vertices = tuple(sorted(graph.nodes()))
+    actual_minimum_by_order = {}
+    for order in range(1, len(vertices)):
+        actual_minimum_by_order[order] = min(
+            nx.cut_size(graph, subset, set(vertices) - set(subset))
+            for subset in itertools.combinations(vertices, order)
+        )
+
+    reference_lower_bound_by_order = {
+        order: 8 if order in {2, 10} else 9
+        for order in range(2, 11)
+    }
     return {
-        'max_outdegree_bound': max_outdegree_bound,
-        'independence_number': independence_number,
-        'critical_subgraphs': critical_subgraphs,
+        'actual_minimum_outdegree_by_order': actual_minimum_by_order,
+        'reference_lower_bound_by_order': reference_lower_bound_by_order,
+        'minimum_reference_bound': min(reference_lower_bound_by_order.values()),
+        'reference_bounds_verified': all(
+            actual_minimum_by_order[order] >= lower_bound
+            for order, lower_bound in reference_lower_bound_by_order.items()
+        ),
+        'source': (
+            'Beougher et al., "Chip-firing on the Platonic solids: '
+            'a primer for studying graph gonality"'
+        ),
+    }
+
+
+def icosahedron_gonality_proof_summary() -> Dict[str, Any]:
+    """
+    Return a literature-backed summary of the gonality-9 result.
+
+    This function does not execute an exhaustive Dhar calculation. It records
+    the published upper- and lower-bound statements so callers can distinguish
+    reference data from values computed by this package.
+
+    Returns:
+        Dictionary containing the exact published value and proof methods.
+    """
+    return {
+        'published_exact_value': 9,
+        'upper_bound': 9,
+        'upper_bound_method': 'independence-number divisor construction',
+        'lower_bound': 9,
+        'lower_bound_method': 'Dhar burning and subgraph outdegree analysis',
+        'lower_bound_statement': (
+            'No effective divisor of degree 8 on the icosahedron has rank at least 1'
+        ),
+        'computed_by_package': False,
+        'source': (
+            'Beougher et al., "Chip-firing on the Platonic solids: '
+            'a primer for studying graph gonality"'
+        ),
+    }
+
+
+def icosahedron_lemma_3_subgraph_bounds() -> Dict[str, Any]:
+    """Deprecated compatibility wrapper for subgraph outdegree data."""
+    warnings.warn(
+        "Use icosahedron_subgraph_outdegree_bounds instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    data = icosahedron_subgraph_outdegree_bounds()
+    return {
+        **data,
+        'max_outdegree_bound': data['minimum_reference_bound'],
+        'independence_number': 3,
+        'critical_subgraphs': [
+            {
+                'name': 'order_2_subgraphs',
+                'vertices': 2,
+                'max_outdegree': 8,
+                'minimum_outdegree': 8,
+                'contributes_to_gonality': True,
+            },
+            {
+                'name': 'orders_3_through_9',
+                'vertices': 3,
+                'orders': tuple(range(3, 10)),
+                'max_outdegree': 9,
+                'minimum_outdegree': 9,
+                'contributes_to_gonality': True,
+            },
+            {
+                'name': 'order_10_subgraphs',
+                'vertices': 10,
+                'max_outdegree': 8,
+                'minimum_outdegree': 8,
+                'contributes_to_gonality': True,
+            },
+        ],
         'lemma_statement': 'Subgraph outdegree bounds for effective divisors',
-        'contributes_to_gonality_proof': True
+        'contributes_to_gonality_proof': True,
     }
 
 
-def icosahedron_dhars_burning_algorithm() -> Dict[str, any]:
-    """
-    Implement Dhar's burning algorithm proof for icosahedron gonality.
-    
-    This demonstrates the debt-free divisor analysis that proves
-    the icosahedron gonality is exactly 9.
-    
-    Returns:
-        Dict containing Dhar's algorithm analysis
-    """
-    # Dhar's burning algorithm analysis
-    # For gonality g, we need to show there exists a debt-free divisor of degree g
-    # but no debt-free divisor of degree g-1
-    
-    gonality_candidate = 9
-    
-    # Debt-free divisor construction
-    debt_free_divisor_degree_9 = {
-        'degree': gonality_candidate,
-        'construction': 'strategic_vertex_selection',
-        'proof_method': 'burning_algorithm',
-        'exists': True,
-        'description': 'Debt-free divisor of degree 9 exists'
-    }
-    
-    # Show no debt-free divisor of degree 8 exists
-    no_debt_free_degree_8 = {
-        'degree': gonality_candidate - 1,
-        'exists': False,
-        'reason': 'burning_algorithm_fails',
-        'description': 'No debt-free divisor of degree 8 exists'
-    }
-    
-    # Burning sequence analysis
-    burning_sequences = [
-        {
-            'initial_debt': 8,
-            'burning_rounds': 4,
-            'debt_propagation': 'fails_to_clear',
-            'conclusion': 'degree_8_insufficient'
-        },
-        {
-            'initial_debt': 9,
-            'burning_rounds': 5,
-            'debt_propagation': 'clears_successfully',
-            'conclusion': 'degree_9_sufficient'
-        }
-    ]
-    
+def icosahedron_dhars_burning_algorithm() -> Dict[str, Any]:
+    """Deprecated compatibility wrapper for the published proof summary."""
+    warnings.warn(
+        "Use icosahedron_gonality_proof_summary instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    summary = icosahedron_gonality_proof_summary()
     return {
-        'gonality': gonality_candidate,
-        'debt_free_divisor_exists': debt_free_divisor_degree_9,
-        'no_lower_degree_divisor': no_debt_free_degree_8,
-        'burning_sequences': burning_sequences,
-        'algorithm': 'dhars_burning_algorithm',
-        'theorem_reference': 'Theorem 8 and 9 from Beougher et al.',
-        'proof_complete': True
+        **summary,
+        'gonality': summary['published_exact_value'],
+        'debt_free_divisor_exists': {
+            'degree': 9,
+            'exists': True,
+            'construction': 'published_rank_one_divisor',
+            'proof_method': 'independence-number upper bound',
+            'description': 'A published degree-9 divisor of rank at least 1 exists',
+        },
+        'no_lower_degree_divisor': {
+            'degree': 8,
+            'exists': False,
+            'reason': 'published_Dhar_and_subgraph_outdegree_analysis',
+            'description': 'No effective degree-8 divisor has rank at least 1',
+        },
+        'burning_sequences': [
+            {
+                'initial_debt': 8,
+                'burning_rounds': 0,
+                'debt_propagation': 'reference_proof_excludes_rank_one',
+                'conclusion': 'degree_8_rank_one_impossible',
+                'computed_by_package': False,
+            },
+            {
+                'initial_debt': 9,
+                'burning_rounds': 0,
+                'debt_propagation': 'reference_construction_establishes_rank_one',
+                'conclusion': 'degree_9_rank_one_exists',
+                'computed_by_package': False,
+            },
+        ],
+        'algorithm': 'published_Dhar_analysis',
+        'theorem_reference': summary['source'],
+        'proof_complete': True,
     }
 
 
-def icosahedron_egg_cut_number() -> Dict[str, int]:
+def icosahedron_egg_cut_number() -> Dict[str, Any]:
     """
     Compute the egg-cut number for the icosahedron.
     
@@ -869,28 +915,46 @@ def icosahedron_egg_cut_number() -> Dict[str, int]:
     Returns:
         Dict containing egg-cut number analysis
     """
-    # Theoretical egg-cut number calculation
-    n_vertices = 12
-    independence_number = 3
-    
-    # Egg-cut number bounds
-    # Related to minimum vertex cuts and scramble sets
-    egg_cut_lower_bound = independence_number
-    egg_cut_upper_bound = n_vertices - independence_number
-    
-    # Theoretical egg-cut number (from scramble analysis)
-    egg_cut_number = 8  # Related to scramble norm ||S|| = 8
-    
+    graph = nx.icosahedral_graph()
+    vertices = set(graph.nodes())
+    best_cut_size = None
+    best_subset = None
+    best_cut_edges = None
+    for order in range(2, len(vertices) // 2 + 1):
+        for subset_tuple in itertools.combinations(sorted(vertices), order):
+            subset = set(subset_tuple)
+            complement = vertices - subset
+            if graph.subgraph(subset).number_of_edges() == 0:
+                continue
+            if graph.subgraph(complement).number_of_edges() == 0:
+                continue
+            cut_edges = sorted(
+                (source, target)
+                for source, target in graph.edges()
+                if (source in subset) != (target in subset)
+            )
+            if best_cut_size is None or len(cut_edges) < best_cut_size:
+                best_cut_size = len(cut_edges)
+                best_subset = subset
+                best_cut_edges = cut_edges
+
+    if best_cut_size is None or best_subset is None or best_cut_edges is None:
+        raise RuntimeError("Failed to find a valid egg-separating cut")
+
     return {
-        'egg_cut_number': egg_cut_number,
-        'lower_bound': egg_cut_lower_bound,
-        'upper_bound': egg_cut_upper_bound,
-        'relation_to_scramble': 'egg_cut_related_to_scramble_norm',
-        'contributes_to_gonality': True
+        'egg_cut_number': best_cut_size,
+        'lower_bound': best_cut_size,
+        'upper_bound': best_cut_size,
+        'witness_side': {f"v{vertex}" for vertex in best_subset},
+        'witness_cut_edges': [
+            (f"v{source}", f"v{target}") for source, target in best_cut_edges
+        ],
+        'relation_to_scramble': 'egg-cut number of the all-edge 2-uniform scramble',
+        'contributes_to_gonality': True,
     }
 
 
-def icosahedron_hitting_set_analysis() -> Dict[str, any]:
+def icosahedron_hitting_set_analysis() -> Dict[str, Any]:
     """
     Analyze hitting sets for the icosahedron scramble construction.
     
@@ -900,27 +964,29 @@ def icosahedron_hitting_set_analysis() -> Dict[str, any]:
     Returns:
         Dict containing hitting set analysis
     """
-    # Get 2-uniform scramble construction
     scramble_info = icosahedron_2_uniform_scramble()
     scramble_sets = scramble_info['scramble_sets']
-    
-    # Minimum hitting set analysis
-    # Need to hit all 6 pairs of opposite vertices
-    min_hitting_set_size = 6  # Need at least one vertex from each pair
-    
-    # Example hitting sets
+    graph = nx.icosahedral_graph()
+    complement = nx.complement(graph)
+    independent_sets = sorted(
+        (
+            tuple(sorted(clique))
+            for clique in nx.find_cliques(complement)
+            if len(clique) == icosahedron_independence_number()
+        )
+    )
+    all_vertices = set(graph.nodes())
     hitting_sets = [
-        {"v0", "v1", "v2", "v3", "v4", "v5"},  # One from each pair (first half)
-        {"v6", "v7", "v8", "v9", "v10", "v11"},  # One from each pair (second half)
-        {"v0", "v7", "v2", "v9", "v4", "v11"}   # Mixed selection
+        {f"v{vertex}" for vertex in all_vertices - set(independent_set)}
+        for independent_set in independent_sets
     ]
-    
-    # Hitting set bounds
+    min_hitting_set_size = 12 - icosahedron_independence_number()
+
     hitting_set_bounds = {
         'minimum_size': min_hitting_set_size,
         'maximum_size': 12,  # All vertices
         'optimal_size': min_hitting_set_size,
-        'relation_to_scramble': 'hitting_set_size_bounds_scramble_norm'
+        'relation_to_scramble': 'minimum vertex cover of the icosahedron'
     }
     
     return {
@@ -932,64 +998,34 @@ def icosahedron_hitting_set_analysis() -> Dict[str, any]:
     }
 
 
-def icosahedron_gonality_theoretical_bounds() -> Dict[str, int]:
+def icosahedron_gonality_theoretical_bounds() -> Dict[str, Any]:
     """
-    Compute comprehensive theoretical bounds for icosahedron gonality.
-    
-    This integrates all the theoretical results to show that gonality = 9.
+    Return literature-backed invariants and exact gonality of the icosahedron.
     
     Returns:
         Dict containing all theoretical bounds
     """
-    # Basic parameters
     n_vertices = 12
-    alpha = icosahedron_independence_number()  # 3
-    
-    # Theoretical bounds from various approaches
-    independence_upper_bound = n_vertices - alpha  # 12 - 3 = 9
-    
-    # Scramble number bounds
+    independence_upper_bound = n_vertices - icosahedron_independence_number()
+    scramble_info = icosahedron_2_uniform_scramble()
     screewidth_info = icosahedron_screewidth_bound()
-    scramble_bound = screewidth_info['screewidth_upper_bound']  # 8
-    
-    # Dhar's burning algorithm result
-    dhars_result = icosahedron_dhars_burning_algorithm()
-    dhars_gonality = dhars_result['gonality']  # 9
-    
-    # Lemma 3 bounds
-    lemma3_info = icosahedron_lemma_3_subgraph_bounds()
-    subgraph_bound = lemma3_info['max_outdegree_bound']
-    
-    # Degree-based bounds
-    min_degree = 5  # Each vertex has degree 5
-    degree_bound = min_degree + 1  # Rough upper bound
-    
-    # Theoretical bounds summary
-    bounds = {
+    subgraph_info = icosahedron_subgraph_outdegree_bounds()
+    proof_summary = icosahedron_gonality_proof_summary()
+
+    return {
         'trivial_lower_bound': 1,
-        'trivial_upper_bound': n_vertices - 1,  # 11
-        'independence_upper_bound': independence_upper_bound,  # 9
-        'scramble_number_bound': scramble_bound,  # 8 
-        'dhars_algorithm_result': dhars_gonality,  # 9
-        'subgraph_outdegree_bound': subgraph_bound,  # 5
-        'degree_based_bound': degree_bound,  # 6
-        'screewidth_bound': screewidth_info['screewidth_upper_bound'],  # 8
+        'trivial_upper_bound': n_vertices - 1,
+        'vertex_count_upper_bound': n_vertices,
+        'independence_upper_bound': independence_upper_bound,
+        'scramble_number_bound': scramble_info['scramble_norm'],
+        'screewidth_bound': screewidth_info['screewidth'],
+        'subgraph_outdegree_lower_bound': subgraph_info['minimum_reference_bound'],
+        'subgraph_outdegree_bound': subgraph_info['minimum_reference_bound'],
+        'degree_based_bound': 5,
+        'dhars_algorithm_result': proof_summary['published_exact_value'],
+        'exact_gonality': proof_summary['published_exact_value'],
+        'published_exact_value': proof_summary['published_exact_value'],
+        'lower_bound': proof_summary['lower_bound'],
+        'upper_bound': proof_summary['upper_bound'],
+        'source': proof_summary['source'],
     }
-    
-    # Final bounds
-    lower_bound_candidates = [
-        bounds['trivial_lower_bound'],
-        max(1, bounds['scramble_number_bound'] - 1),  # scramble number - 1
-    ]
-    
-    upper_bound_candidates = [
-        bounds['independence_upper_bound'],  # 9 (tight)
-        bounds['dhars_algorithm_result'],    # 9 (tight)
-        bounds['scramble_number_bound'] + 1, # 9 (scramble + 1)
-        bounds['trivial_upper_bound']        # 11 (loose)
-    ]
-    
-    bounds['lower_bound'] = max(lower_bound_candidates)
-    bounds['upper_bound'] = min(upper_bound_candidates)
-    
-    return bounds

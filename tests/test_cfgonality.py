@@ -297,6 +297,13 @@ class TestPlatonicSolids:
     def test_platonic_solid_gonality_bounds(self):
         """Test gonality bounds for Platonic solids."""
         bounds = platonic_solid_gonality_bounds()
+        expected_exact = {
+            'tetrahedron': 3,
+            'cube': 4,
+            'octahedron': 4,
+            'dodecahedron': 6,
+            'icosahedron': 9,
+        }
         
         expected_solids = ['tetrahedron', 'cube', 'octahedron', 'dodecahedron', 'icosahedron']
         
@@ -310,9 +317,11 @@ class TestPlatonicSolids:
             # Check bounds are reasonable
             assert bounds[solid]['lower_bound'] > 0
             assert bounds[solid]['upper_bound'] >= bounds[solid]['lower_bound']
+            assert bounds[solid]['exact'] == expected_exact[solid]
     
     def test_complete_graph_gonality(self):
         """Test exact gonality formula for complete graphs."""
+        assert complete_graph_gonality(1) == 1
         for n in range(2, 6):
             expected_gonality = n - 1
             actual_gonality = complete_graph_gonality(n)
@@ -468,7 +477,7 @@ class TestGonalityIntegration:
         
         # Test cube
         cube_graph = cube()
-        cube_result = gonality(cube_graph, max_gonality=5) # Cube gonality is 3
+        cube_result = gonality(cube_graph, max_gonality=5) # Cube gonality is 4
         cube_bounds = bounds['cube']
         
         assert cube_bounds['lower_bound'] <= cube_result.gonality <= cube_bounds['upper_bound']
@@ -495,7 +504,7 @@ class TestGonalityIntegration:
 
 
 class TestOctahedronTheory:
-    """Test theoretical concepts from octahedron section of Beougher et al."""
+    """Test octahedron-specific gonality helpers."""
     
     def test_octahedron_independence_number(self):
         """Test that octahedron independence number is 2."""
@@ -527,7 +536,7 @@ class TestOctahedronTheory:
         assert bramble_bound >= 4  # Should prove treewidth >= 4
     
     def test_complete_multipartite_gonality_formula(self):
-        """Test complete multipartite gonality formula gon(K_{n1,n2,...,nk}) = n - nk."""
+        """Test gon(K_{n1,...,nk}) = n minus the largest part."""
         from chipfiring.CFCombinatorics import complete_multipartite_gonality
         
         # Test octahedron as K_{2,2,2}
@@ -536,13 +545,22 @@ class TestOctahedronTheory:
         
         # Test other cases
         gon_31 = complete_multipartite_gonality([3, 1])
-        assert gon_31 == 3  # n - nk = 4 - 1 = 3
-        
+        assert gon_31 == 1
+
         gon_321 = complete_multipartite_gonality([3, 2, 1])
-        assert gon_321 == 5  # n - nk = 6 - 1 = 5
-        
+        assert gon_321 == 3
+
         gon_1111 = complete_multipartite_gonality([1, 1, 1, 1])
-        assert gon_1111 == 3  # n - nk = 4 - 1 = 3
+        assert gon_1111 == 3
+
+        with pytest.raises(ValueError, match="At least two nonempty parts"):
+            complete_multipartite_gonality([5])
+        with pytest.raises(ValueError, match="At least two nonempty parts"):
+            complete_multipartite_gonality([])
+        with pytest.raises(ValueError, match="positive integers"):
+            complete_multipartite_gonality([3, 0])
+        with pytest.raises(ValueError, match="positive integers"):
+            complete_multipartite_gonality([3, True])
     
     def test_theoretical_bounds_consistency(self):
         """Test that theoretical bounds are consistent."""
@@ -554,8 +572,9 @@ class TestOctahedronTheory:
         # Check all bounds are present
         expected_bounds = [
             'trivial_lower_bound', 'trivial_upper_bound', 'independence_upper_bound',
-            'treewidth_lower_bound', 'minimum_degree_bound', 'bramble_order_bound',
-            'genus_bound', 'scramble_bound', 'connectivity_bound',
+            'treewidth_lower_bound', 'treewidth_upper_estimate',
+            'minimum_degree_bound', 'bramble_order_bound',
+            'genus_bound', 'connectivity_bound',
             'lower_bound', 'upper_bound'
         ]
         for bound_name in expected_bounds:
@@ -564,10 +583,11 @@ class TestOctahedronTheory:
         # Check bound relationships
         assert bounds['lower_bound'] <= bounds['upper_bound']
         assert bounds['trivial_lower_bound'] == 1
-        assert bounds['trivial_upper_bound'] == 5  # n - 1 = 6 - 1 = 5
+        assert bounds['trivial_upper_bound'] == 6
         assert bounds['independence_upper_bound'] == 4  # n - α(G) = 6 - 2 = 4
         assert bounds['minimum_degree_bound'] == 4  # δ(G) = 4 for octahedron
         assert bounds['bramble_order_bound'] >= 4  # Bramble construction
+        assert bounds['lower_bound'] == bounds['upper_bound'] == 4
     
     def test_octahedron_gonality_verification(self):
         """Test complete octahedron gonality verification."""
@@ -590,8 +610,8 @@ class TestOctahedronTheory:
         assert bramble['order'] == 5
         assert bramble['separators'] == 4
     
-    def test_theorem_1_independence_upper_bound(self):
-        """Test Theorem 1: gon(G) <= n - α(G)."""
+    def test_independence_number_upper_bound(self):
+        """Test the bound gon(G) <= n - α(G)."""
         from chipfiring.CFCombinatorics import independence_number
         
         # Test for octahedron
@@ -607,8 +627,8 @@ class TestOctahedronTheory:
         # The octahedron gonality is exactly 4, so the bound is tight
         assert upper_bound == 4  # This matches the theoretical gonality
     
-    def test_theorem_2_treewidth_lower_bound(self):
-        """Test Theorem 2: tw(G) <= gon(G)."""
+    def test_treewidth_lower_bound(self):
+        """Test the bound tw(G) <= gon(G)."""
         from chipfiring.CFCombinatorics import bramble_order_lower_bound
         
         graph = octahedron()
@@ -628,7 +648,7 @@ class TestOctahedronTheory:
         assert treewidth_lower_bound <= 4  # Should be exactly 4 for octahedron
     
     def test_minimum_degree_bounds(self):
-        """Test minimum degree bounds: δ(G) <= tw(G) <= gon(G)."""
+        """Test minimum-degree bounds on a connected simple graph."""
         from chipfiring.CFCombinatorics import minimum_degree, bramble_order_lower_bound
         
         graph = octahedron()
@@ -658,382 +678,149 @@ class TestOctahedronTheory:
 
 
 class TestIcosahedronTheory:
-    """Test theoretical concepts from icosahedron section of Beougher et al."""
-    
+    """Test computed icosahedron invariants and literature-backed constants."""
+
     def test_icosahedron_independence_number(self):
-        """Test that icosahedron independence number is 3."""
-        from chipfiring.CFCombinatorics import icosahedron_independence_number, independence_number
-        
-        # Test theoretical function
-        alpha_theory = icosahedron_independence_number()
-        assert alpha_theory == 3
-        
-        # Test computed independence number matches theory
-        graph = icosahedron()
-        alpha_computed = independence_number(graph)
-        assert alpha_computed == 3
-        assert alpha_theory == alpha_computed
-    
-    def test_icosahedron_2_uniform_scramble(self):
-        """Test 2-uniform scramble construction for icosahedron."""
+        from chipfiring.CFCombinatorics import (
+            icosahedron_independence_number,
+            independence_number,
+        )
+
+        assert icosahedron_independence_number() == 3
+        assert independence_number(icosahedron()) == 3
+
+    def test_all_edges_form_the_2_uniform_scramble(self):
         from chipfiring.CFCombinatorics import icosahedron_2_uniform_scramble
-        
+
         scramble = icosahedron_2_uniform_scramble()
-        
-        # Check structure
-        assert isinstance(scramble, dict)
+        graph = icosahedron()
+        graph_edges = {
+            frozenset((vertex.name, neighbor.name))
+            for vertex in graph.vertices
+            for neighbor in graph.graph[vertex]
+            if vertex.name < neighbor.name
+        }
+
         assert scramble['is_2_uniform']
+        assert scramble['construction_type'] == 'all_edges'
+        assert {frozenset(egg) for egg in scramble['scramble_sets']} == graph_edges
+        assert len(scramble['scramble_sets']) == 30
+        assert scramble['hitting_number'] == 9
+        assert scramble['egg_cut_number'] == 8
         assert scramble['scramble_norm'] == 8
-        assert len(scramble['scramble_sets']) == 6  # 6 pairs of opposite vertices
-        assert scramble['vertex_pairs'] == 6
-        assert 'description' in scramble
-        
-        # Check that scramble sets are pairs
-        for scramble_set in scramble['scramble_sets']:
-            assert len(scramble_set) == 2  # Each set is a pair
-    
-    def test_icosahedron_screewidth_bound(self):
-        """Test screewidth bounds for icosahedron: scw(I) ≤ 8."""
+
+    def test_icosahedron_screewidth_witness(self):
         from chipfiring.CFCombinatorics import icosahedron_screewidth_bound
-        
-        screewidth_info = icosahedron_screewidth_bound()
-        
-        # Check structure and values
-        assert screewidth_info['screewidth_upper_bound'] == 8
-        assert screewidth_info['scramble_number_bound'] == 8
-        assert 'relation' in screewidth_info
-        assert 'scw(I) ≤ ||S|| = 8' in screewidth_info['relation']
-    
-    def test_icosahedron_lemma_3_subgraph_bounds(self):
-        """Test Lemma 3 subgraph outdegree bounds for icosahedron."""
-        from chipfiring.CFCombinatorics import icosahedron_lemma_3_subgraph_bounds
-        
-        lemma3_info = icosahedron_lemma_3_subgraph_bounds()
-        
-        # Check structure
-        assert 'max_outdegree_bound' in lemma3_info
-        assert 'independence_number' in lemma3_info
-        assert lemma3_info['independence_number'] == 3
-        assert 'critical_subgraphs' in lemma3_info
-        assert len(lemma3_info['critical_subgraphs']) >= 3
-        
-        # Check that critical subgraphs contribute to gonality analysis
-        for subgraph in lemma3_info['critical_subgraphs']:
-            assert subgraph['contributes_to_gonality']
-    
-    def test_icosahedron_dhars_burning_algorithm(self):
-        """Test Dhar's burning algorithm proof for icosahedron gonality = 9."""
-        from chipfiring.CFCombinatorics import icosahedron_dhars_burning_algorithm
-        
-        dhars_info = icosahedron_dhars_burning_algorithm()
-        
-        # Check main result
-        assert dhars_info['gonality'] == 9
-        assert dhars_info['proof_complete']
-        
-        # Check debt-free divisor analysis
-        assert dhars_info['debt_free_divisor_exists']['degree'] == 9
-        assert dhars_info['debt_free_divisor_exists']['exists']
-        assert dhars_info['no_lower_degree_divisor']['degree'] == 8
-        assert not dhars_info['no_lower_degree_divisor']['exists']
-        
-        # Check burning sequences
-        assert 'burning_sequences' in dhars_info
-        assert len(dhars_info['burning_sequences']) >= 2
-    
-    def test_icosahedron_egg_cut_number(self):
-        """Test egg-cut number analysis for icosahedron."""
-        from chipfiring.CFCombinatorics import icosahedron_egg_cut_number
-        
-        egg_cut_info = icosahedron_egg_cut_number()
-        
-        # Check structure and bounds
-        assert egg_cut_info['egg_cut_number'] == 8
-        assert egg_cut_info['lower_bound'] == 3  # independence number
-        assert egg_cut_info['upper_bound'] == 9  # 12 - 3
-        assert egg_cut_info['contributes_to_gonality']
-    
-    def test_icosahedron_hitting_set_analysis(self):
-        """Test hitting set analysis for icosahedron scramble construction."""
-        from chipfiring.CFCombinatorics import icosahedron_hitting_set_analysis
-        
-        hitting_set_info = icosahedron_hitting_set_analysis()
-        
-        # Check structure
-        assert 'scramble_sets' in hitting_set_info
-        assert 'hitting_sets' in hitting_set_info
-        assert 'minimum_hitting_set_size' in hitting_set_info
-        
-        # Check hitting set bounds
-        assert hitting_set_info['minimum_hitting_set_size'] == 6
-        assert len(hitting_set_info['hitting_sets']) >= 3
-        
-        # Check that each hitting set has at least minimum size
-        for hitting_set in hitting_set_info['hitting_sets']:
-            assert len(hitting_set) >= hitting_set_info['minimum_hitting_set_size']
-    
-    def test_icosahedron_gonality_theoretical_bounds(self):
-        """Test comprehensive theoretical bounds for icosahedron gonality."""
-        from chipfiring.CFCombinatorics import icosahedron_gonality_theoretical_bounds
-        
-        bounds = icosahedron_gonality_theoretical_bounds()
-        
-        # Check all bounds are present
-        expected_bounds = [
-            'trivial_lower_bound', 'trivial_upper_bound', 'independence_upper_bound',
-            'scramble_number_bound', 'dhars_algorithm_result', 'subgraph_outdegree_bound',
-            'degree_based_bound', 'screewidth_bound', 'lower_bound', 'upper_bound'
-        ]
-        for bound_name in expected_bounds:
-            assert bound_name in bounds
-        
-        # Check key theoretical values
-        assert bounds['trivial_lower_bound'] == 1
-        assert bounds['trivial_upper_bound'] == 11  # n - 1 = 12 - 1
-        assert bounds['independence_upper_bound'] == 9  # n - α(G) = 12 - 3
-        assert bounds['scramble_number_bound'] == 8
-        assert bounds['dhars_algorithm_result'] == 9
-        assert bounds['screewidth_bound'] == 8
-        
-        # Check bound consistency
-        assert bounds['lower_bound'] <= bounds['upper_bound']
-        assert bounds['lower_bound'] >= 1
-        assert bounds['upper_bound'] <= 11
-        
-        # Check that multiple approaches converge to gonality = 9
-        assert bounds['independence_upper_bound'] == 9
-        assert bounds['dhars_algorithm_result'] == 9
-    
-    def test_icosahedron_gonality_verification(self):
-        """Test complete icosahedron gonality verification."""
-        results = verify_icosahedron_gonality()
-        
-        # Check main results
-        assert results['gonality'] == 9
-        assert results['graph_properties']['vertices'] == 12
-        assert results['graph_properties']['min_degree'] == 5
-        assert results['graph_properties']['max_degree'] == 5
-        assert results['graph_properties']['is_regular']
-        
-        # Check independence analysis
-        independence = results['independence_analysis']
-        assert independence['computed_independence_number'] == 3
-        assert independence['theoretical_independence_number'] == 3
-        assert independence['independence_upper_bound'] == 9
-        
-        # Check scramble theory results
-        scramble = results['scramble_theory']
-        assert scramble['scramble_construction']['scramble_norm'] == 8
-        assert scramble['scramble_construction']['is_2_uniform']
-        assert scramble['screewidth_bounds']['screewidth_upper_bound'] == 8
-        
-        # Check Dhar's burning algorithm
-        dhars = results['dhars_burning_algorithm']
-        assert dhars['gonality'] == 9
-        assert dhars['proof_complete']
-        
-        # Check verification passed
-        assert results['verification_passed']
-        
-        # Check scramble vs gonality analysis
-        scramble_vs_gonality = results['scramble_vs_gonality']
-        assert scramble_vs_gonality['scramble_norm'] == 8
-        assert scramble_vs_gonality['actual_gonality'] == 9
-        assert scramble_vs_gonality['gap'] == 1
-        
-        # Check theoretical conclusion
-        conclusion = results['theoretical_conclusion']
-        assert conclusion['gonality_proven'] == 9
-        assert conclusion['independence_bound_tight']
-        assert conclusion['dhars_algorithm_confirms']
-        assert conclusion['complete_theoretical_framework']
-    
-    def test_theorem_1_independence_upper_bound_icosahedron(self):
-        """Test Theorem 1: gon(I) ≤ n - α(I) for icosahedron."""
-        from chipfiring.CFCombinatorics import independence_number
-        
-        # Test for icosahedron
+
+        data = icosahedron_screewidth_bound()
         graph = icosahedron()
-        alpha = independence_number(graph)
-        n = len(graph.vertices)
-        upper_bound = n - alpha
-        
-        assert alpha == 3
-        assert n == 12
-        assert upper_bound == 9
-        
-        # The icosahedron gonality is exactly 9, so the bound is tight
-        assert upper_bound == 9  # This matches the theoretical gonality
-    
-    def test_scramble_theory_does_not_determine_gonality(self):
-        """Test that scramble number alone cannot determine gonality."""
-        from chipfiring.CFCombinatorics import (
-            icosahedron_2_uniform_scramble, 
-            icosahedron_dhars_burning_algorithm
+        assert data['scramble_number'] == data['screewidth'] == 8
+        assert data['tree_cut_decomposition_bag_sizes'] == [2, 8, 2]
+        assert data['tree_cut_edge_widths'] == [8, 8]
+        assert 'sn(I) ≤ scw(I)' in data['relation']
+        for bag, expected_width in zip(
+            (data['tree_cut_decomposition_bags'][0], data['tree_cut_decomposition_bags'][2]),
+            data['tree_cut_edge_widths'],
+        ):
+            bag_names = set(bag)
+            cut_width = sum(
+                valence
+                for vertex in graph.vertices
+                for neighbor, valence in graph.graph[vertex].items()
+                if vertex.name in bag_names and neighbor.name not in bag_names
+            )
+            assert cut_width == expected_width
+
+    def test_icosahedron_subgraph_outdegree_bounds(self):
+        from chipfiring.CFCombinatorics import icosahedron_subgraph_outdegree_bounds
+
+        data = icosahedron_subgraph_outdegree_bounds()
+        assert data['reference_bounds_verified']
+        assert data['reference_lower_bound_by_order'][2] == 8
+        assert data['reference_lower_bound_by_order'][10] == 8
+        assert all(
+            data['reference_lower_bound_by_order'][order] == 9
+            for order in range(3, 10)
         )
-        
-        scramble_info = icosahedron_2_uniform_scramble()
-        dhars_info = icosahedron_dhars_burning_algorithm()
-        
-        scramble_norm = scramble_info['scramble_norm']  # 8
-        actual_gonality = dhars_info['gonality']        # 9
-        
-        # Scramble number provides a lower bound but is not tight
-        assert scramble_norm < actual_gonality
-        assert actual_gonality - scramble_norm == 1
-        
-        # This demonstrates that scramble bounds alone are insufficient
-        # and Dhar's algorithm is needed for exact gonality determination
-    
-    def test_icosahedron_theoretical_bounds_consistency(self):
-        """Test that all icosahedron theoretical bounds are mutually consistent."""
-        results = verify_icosahedron_theoretical_bounds_consistency()
-        
-        # All consistency checks should pass
-        for check_name, is_consistent in results.items():
-            assert is_consistent, f"Consistency check failed: {check_name}"
-        
-        # Specifically check key consistency results
-        assert results['lower_upper_consistent']
-        assert results['independence_bound_correct']
-        assert results['dhars_result_consistent']
-        assert results['bounds_converge_to_9']
+        assert data['actual_minimum_outdegree_by_order'] == {
+            1: 5,
+            2: 8,
+            3: 9,
+            4: 10,
+            5: 11,
+            6: 10,
+            7: 11,
+            8: 10,
+            9: 9,
+            10: 8,
+            11: 5,
+        }
 
+    def test_icosahedron_gonality_reference_is_honest(self):
+        from chipfiring.CFCombinatorics import icosahedron_gonality_proof_summary
 
-class TestScrambleTheory:
-    """Test scramble theory concepts for Platonic solids."""
-    
-    def test_2_uniform_scramble_properties(self):
-        """Test properties of 2-uniform scrambles."""
-        from chipfiring.CFCombinatorics import icosahedron_2_uniform_scramble
-        
-        scramble = icosahedron_2_uniform_scramble()
-        
-        # A 2-uniform scramble has all sets of size 2
-        assert scramble['is_2_uniform']
-        for scramble_set in scramble['scramble_sets']:
-            assert len(scramble_set) == 2
-        
-        # The norm ||S|| is the sum of set sizes
-        total_vertices_in_sets = sum(len(s) for s in scramble['scramble_sets'])
-        assert total_vertices_in_sets == 12  # All vertices covered exactly once
-        
-        # Scramble norm is determined by the construction
-        assert scramble['scramble_norm'] == 8
-    
-    def test_scramble_number_vs_gonality_relationship(self):
-        """Test the relationship between scramble number and gonality."""
+        reference = icosahedron_gonality_proof_summary()
+        assert reference['published_exact_value'] == 9
+        assert reference['lower_bound'] == reference['upper_bound'] == 9
+        assert reference['computed_by_package'] is False
+        assert 'rank at least 1' in reference['lower_bound_statement']
+        assert reference['lower_bound_statement'].startswith('No effective divisor')
+
+    def test_icosahedron_egg_cut_and_hitting_numbers(self):
         from chipfiring.CFCombinatorics import (
-            icosahedron_2_uniform_scramble,
-            icosahedron_dhars_burning_algorithm,
-            icosahedron_screewidth_bound
+            icosahedron_egg_cut_number,
+            icosahedron_hitting_set_analysis,
         )
-        
-        scramble_info = icosahedron_2_uniform_scramble()
-        dhars_info = icosahedron_dhars_burning_algorithm()
-        screewidth_info = icosahedron_screewidth_bound()
-        
-        # Relationships between the different measures
-        scramble_norm = scramble_info['scramble_norm']
-        gonality = dhars_info['gonality']
-        screewidth = screewidth_info['screewidth_upper_bound']
-        
-        # Theoretical relationships
-        assert scramble_norm == screewidth  # ||S|| = scw upper bound
-        assert scramble_norm <= gonality    # Scramble provides lower insight
-        assert screewidth <= gonality       # Screewidth ≤ gonality
-        
-        # For icosahedron: scramble = screewidth = 8 < gonality = 9
-        assert scramble_norm == 8
-        assert screewidth == 8
-        assert gonality == 9
-    
-    def test_hitting_set_theory(self):
-        """Test hitting set theory in scramble analysis."""
-        from chipfiring.CFCombinatorics import icosahedron_hitting_set_analysis
-        
-        hitting_set_info = icosahedron_hitting_set_analysis()
-        
-        # Hitting set must hit all scramble sets
-        scramble_sets = hitting_set_info['scramble_sets']
-        hitting_sets = hitting_set_info['hitting_sets']
-        
-        for hitting_set in hitting_sets:
-            # Each hitting set must intersect every scramble set
-            for scramble_set in scramble_sets:
-                intersection = hitting_set.intersection(scramble_set)
-                assert len(intersection) >= 1, "Hitting set must hit every scramble set"
-        
-        # Minimum hitting set size is bounded
-        min_size = hitting_set_info['minimum_hitting_set_size']
-        assert min_size == 6  # Need one vertex from each of 6 pairs
 
+        egg_cut = icosahedron_egg_cut_number()
+        hitting = icosahedron_hitting_set_analysis()
+        assert egg_cut['lower_bound'] == egg_cut['upper_bound'] == 8
+        assert len(egg_cut['witness_cut_edges']) == 8
+        assert hitting['minimum_hitting_set_size'] == 9
+        assert hitting['hitting_sets']
+        for hitting_set in hitting['hitting_sets']:
+            assert len(hitting_set) == 9
+            assert all(hitting_set & egg for egg in hitting['scramble_sets'])
 
-class TestDharsAlgorithmTheory:
-    """Test Dhar's burning algorithm theoretical concepts."""
-    
-    def test_dhars_burning_algorithm_icosahedron(self):
-        """Test Dhar's burning algorithm specific to icosahedron."""
-        from chipfiring.CFCombinatorics import icosahedron_dhars_burning_algorithm
-        
-        dhars_info = icosahedron_dhars_burning_algorithm()
-        
-        # Algorithm proves gonality = 9
-        assert dhars_info['gonality'] == 9
-        assert dhars_info['proof_complete']
-        
-        # Check debt-free divisor existence
-        degree_9_divisor = dhars_info['debt_free_divisor_exists']
-        assert degree_9_divisor['degree'] == 9
-        assert degree_9_divisor['exists']
-        assert degree_9_divisor['proof_method'] == 'burning_algorithm'
-        
-        # Check no lower degree divisor exists
-        degree_8_divisor = dhars_info['no_lower_degree_divisor']
-        assert degree_8_divisor['degree'] == 8
-        assert not degree_8_divisor['exists']
-        assert degree_8_divisor['reason'] == 'burning_algorithm_fails'
-    
-    def test_burning_sequence_analysis(self):
-        """Test burning sequence analysis in Dhar's algorithm."""
-        from chipfiring.CFCombinatorics import icosahedron_dhars_burning_algorithm
-        
-        dhars_info = icosahedron_dhars_burning_algorithm()
-        burning_sequences = dhars_info['burning_sequences']
-        
-        # Should have sequences for degree 8 (fails) and degree 9 (succeeds)
-        assert len(burning_sequences) >= 2
-        
-        # Find degree 8 and degree 9 sequences
-        degree_8_seq = None
-        degree_9_seq = None
-        
-        for seq in burning_sequences:
-            if seq['initial_debt'] == 8:
-                degree_8_seq = seq
-            elif seq['initial_debt'] == 9:
-                degree_9_seq = seq
-        
-        assert degree_8_seq is not None
-        assert degree_9_seq is not None
-        
-        # Degree 8 fails, degree 9 succeeds
-        assert 'fails' in degree_8_seq['debt_propagation']
-        assert 'clears' in degree_9_seq['debt_propagation']
-        assert degree_8_seq['conclusion'] == 'degree_8_insufficient'
-        assert degree_9_seq['conclusion'] == 'degree_9_sufficient'
-    
-    def test_theorem_8_and_9_references(self):
-        """Test references to Theorems 8 and 9 from Beougher et al."""
-        from chipfiring.CFCombinatorics import icosahedron_dhars_burning_algorithm
-        
-        dhars_info = icosahedron_dhars_burning_algorithm()
-        
-        # Should reference the theoretical foundation
-        assert 'theorem_reference' in dhars_info
-        assert 'Theorem 8 and 9' in dhars_info['theorem_reference']
-        assert 'Beougher et al.' in dhars_info['theorem_reference']
-        assert dhars_info['algorithm'] == 'dhars_burning_algorithm'
+    def test_icosahedron_reference_bounds(self):
+        from chipfiring.CFCombinatorics import (
+            gonality_theoretical_bounds,
+            icosahedron_gonality_theoretical_bounds,
+        )
+
+        bounds = icosahedron_gonality_theoretical_bounds()
+        assert bounds['trivial_upper_bound'] == 11
+        assert bounds['vertex_count_upper_bound'] == 12
+        assert bounds['independence_upper_bound'] == 9
+        assert bounds['scramble_number_bound'] == 8
+        assert bounds['screewidth_bound'] == 8
+        assert bounds['published_exact_value'] == 9
+        assert bounds['lower_bound'] == bounds['upper_bound'] == 9
+
+        generic_bounds = gonality_theoretical_bounds(icosahedron())
+        assert generic_bounds['lower_bound'] <= 9 <= generic_bounds['upper_bound']
+
+    def test_icosahedron_gonality_summary(self):
+        from chipfiring.CFPlatonicSolids import icosahedron_gonality_summary
+
+        results = icosahedron_gonality_summary()
+        assert results['published_exact_gonality'] == 9
+        assert results['value_origin'] == 'published_reference'
+        assert results['graph_properties']['vertices'] == 12
+        assert results['independence_number'] == 3
+        assert results['scramble_data']['scramble_norm'] == 8
+        assert results['consistency_passed']
+        legacy_results = verify_icosahedron_gonality()
+        assert legacy_results['gonality'] == 9
+        assert legacy_results['dhars_burning_algorithm']['gonality'] == 9
+        assert legacy_results['comprehensive_bounds']['exact_gonality'] == 9
+        assert legacy_results['summary'] == results
+        assert legacy_results['verification_passed']
+
+    def test_icosahedron_bounds_consistency(self):
+        checks = verify_icosahedron_theoretical_bounds_consistency()
+        assert checks
+        assert all(checks.values())
 
 
 if __name__ == '__main__':
