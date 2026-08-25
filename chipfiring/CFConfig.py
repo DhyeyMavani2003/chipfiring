@@ -340,7 +340,7 @@ class CFConfig:
             >>> divisor = CFDivisor(graph, [("A", 2), ("B", 1), ("C", 0)])
             >>> config = CFConfig(divisor, "A")
             >>> config.get_q_vertex_name()
-            "A"
+            'A'
         """
         return self.q_vertex.name
     def get_q_underlying_degree(self) -> int:
@@ -369,8 +369,8 @@ class CFConfig:
             >>> graph = CFGraph(vertices, edges)
             >>> divisor = CFDivisor(graph, [("A", 2), ("B", 1), ("C", 0)])
             >>> config = CFConfig(divisor, "A")
-            >>> config.get_v_tilde_names()
-            {"B", "C"}
+            >>> sorted(config.get_v_tilde_names())
+            ['B', 'C']
         """
         return {v.name for v in self.v_tilde_vertices}
     def get_config_degrees_as_dict(self) -> typing.Dict[str, int]:
@@ -383,8 +383,8 @@ class CFConfig:
             >>> graph = CFGraph(vertices, edges)
             >>> divisor = CFDivisor(graph, [("A", 2), ("B", 1), ("C", 0)])
             >>> config = CFConfig(divisor, "A")
-            >>> config.get_config_degrees_as_dict()
-            {"B": 1, "C": 0}
+            >>> dict(sorted(config.get_config_degrees_as_dict().items()))
+            {'B': 1, 'C': 0}
         """
         return {v.name: self.get_degree_at(v.name) for v in self.v_tilde_vertices}
 

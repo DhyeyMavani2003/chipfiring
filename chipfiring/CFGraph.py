@@ -70,7 +70,7 @@ class Edge:
         >>> e1 == e2  # Edge equality ignores order of vertices
         True
         >>> e1 != e3
-        False
+        True
         >>> str(e1)
         'A-B'
         >>> edge_set = {e1, e2, e3}  # e1 and e2 are considered equal
@@ -167,6 +167,34 @@ class CFGraph:
         if edges:
             self.add_edges(edges)
 
+    def is_connected(self) -> bool:
+        """Return whether every vertex is reachable from every other vertex.
+
+        Empty and single-vertex graphs are connected by convention.
+
+        Example:
+            >>> connected = CFGraph({"a", "b"}, [("a", "b", 1)])
+            >>> connected.is_connected()
+            True
+            >>> disconnected = CFGraph({"a", "b"}, [])
+            >>> disconnected.is_connected()
+            False
+        """
+        if len(self.vertices) <= 1:
+            return True
+
+        start = min(self.vertices, key=lambda vertex: vertex.name)
+        visited = {start}
+        stack = [start]
+        while stack:
+            current = stack.pop()
+            for neighbor in self.graph[current]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+
+        return visited == self.vertices
+
     def is_loopless(self, v1_name: str, v2_name: str) -> bool:
         """Check if an edge connects a vertex to itself.
 
@@ -217,7 +245,7 @@ class CFGraph:
             edge = tuple(sorted([v1_name, v2_name]))
             if edge in seen_edges:
                 warnings.warn(
-                    f"Duplicate edge {v1_name}-{v2_name} found in inputed edges. Merging valences."
+                    f"Duplicate edge {v1_name}-{v2_name} found in input edges. Merging valences."
                 )
             seen_edges.add(edge)
             self.add_edge(v1_name, v2_name, valence)

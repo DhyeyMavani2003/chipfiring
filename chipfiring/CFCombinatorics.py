@@ -28,7 +28,7 @@ def is_parking_function(sequence: List[int], n: Optional[int] = None) -> bool:
     Examples:
         >>> is_parking_function([1, 1, 2])
         True
-        >>> is_parking_function([1, 3, 2])
+        >>> is_parking_function([1, 3, 3])
         False
         >>> is_parking_function([2, 1, 1])
         True
@@ -124,27 +124,7 @@ def is_connected(graph: CFGraph) -> bool:
     Returns:
         bool: True if graph is connected
     """
-    if len(graph.vertices) <= 1:
-        return True
-    
-    # DFS to check connectivity
-    start_vertex = next(iter(graph.vertices))
-    visited = set()
-    stack = [start_vertex]
-    
-    while stack:
-        vertex = stack.pop()
-        if vertex in visited:
-            continue
-        
-        visited.add(vertex)
-        
-        # Add neighbors to stack
-        for neighbor in graph.graph[vertex]:
-            if neighbor not in visited:
-                stack.append(neighbor)
-    
-    return len(visited) == len(graph.vertices)
+    return graph.is_connected()
 
 
 def maximal_independent_sets(graph: CFGraph) -> List[Set[str]]:

@@ -4,6 +4,7 @@ from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
 from .CFOrientation import CFOrientation, OrientationState
 from .CFConfig import CFConfig
+from collections import deque
 
 class DharAlgorithm:
     """Implements Dhar's algorithm for finding maximal legal firing sets on a graph.
@@ -90,6 +91,7 @@ class DharAlgorithm:
             >>> vertices = {"A", "B", "C", "D"}
             >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1), ("D", "A", 1)]
             >>> graph = CFGraph(vertices, edges)
+            >>> divisor = CFDivisor(graph, [])
             >>> dhar = DharAlgorithm(graph, divisor, "A")
             >>> dhar.outdegree_S(Vertex("A"), {Vertex("B"), Vertex("C")})
             1
@@ -116,6 +118,19 @@ class DharAlgorithm:
         This method modifies self.configuration (and its underlying divisor)
         so all c(v) for v in V~ are non-negative.
 
+        The implementation repeatedly borrows at a currently negative non-q
+        vertex. Termination follows from the least-action principle for the
+        reduced graph Laplacian. For a connected loopless multigraph there is
+        a non-negative integral borrowing script ``u`` with ``c + L_q u >= 0``.
+        If ``f <= u`` is the script performed so far and vertex ``v`` is
+        negative, then ``f(v) < u(v)``; otherwise the sign pattern of ``L_q``
+        would force the degree at ``v`` to be non-negative. Thus each move
+        preserves ``f <= u``, and at most ``sum(u)`` moves are performed.
+
+        Raises:
+            ValueError: If the graph is disconnected. Debt cannot in general
+                be concentrated at q from another connected component.
+
         Example:
             >>> vertices = {"A", "B", "C", "D"}
             >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1), ("D", "A", 1)]
@@ -141,34 +156,57 @@ class DharAlgorithm:
             >>> dhar.configuration.get_q_underlying_degree() < initial_q_degree # D(A) should decrease
             True
         """
-        # Sort vertices by distance from q (approximation using BFS)
-        queue = [self.q_vertex]
-        visited_bfs = {self.q_vertex}
-        distance_ordering = [self.q_vertex] # distance_ordering stores Vertex objects
-        
-        v_tilde_vertices_set = self.configuration.v_tilde_vertices # More efficient lookup
+        # Connectivity is the exact hypothesis needed for the reduced
+        # Laplacian argument above. Validate it explicitly so invalid inputs
+        # fail instead of leaving unreachable debt behind or looping forever.
+        if not self.graph.is_connected():
+            raise ValueError("send_debt_to_q requires a connected graph")
 
-        head = 0
-        while head < len(queue):
-            current_v_obj = queue[head]
-            head += 1
-            if current_v_obj in self.graph.graph: 
-                for neighbor_v_obj in self.graph.graph[current_v_obj]:
-                    if neighbor_v_obj not in visited_bfs and neighbor_v_obj in v_tilde_vertices_set:
-                        visited_bfs.add(neighbor_v_obj)
-                        queue.append(neighbor_v_obj)
-                        distance_ordering.append(neighbor_v_obj)
-        
-        # Process vertices in V~ in reverse order of distance
-        vertices_to_process_names = [
-            v.name for v in reversed(distance_ordering) if v in v_tilde_vertices_set
-        ]
+        vertices_to_check = sorted(
+            self.configuration.v_tilde_vertices,
+            key=lambda vertex: vertex.name,
+        )
+        negative_vertices = deque(
+            vertex
+            for vertex in vertices_to_check
+            if self.configuration.get_degree_at(vertex.name) < 0
+        )
+        queued_vertices = set(negative_vertices)
 
-        for v_name in vertices_to_process_names:
-            while self.configuration.get_degree_at(v_name) < 0:
-                self.configuration.borrowing_move(v_name)
-                if self.visualizer:
-                    self.visualizer.add_step(self.configuration.divisor, CFOrientation(self.graph, []), q=self.q_vertex.name, description=f"{v_name} performs a borrowing move.", source_function="Sending debt to q...")
+        # A borrowing move can make a previously repaired neighbor negative,
+        # so revisit only the moved vertex and its affected neighbors. The
+        # least-action bound in the docstring guarantees termination.
+        while negative_vertices:
+            negative_vertex = negative_vertices.popleft()
+            queued_vertices.remove(negative_vertex)
+            v_name = negative_vertex.name
+            self.configuration.borrowing_move(v_name)
+
+            affected_vertices = {negative_vertex}
+            affected_vertices.update(
+                neighbor
+                for neighbor in self.graph.graph[negative_vertex]
+                if neighbor != self.q_vertex
+            )
+            for affected_vertex in sorted(
+                affected_vertices,
+                key=lambda vertex: vertex.name,
+            ):
+                if (
+                    self.configuration.get_degree_at(affected_vertex.name) < 0
+                    and affected_vertex not in queued_vertices
+                ):
+                    negative_vertices.append(affected_vertex)
+                    queued_vertices.add(affected_vertex)
+
+            if self.visualizer:
+                self.visualizer.add_step(
+                    self.configuration.divisor,
+                    CFOrientation(self.graph, []),
+                    q=self.q_vertex.name,
+                    description=f"{v_name} performs a borrowing move.",
+                    source_function="Sending debt to q...",
+                )
 
 
     def run(self) -> Tuple[Set[str], CFOrientation]:
@@ -256,8 +294,8 @@ class DharAlgorithm:
             >>> graph = CFGraph(vertices, edges)
             >>> divisor = CFDivisor(graph, [("A", 3), ("B", 2), ("C", 1), ("D", 2)])
             >>> dhar = DharAlgorithm(graph, divisor, "A")
-            >>> dhar.get_maximal_legal_firing_set()
-            {'B', 'C', 'D'}
+            >>> sorted(dhar.get_maximal_legal_firing_set())
+            ['B', 'C', 'D']
         """
         unburnt_names, _ = self.run()
         return unburnt_names

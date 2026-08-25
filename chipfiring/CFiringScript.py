@@ -32,12 +32,13 @@ class CFiringScript:
             >>> graph = CFGraph(vertices, edges)
             >>> script_dict = {"v1": 2, "v3": -1}  # v1 fires twice, v3 borrows once
             >>> firing_script = CFiringScript(graph, script_dict)
-            >>> firing_script.script
-            {'v1': 2, 'v3': -1, 'v2': 0}  # v2 has 0 firings by default
+            >>> # v2 has zero firings because it was omitted from script_dict.
+            >>> dict(sorted(firing_script.script.items()))
+            {'v1': 2, 'v2': 0, 'v3': -1}
 
             >>> # Empty script
             >>> empty_script = CFiringScript(graph, {})
-            >>> empty_script.script
+            >>> dict(sorted(empty_script.script.items()))
             {'v1': 0, 'v2': 0, 'v3': 0}
         """
         self.graph = graph
@@ -104,7 +105,7 @@ class CFiringScript:
             >>> firing_script.get_firings("v1")
             3
             >>> firing_script.set_firings("v2", -2)
-            >>> firing_script.script
+            >>> dict(sorted(firing_script.script.items()))
             {'v1': 3, 'v2': -2, 'v3': 0}
         """
         vertex = Vertex(vertex_name)
@@ -130,10 +131,10 @@ class CFiringScript:
             >>> firing_script = CFiringScript(graph, script_dict)
             >>> firing_script.update_firings("v1", 2)  # Add 2 more firings
             >>> firing_script.get_firings("v1")
-            3  # 1 + 2
+            3
             >>> firing_script.update_firings("v2", -1)  # Add -1 (borrow once)
             >>> firing_script.get_firings("v2")
-            -1  # 0 + (-1)
+            -1
         """
         current_firings = self.get_firings(vertex_name)
         self.set_firings(vertex_name, current_firings + additional_firings)
@@ -186,7 +187,7 @@ class CFiringScript:
             >>> graph = CFGraph(vertices, edges)
             >>> script_dict = {"v2": 10, "v3": -5}
             >>> firing_script = CFiringScript(graph, script_dict)
-            >>> firing_script.script
+            >>> dict(sorted(firing_script.script.items()))
             {'v1': 0, 'v2': 10, 'v3': -5}
         """
         to_return = {}

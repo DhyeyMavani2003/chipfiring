@@ -32,7 +32,7 @@ def tetrahedron() -> CFGraph:
         >>> G = tetrahedron()
         >>> len(G.vertices)
         4
-        >>> len(G.edges)
+        >>> G.total_valence
         6
     """
     # Create vertices - CFGraph expects vertex names as strings
@@ -62,7 +62,7 @@ def cube() -> CFGraph:
         >>> G = cube()
         >>> len(G.vertices)
         8
-        >>> len(G.edges)
+        >>> G.total_valence
         12
     """
     # Create vertices with binary coordinates as labels
@@ -113,7 +113,7 @@ def octahedron() -> CFGraph:
         >>> G = octahedron()
         >>> len(G.vertices)
         6
-        >>> len(G.edges)
+        >>> G.total_valence
         12
     """
     vertex_names = [f"v{i}" for i in range(6)]
@@ -151,7 +151,7 @@ def dodecahedron() -> CFGraph:
         >>> G = dodecahedron()
         >>> len(G.vertices)
         20
-        >>> len(G.edges)
+        >>> G.total_valence
         30
     """
     # Use NetworkX to generate the dodecahedral graph, then convert to CFGraph
@@ -182,7 +182,7 @@ def icosahedron() -> CFGraph:
         >>> G = icosahedron()
         >>> len(G.vertices)
         12
-        >>> len(G.edges)
+        >>> G.total_valence
         30
     """
     # Use NetworkX to generate the icosahedral graph, then convert to CFGraph
@@ -216,7 +216,7 @@ def complete_graph(n: int) -> CFGraph:
         >>> G = complete_graph(5)
         >>> len(G.vertices)
         5
-        >>> len(G.edges)
+        >>> G.total_valence
         10
     """
     if n < 1:
@@ -419,9 +419,9 @@ def verify_icosahedron_gonality() -> Dict[str, any]:
         >>> results = verify_icosahedron_gonality()
         >>> results['gonality']
         9
-        >>> results['independence_number']
+        >>> results['independence_analysis']['theoretical_independence_number']
         3
-        >>> results['scramble_norm']
+        >>> results['scramble_theory']['scramble_construction']['scramble_norm']
         8
     """
     from .CFCombinatorics import (
