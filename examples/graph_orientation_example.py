@@ -47,7 +47,6 @@ def main():
     print(f"Chips at vertex A: {divisor.get_degree('A')}")
     print(f"Chips at vertex C: {divisor.get_degree('C')}")  # Should be 0
     print(f"Total chips: {divisor.get_total_degree()}")
-    print()
 
 if __name__ == "__main__":
-    main() 
+    main()

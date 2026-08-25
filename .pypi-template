@@ -1,5 +1,5 @@
-a_description_for_the_package: This is an Pythonic API for visualization and analysis
-  of chip firing games and corresponding algorithms.
+a_description_for_the_package: A Python API for visualization and analysis of chip-firing
+  games and related algorithms.
 classifiers: []
 console_scripts: []
 first_year_of_publication: '2025'
@@ -12,12 +12,17 @@ package_name: chipfiring
 package_tagline: Unified interface for visualization and analysis of chip firing games
   and related algorithms.
 package_title: chipfiring
-readme: .github/README.md
+readme: README.md
 requires:
 - numpy
 - pandas
 - pytest
 - coverage
+- matplotlib
+- dash
+- dash-cytoscape
+- dash-bootstrap-components
+- networkx
 scripts: []
 version: 0.8.0
 your_author_name: Dhyey Dharmendrakumar Mavani

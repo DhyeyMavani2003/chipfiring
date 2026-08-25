@@ -2,6 +2,10 @@
 dist
 *.egg-info
 *.pyc
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
 build
 .coverage
 coverage.lcov
@@ -12,3 +16,4 @@ docs/_build
 .DS_Store
 local
 overleaf
+examples/expected/generated/

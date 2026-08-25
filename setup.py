@@ -5,11 +5,11 @@ import setuptools
 NAME             = "chipfiring"
 AUTHOR           = "Dhyey Mavani"
 AUTHOR_EMAIL     = "ddmavani2003@gmail.com"
-DESCRIPTION      = "This is an Pythonic API for visualization and analysis of chip firing games and corresponding algorithms."
+DESCRIPTION      = "A Python API for visualization and analysis of chip-firing games and related algorithms."
 LICENSE          = "MIT"
 KEYWORDS         = ""
 URL              = "https://github.com/DhyeyMavani2003/" + NAME
-README           = ".github/README.md"
+README           = "README.md"
 CLASSIFIERS      = [
   "Programming Language :: Python",
   
@@ -49,7 +49,7 @@ if __name__ == "__main__":
   setuptools.setup(
     name=NAME,
     version=VERSION,
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(include=["chipfiring", "chipfiring.*"]),
     author=AUTHOR,
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,

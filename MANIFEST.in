@@ -1,3 +1,14 @@
-include .github/README.md
+include CHANGELOG.md
+include LICENSE.txt
+include Makefile
+include README.md
+include requirements.txt
+include requirements.docs.txt
+include tox.ini
+recursive-include docs *.md *.rst *.py *.txt
+recursive-include examples *.md *.py *.txt
+recursive-include tests *.json *.py *.tex *.txt
+prune docs/_build
+prune examples/expected/generated
 global-exclude __pycache__
 global-exclude *.py[co]

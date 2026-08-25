@@ -29,9 +29,11 @@ The goal is to find a sequence of moves that makes everyone debt-free. If such a
 - Laplacian matrix computations
 - Linear equivalence checking
 - Set-firing moves
-- Dhar's algorithm for efficient winnability determination
+- Non-mutating winnability predicates and q-reduction with an explicit source
+- Baker-Norine rank and graph gonality helpers
+- Dhar's burning algorithm and graph orientations
 - Visualization tools for graphs and game states
-- Comprehensive type hints and documentation
+- Type hints and API documentation
 
 ## Installation
 
@@ -59,4 +61,17 @@ The complete API documentation for the chipfiring package can be found in the [A
 
 ## Basic Usage
 
-Usage guidelines are included within the API documentation. For more examples and full-analysis workflows, check out the [examples directory](https://github.com/DhyeyMavani2003/chipfiring/tree/main/examples) in the GitHubrepository.
+```python
+from chipfiring import CFDivisor, CFGraph, is_winnable, q_reduction
+
+graph = CFGraph({"q", "a", "b"}, [("q", "a", 1), ("a", "b", 1)])
+divisor = CFDivisor(graph, [("q", 1), ("a", 0), ("b", -1)])
+
+print(is_winnable(divisor))
+reduced = q_reduction(divisor, q_name="q")
+print(reduced.degrees_to_str())
+```
+
+The input divisor is unchanged by these helpers. Usage details are included in
+the API documentation. For complete workflows, see the
+[examples directory](https://github.com/DhyeyMavani2003/chipfiring/tree/main/examples).

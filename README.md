@@ -5,7 +5,7 @@
 [![Latest Version on PyPI](https://img.shields.io/pypi/v/chipfiring.svg)](https://pypi.python.org/pypi/chipfiring/)
 [![Build Status](https://github.com/DhyeyMavani2003/chipfiring/actions/workflows/test.yaml/badge.svg)](https://github.com/DhyeyMavani2003/chipfiring/actions/workflows/test.yaml)
 [![Documentation Status](https://readthedocs.org/projects/chipfiring/badge/?version=latest)](https://chipfiring.readthedocs.io/en/latest/?badge=latest)
-[![Coverage Status](https://coveralls.io/repos/github/DhyeyMavani2003/chipfiring/badge.svg)](https://coveralls.io/github/DhyeyMavani2003/chipfiring?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/DhyeyMavani2003/chipfiring/badge.svg?branch=main)](https://coveralls.io/github/DhyeyMavani2003/chipfiring?branch=main)
 [![Built with PyPi Template](https://img.shields.io/badge/PyPi_Template-v0.8.0-blue.svg)](https://github.com/christophevg/pypi-template)
 [![PyPI Downloads](https://static.pepy.tech/badge/chipfiring)](https://pepy.tech/projects/chipfiring)
 
@@ -34,56 +34,34 @@ pip install chipfiring
 
 ## Usage
 
-Here's a simple example of how to use the package:
+Here is a complete example using the current public API:
 
 ```python
-from chipfiring.graph import Graph, Vertex
-from chipfiring.divisor import Divisor
-from chipfiring.dollar_game import DollarGame
+from chipfiring import CFDivisor, CFGraph, is_q_reduced, is_winnable, q_reduction
 
-# Create vertices
-alice = Vertex("Alice")
-bob = Vertex("Bob")
-charlie = Vertex("Charlie")
-elise = Vertex("Elise")
+vertices = {"Alice", "Bob", "Charlie", "Elise"}
+edges = [
+    ("Alice", "Bob", 1),
+    ("Alice", "Charlie", 1),
+    ("Alice", "Elise", 2),
+    ("Bob", "Charlie", 1),
+    ("Charlie", "Elise", 1),
+]
+graph = CFGraph(vertices, edges)
+divisor = CFDivisor(
+    graph,
+    [("Alice", 2), ("Bob", -3), ("Charlie", 4), ("Elise", -1)],
+)
 
-# Create graph
-G = Graph()
-G.add_vertex(alice)
-G.add_vertex(bob)
-G.add_vertex(charlie)
-G.add_vertex(elise)
+print(is_winnable(divisor))
 
-# Add edges
-G.add_edge(alice, bob)
-G.add_edge(alice, charlie)
-G.add_edge(alice, elise)
-G.add_edge(bob, charlie)
-G.add_edge(charlie, elise)
-
-# Create initial wealth distribution
-initial_divisor = Divisor(G, {
-    alice: 2,
-    bob: -3,
-    charlie: 4,
-    elise: -1
-})
-
-# Create and play the game
-game = DollarGame(G, initial_divisor)
-
-# Check if game is winnable
-print(f"Is winnable? {game.is_winnable()}")
-
-# Try some moves
-game.fire_vertex(charlie)  # Charlie lends
-game.borrow_vertex(bob)    # Bob borrows
-game.fire_set({alice, elise, charlie})  # Set-firing move
-
-# Check current state
-print(f"Current wealth: {game.get_current_state()}")
-print(f"Is effective? {game.is_effective()}")
+bob_reduced = q_reduction(divisor, q_name="Bob")
+print(is_q_reduced(bob_reduced, q_name="Bob"))
 ```
+
+The predicate and reduction helpers operate on a copy and do not mutate the
+supplied divisor. If `q_name` is omitted, reduction preserves the historical
+behavior of selecting a minimum-degree vertex.
 
 ## Mathematical Background
 
@@ -103,7 +81,11 @@ The implementation follows the mathematical formalization described in the LaTeX
 - Laplacian matrix computations
 - Linear equivalence checking
 - Set-firing moves
-- Comprehensive type hints and documentation
+- Winnability and explicit q-reduction
+- Baker-Norine rank and graph gonality helpers
+- Dhar's burning algorithm and graph orientations
+- Interactive graph and divisor visualization
+- Type hints and API documentation
 
 ## Development
 
@@ -111,7 +93,7 @@ To set up the development environment:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/chipfiring.git
+git clone https://github.com/DhyeyMavani2003/chipfiring.git
 cd chipfiring
 
 # Create and activate virtual environment
@@ -122,8 +104,12 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 pip install -r requirements.docs.txt
 
-# Run tests
-pytest
+# Run the regression tests and package doctests
+python -m pytest -q
+python -m pytest --doctest-modules chipfiring -q
+
+# Verify the saved-output examples
+make check-example-outputs PYTHON=python
 
 # Build documentation
 cd docs
@@ -132,7 +118,8 @@ make html
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE.txt) file for details.
+This project is licensed under the MIT License; see
+[LICENSE.txt](https://github.com/DhyeyMavani2003/chipfiring/blob/main/LICENSE.txt).
 
 ## Contributing
 

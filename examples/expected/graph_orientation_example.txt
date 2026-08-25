@@ -1,0 +1,15 @@
+Graph created!
+Total edges (counting multiplicity): 7
+Graph genus: 4
+Valence of vertex A: 3
+
+Orientation created!
+Edge A-B orientation: ('A', 'B')
+Edge D-A orientation: None
+In-degree of B: 3
+Out-degree of C: 4
+
+Divisor (chip configuration) created!
+Chips at vertex A: 3
+Chips at vertex C: 0
+Total chips: 6

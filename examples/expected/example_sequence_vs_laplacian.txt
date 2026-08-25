@@ -1,0 +1,45 @@
+Graph Created:
+Vertices: ['Alice', 'Bob', 'Charlie', 'Elise']
+Edges (with valence): A-B(1), B-C(1), C-E(1), A-E(2), A-C(1)
+Valences: A=4, B=2, C=3, E=3
+====================
+--- Initial State ---
+Alice=2, Bob=-3, Charlie=4, Elise=-1
+Total Degree: 2
+---
+Applying sequence of set_fire operations...
+
+Applying set_fire({'Alice', 'Charlie', 'Elise'})...
+--- State after fire 1 ---
+Alice=1, Bob=-1, Charlie=3, Elise=-1
+Total Degree: 2
+---
+
+Applying set_fire({'Alice', 'Charlie', 'Elise'})...
+--- State after fire 2 ---
+Alice=0, Bob=1, Charlie=2, Elise=-1
+Total Degree: 2
+---
+
+Applying set_fire({'Bob', 'Charlie'})...
+--- Final State after Sequence ---
+Alice=2, Bob=0, Charlie=0, Elise=0
+Total Degree: 2
+---
+====================
+Equivalent Net Firing Script:
+{'Alice': 0, 'Bob': -1, 'Charlie': 1, 'Elise': 0}
+====================
+Laplacian Created.
+====================
+Applying Laplacian with the net firing script...
+--- Final State via Laplacian ---
+Alice=2, Bob=0, Charlie=0, Elise=0
+Total Degree: 2
+---
+====================
+Comparing final states...
+Sequence Final State: {'Alice': 2, 'Bob': 0, 'Charlie': 0, 'Elise': 0}
+Laplacian Final State:{'Alice': 2, 'Bob': 0, 'Charlie': 0, 'Elise': 0}
+
+Success! The final states from both methods are identical.
