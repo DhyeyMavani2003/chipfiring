@@ -193,6 +193,43 @@ class CFDivisor:
         """
         return self.total_degree
 
+    def uniform_subdivision(self, k: int) -> "CFDivisor":
+        """Lift the divisor to the uniform ``k``-subdivision of its graph.
+
+        The underlying graph is replaced by its uniform ``k``-subdivision (see
+        :meth:`CFGraph.uniform_subdivision`). The returned divisor places the
+        original chip counts on the original vertices and ``0`` chips on every
+        new internal vertex, so the total degree is preserved.
+
+        Args:
+            k: Subdivision parameter; a positive integer. ``k = 1`` yields a
+               divisor on a graph isomorphic to the original.
+
+        Returns:
+            A new :class:`CFDivisor` on the uniform ``k``-subdivision graph.
+
+        Raises:
+            ValueError: If ``k`` is not a positive integer.
+
+        Example:
+            >>> vertices = {"A", "B"}
+            >>> edges = [("A", "B", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> divisor = CFDivisor(graph, [("A", 3), ("B", -1)])
+            >>> sub_div = divisor.uniform_subdivision(2)
+            >>> sub_div.get_degree("A")
+            3
+            >>> sub_div.get_degree("B")
+            -1
+            >>> sub_div.get_degree("A-B_s1")  # New internal vertex has 0 chips
+            0
+            >>> sub_div.get_total_degree() == divisor.get_total_degree()
+            True
+        """
+        new_graph = self.graph.uniform_subdivision(k)
+        original_degrees = [(v.name, deg) for v, deg in self.degrees.items()]
+        return CFDivisor(new_graph, original_degrees)
+
     def lending_move(self, vertex_name: str) -> None:
         """Perform a lending move at the specified vertex.
 
