@@ -81,6 +81,28 @@ class TestGreedyAlgorithm:
             for v in simple_graph.vertices
         )
 
+    def test_init_rejects_disconnected_graph(self):
+        """The marked-vertex stopping proof requires a connected graph."""
+        graph = CFGraph({"a", "b", "c"}, [("a", "b", 1)])
+        divisor = CFDivisor(graph, [("a", -1), ("b", 0), ("c", 0)])
+
+        with pytest.raises(
+            ValueError,
+            match="GreedyAlgorithm requires a connected graph",
+        ):
+            GreedyAlgorithm(graph, divisor)
+
+    def test_empty_graph_is_already_effective(self):
+        graph = CFGraph(set(), [])
+        divisor = CFDivisor(graph, [])
+
+        algorithm = GreedyAlgorithm(graph, divisor)
+        winnable, firing_script = algorithm.play()
+
+        assert winnable is True
+        assert firing_script is algorithm.firing_script
+        assert firing_script.script == {}
+
     def test_is_effective_true(self, simple_graph):
         """Test is_effective method when all vertices have non-negative wealth."""
         divisor = CFDivisor(simple_graph, [("A", 2), ("B", 1), ("C", 0), ("D", 1)])
@@ -152,6 +174,21 @@ class TestGreedyAlgorithm:
             algorithm.divisor.get_degree(v.name) >= 0 for v in path_graph.vertices
         )
 
+    def test_play_allows_more_than_ten_borrows_per_vertex(self):
+        """A winnable divisor must not be rejected by an arbitrary move cap."""
+        graph = CFGraph({"A", "B"}, [("A", "B", 1)])
+        divisor = CFDivisor(graph, [("A", -100), ("B", 100)])
+        algorithm = GreedyAlgorithm(graph, divisor)
+
+        winnable, firing_script = algorithm.play()
+
+        assert winnable is True
+        assert isinstance(firing_script, CFiringScript)
+        assert firing_script.get_firings("A") == -100
+        assert firing_script.get_firings("B") == 0
+        assert algorithm.divisor.get_degree("A") == 0
+        assert algorithm.divisor.get_degree("B") == 0
+
     def test_play_weighted_graph(self, weighted_graph):
         """Test the play method on a weighted graph."""
         divisor = CFDivisor(weighted_graph, [("A", -2), ("B", 0), ("C", 0), ("D", 6)])
@@ -171,13 +208,12 @@ class TestGreedyAlgorithm:
 
     def test_play_unwinnable(self, simple_graph):
         """Test the play method when the game is unwinnable due to too much debt."""
-        # Create a divisor with extreme debt that can't be resolved within move limit
+        # A divisor of negative total degree cannot be equivalent to an effective one.
         divisor = CFDivisor(
             simple_graph, [("A", -100), ("B", -100), ("C", -100), ("D", -100)]
         )
         algorithm = GreedyAlgorithm(simple_graph, divisor)
 
-        # The algorithm has a limit on the number of moves, and this should exceed it
         winnable, firing_script = algorithm.play()
 
         assert winnable is False

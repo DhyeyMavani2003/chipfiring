@@ -1,3 +1,5 @@
+import importlib
+
 import pytest
 from chipfiring import rank
 from chipfiring.CFGraph import CFGraph
@@ -152,6 +154,44 @@ def test_rank_k3_slightly_more_chips(simple_graph):
     assert rank(divisor).rank == 1
 
 
+def test_rank_parallel_path_completes_and_counts_parent_results(
+    simple_graph, monkeypatch
+):
+    """The process pool must run without pickling fallback or lost counts."""
+    rank_module = importlib.import_module("chipfiring.CFRank")
+    monkeypatch.setattr(rank_module, "cpu_count", lambda: 64)
+    divisor = CFDivisor(simple_graph, [("v1", 1), ("v2", 1), ("v3", 0)])
+
+    result = rank(divisor)
+    summary = result.get_log_summary()
+
+    assert result.rank == 1
+    assert "Starting parallel processing for k=1 with 3 workers" in summary
+    assert "Parallel processing finished for k=1." in summary
+    assert "All 3 processed configurations for k=1 were winnable." in summary
+    assert "Multiprocessing failed" not in summary
+
+
+def test_rank_falls_back_sequentially_when_pool_creation_fails(
+    simple_graph, monkeypatch
+):
+    rank_module = importlib.import_module("chipfiring.CFRank")
+
+    def fail_pool(*args, **kwargs):
+        raise RuntimeError("forced pool failure")
+
+    monkeypatch.setattr(rank_module, "Pool", fail_pool)
+    divisor = CFDivisor(simple_graph, [("v1", 1), ("v2", 1), ("v3", 0)])
+
+    result = rank(divisor)
+    summary = result.get_log_summary()
+
+    assert result.rank == 1
+    assert "Multiprocessing failed for k=1: forced pool failure" in summary
+    assert "Starting sequential processing for k=1" in summary
+    assert "Sequential processing finished for k=1" in summary
+
+
 def test_rank_k3_slightly_more_chips_riemann_roch_theorem(simple_graph):
     """Test rank for (1,1,0) on K3 using Riemann-Roch theorem."""
     D = CFDivisor(simple_graph, [("v1", 1), ("v2", 1), ("v3", 0)])  # Total 2
@@ -209,11 +249,8 @@ def test_rank_sequence_test_graph(sequence_test_initial_divisor):
     assert rank(sequence_test_initial_divisor).rank == 0
 
 
-def test_rank_pflueger_counterexample():
-    """
-    Test the rank calculation for the counterexample provided by Professor Pflueger.
-    This test ensures that the bug discovered is caught in the future.
-    """
+def test_rank_chain_of_cycles_regression():
+    """Verify rank on the [3, 3, 4, 3, 3] chain-of-cycles regression case."""
 
     def chainOfCycles(cycle_lengths: List[int]):
         vertices = {f"z_{i+1}_{j}" for i, length in enumerate(cycle_lengths) for j in range(length)}
@@ -278,8 +315,38 @@ def test_rank_sequence_test_graph_optimized(sequence_test_initial_divisor):
     assert rank(sequence_test_initial_divisor, optimized=True).rank == 0
 
 
-def test_rank_sequence_optimized_corollary_4_4_3(sequence_test_graph):
-    """Test rank for the sequence test graph using optimized rank calculation and Corollary 4.4.3."""
+def test_rank_genus_two_canonical_divisor_optimized():
+    """Optimized rank must apply Riemann--Roch after computing rank(K-D)."""
+    graph = CFGraph({"u", "v"}, [("u", "v", 3)])
+    canonical_divisor = CFDivisor(graph, [("u", 1), ("v", 1)])
+
+    assert graph.get_genus() == 2
+    assert rank(canonical_divisor).rank == 1
+    assert rank(canonical_divisor, optimized=True).rank == 1
+
+
+@pytest.mark.parametrize(
+    ("edge_multiplicity", "degrees"),
+    [
+        (3, [("u", 2), ("v", 0)]),
+        (3, [("u", 3), ("v", -1)]),
+        (4, [("u", 2), ("v", 1)]),
+        (4, [("u", 3), ("v", 0)]),
+        (4, [("u", 2), ("v", 2)]),
+    ],
+)
+def test_rank_optimized_matches_standard_on_small_banana_graphs(
+    edge_multiplicity, degrees
+):
+    """Check both optimized Riemann--Roch outcomes on small multigraphs."""
+    graph = CFGraph({"u", "v"}, [("u", "v", edge_multiplicity)])
+    divisor = CFDivisor(graph, degrees)
+
+    assert rank(divisor, optimized=True).rank == rank(divisor).rank
+
+
+def test_rank_sequence_optimized_high_degree_riemann_roch(sequence_test_graph):
+    """Test the high-degree graph Riemann-Roch shortcut."""
     D = CFDivisor(
         sequence_test_graph, [("Alice", 5), ("Bob", -3), ("Charlie", 4), ("Elise", -1)]
     )
@@ -287,6 +354,4 @@ def test_rank_sequence_optimized_corollary_4_4_3(sequence_test_graph):
         rank(D, optimized=True).rank
         == D.get_total_degree() - sequence_test_graph.get_genus()
     )
-    print(rank(D, optimized=True).get_log_summary())
-    # Check if Corollary 4.4.3 is called in the optimized rank calculation logs
-    assert "Corollary 4.4.3" in rank(D, optimized=True).get_log_summary()
+    assert "degree(D) > 2g-2" in rank(D, optimized=True).get_log_summary()

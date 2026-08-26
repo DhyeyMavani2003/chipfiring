@@ -145,8 +145,9 @@ class CFOrientation:
             >>> v_a = Vertex("A")
             >>> v_b = Vertex("B")
             >>> orientation.set_orientation(v_a, v_b, OrientationState.SOURCE_TO_SINK)
+            >>> # The A-B edge has valence 2.
             >>> orientation.get_out_degree("A")
-            2  # A-B edge has valence 2
+            2
             >>> orientation.get_in_degree("B")
             2
         """
@@ -222,8 +223,8 @@ class CFOrientation:
             >>> partial = CFOrientation(graph, [("v1", "v2")])
             >>> partial.get_orientation("v1", "v2")
             ('v1', 'v2')
-            >>> partial.get_orientation("v2", "v3")
-            None
+            >>> partial.get_orientation("v2", "v3") is None
+            True
         """
         v1 = Vertex(v1_name)
         v2 = Vertex(v2_name)
@@ -271,8 +272,8 @@ class CFOrientation:
             False
             >>> # For an unoriented edge
             >>> partial = CFOrientation(graph, [("v1", "v2")])
-            >>> partial.is_source("v2", "v3")
-            None
+            >>> partial.is_source("v2", "v3") is None
+            True
         """
         vertex = Vertex(vertex_name)
         neighbor = Vertex(neighbor_name)
@@ -317,8 +318,8 @@ class CFOrientation:
             True
             >>> # For an unoriented edge
             >>> partial = CFOrientation(graph, [("v1", "v2")])
-            >>> partial.is_sink("v2", "v3")
-            None
+            >>> partial.is_sink("v2", "v3") is None
+            True
         """
         vertex = Vertex(vertex_name)
         neighbor = Vertex(neighbor_name)
@@ -356,10 +357,12 @@ class CFOrientation:
             >>> orientation = CFOrientation(graph, orientations)
             >>> orientation.get_in_degree("v1")
             0
+            >>> # v1 contributes one incoming edge to v2.
             >>> orientation.get_in_degree("v2")
-            1  # from v1
+            1
+            >>> # v1 and v2 each contribute one incoming edge to v3.
             >>> orientation.get_in_degree("v3")
-            2  # from v1, v2
+            2
         """
         vertex = Vertex(vertex_name)
         if vertex not in self.graph.graph:
@@ -386,8 +389,9 @@ class CFOrientation:
             >>> orientation = CFOrientation(graph, orientations)
             >>> orientation.get_out_degree("v1")
             2
+            >>> # v2 has one outgoing edge, directed to v3.
             >>> orientation.get_out_degree("v2")
-            1  # to v3
+            1
             >>> orientation.get_out_degree("v3")
             0
         """
@@ -466,12 +470,13 @@ class CFOrientation:
             >>> orientations = [("v1", "v2"), ("v2", "v3"), ("v1", "v3")]
             >>> orientation = CFOrientation(graph, orientations)
             >>> div = orientation.divisor()
+            >>> # The divisor degree is the in-degree minus one.
             >>> div.get_degree("v1")
-            -1  # in-degree 0 - 1
+            -1
             >>> div.get_degree("v2")
-            0   # in-degree 1 - 1
+            0
             >>> div.get_degree("v3")
-            1   # in-degree 2 - 1
+            1
         """
         # Ensure the fullness status is up-to-date
         if not self.is_full_checked:
@@ -505,12 +510,13 @@ class CFOrientation:
             >>> graph = CFGraph(vertices, edges)
             >>> orientation = CFOrientation(graph, [])  # Orientation doesn't matter
             >>> canonical = orientation.canonical_divisor()
+            >>> # Each canonical-divisor degree is the vertex valence minus two.
             >>> canonical.get_degree("a")
-            0   # valence 2 - 2
+            0
             >>> canonical.get_degree("b")
-            3   # valence 5 - 2
+            3
             >>> canonical.get_degree("c")
-            1   # valence 3 - 2
+            1
         """
         canonical_degrees = []
         for vertex in self.graph.vertices:

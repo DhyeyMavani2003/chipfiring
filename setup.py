@@ -5,21 +5,26 @@ import setuptools
 NAME             = "chipfiring"
 AUTHOR           = "Dhyey Mavani"
 AUTHOR_EMAIL     = "ddmavani2003@gmail.com"
-DESCRIPTION      = "This is an Pythonic API for visualization and analysis of chip firing games and corresponding algorithms."
+DESCRIPTION      = "A Python API for visualization and analysis of chip-firing games and related algorithms."
 LICENSE          = "MIT"
 KEYWORDS         = ""
 URL              = "https://github.com/DhyeyMavani2003/" + NAME
-README           = ".github/README.md"
+README           = "README.md"
 CLASSIFIERS      = [
-  "Programming Language :: Python",
-  
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Mathematics",
 ]
 INSTALL_REQUIRES = [
   "numpy",
-  "pandas",
-  "pytest",
-  "coverage",
-  "matplotlib",
   "dash",
   "dash-cytoscape",
   "dash-bootstrap-components",
@@ -49,8 +54,9 @@ if __name__ == "__main__":
   setuptools.setup(
     name=NAME,
     version=VERSION,
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(include=["chipfiring", "chipfiring.*"]),
     author=AUTHOR,
+    author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
@@ -59,6 +65,7 @@ if __name__ == "__main__":
     url=URL,
     classifiers=CLASSIFIERS,
     install_requires=INSTALL_REQUIRES,
+    python_requires=">=3.8",
     entry_points=ENTRY_POINTS,
     scripts=SCRIPTS,
     include_package_data=True    

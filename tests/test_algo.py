@@ -6,9 +6,21 @@ from chipfiring.algo import (
     linear_equivalence,
     is_winnable,
     q_reduction,
+    q_reduction_with_root,
     is_q_reduced,
 )
 from chipfiring.CFOrientation import CFOrientation
+
+
+def degree_snapshot(divisor):
+    """Return a name-keyed snapshot suitable for mutation assertions."""
+    return {vertex.name: degree for vertex, degree in divisor.degrees.items()}
+
+
+def test_q_reduction_with_root_is_publicly_exported():
+    import chipfiring
+
+    assert chipfiring.q_reduction_with_root is q_reduction_with_root
 
 
 @pytest.fixture
@@ -41,11 +53,14 @@ def test_ewd_example(sequence_test_graph, sequence_test_initial_divisor):
     expected_q_reduced_divisor = CFDivisor(
         sequence_test_graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)]
     )
+    initial_snapshot = degree_snapshot(sequence_test_initial_divisor)
     is_win, reduced_div, orientation, _ = EWD(
         sequence_test_graph, sequence_test_initial_divisor
     )
     assert is_win == expected_result
     assert reduced_div == expected_q_reduced_divisor
+    assert reduced_div is not sequence_test_initial_divisor
+    assert degree_snapshot(sequence_test_initial_divisor) == initial_snapshot
     assert isinstance(orientation, CFOrientation)
 
 
@@ -97,13 +112,158 @@ def test_q_reduction(sequence_test_graph, sequence_test_initial_divisor):
     expected_q_reduced_divisor = CFDivisor(
         sequence_test_graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)]
     )
-    assert q_reduction(sequence_test_initial_divisor) == expected_q_reduced_divisor
+    initial_snapshot = degree_snapshot(sequence_test_initial_divisor)
+    reduced = q_reduction(sequence_test_initial_divisor)
+
+    assert reduced == expected_q_reduced_divisor
+    assert reduced is not sequence_test_initial_divisor
+    assert degree_snapshot(sequence_test_initial_divisor) == initial_snapshot
 
 
 def test_is_q_reduced(sequence_test_initial_divisor):
     """Test the is_q_reduced function."""
-    expected_result = True
-    assert is_q_reduced(sequence_test_initial_divisor) == expected_result
+    initial_snapshot = degree_snapshot(sequence_test_initial_divisor)
+
+    assert is_q_reduced(sequence_test_initial_divisor) is False
+    assert degree_snapshot(sequence_test_initial_divisor) == initial_snapshot
+
+
+def test_explicit_q_changes_q_reduction_and_predicate():
+    """The same divisor can be reduced for one root but not another."""
+    graph = CFGraph(
+        {"q", "a", "b"},
+        [("q", "a", 1), ("a", "b", 1)],
+    )
+    divisor = CFDivisor(graph, [("q", 0), ("a", 0), ("b", 1)])
+    initial_snapshot = degree_snapshot(divisor)
+
+    _, left_reduced, _, _ = EWD(graph, divisor, q_name="q")
+    right_reduced = q_reduction(divisor, q_name="b")
+
+    assert degree_snapshot(left_reduced) == {"q": 1, "a": 0, "b": 0}
+    assert degree_snapshot(right_reduced) == initial_snapshot
+    assert is_q_reduced(divisor, q_name="q") is False
+    assert is_q_reduced(divisor, q_name="b") is True
+    assert degree_snapshot(divisor) == initial_snapshot
+
+
+def test_q_reduction_with_root_supports_later_predicate_check():
+    graph = CFGraph({"0", "1"}, [("0", "1", 1)])
+    divisor = CFDivisor(graph, [("0", -1), ("1", 2)])
+
+    reduced, q_name = q_reduction_with_root(divisor)
+
+    assert q_name == "0"
+    assert degree_snapshot(reduced) == {"0": 1, "1": 0}
+    assert is_q_reduced(reduced, q_name=q_name) is True
+
+
+def test_default_reduction_q_breaks_debt_ties_by_vertex_name():
+    """The historical most-indebted default has a deterministic tie-break."""
+    graph = CFGraph(
+        {"a", "b", "c"},
+        [("a", "b", 2), ("b", "c", 1)],
+    )
+    divisor = CFDivisor(graph, [("a", 0), ("b", 1), ("c", 0)])
+
+    reduced, q_name = q_reduction_with_root(divisor)
+    assert q_name == "a"
+    assert is_q_reduced(divisor) is True
+    assert q_reduction(divisor) == divisor
+    assert reduced == divisor
+    assert is_q_reduced(divisor, q_name="c") is False
+
+
+def test_default_reduction_preserves_historical_most_indebted_root():
+    graph = CFGraph(
+        {"A", "B", "C"},
+        [("A", "B", 1), ("B", "C", 1), ("C", "A", 1)],
+    )
+    divisor = CFDivisor(graph, [("A", 2), ("B", -3), ("C", 1)])
+
+    default_reduced = q_reduction(divisor)
+    explicit_reduced = q_reduction(divisor, q_name="B")
+
+    assert default_reduced == explicit_reduced
+
+
+def test_explicit_q_is_validated_before_optimized_shortcuts(simple_graph):
+    divisor = CFDivisor(simple_graph, [("v1", -4), ("v2", 0), ("v3", 0)])
+
+    with pytest.raises(
+        ValueError,
+        match="Vertex q='missing' not found in the graph of the divisor",
+    ):
+        EWD(simple_graph, divisor, optimized=True, q_name="missing")
+
+
+def test_ewd_rejects_empty_graph():
+    graph = CFGraph(set(), [])
+    divisor = CFDivisor(graph, [])
+
+    with pytest.raises(ValueError, match="Cannot choose q for a divisor on an empty graph"):
+        EWD(graph, divisor)
+
+
+def test_ewd_visualization_tracks_a_complete_run(sequence_test_graph):
+    divisor = CFDivisor(
+        sequence_test_graph,
+        [("Alice", 2), ("Bob", -3), ("Charlie", 4), ("Elise", -1)],
+    )
+    initial_snapshot = degree_snapshot(divisor)
+
+    winnable, reduced, orientation, visualizer = EWD(
+        sequence_test_graph,
+        divisor,
+        visualize=True,
+        q_name="Bob",
+    )
+
+    assert winnable is True
+    assert reduced is not None
+    assert orientation is not None and orientation.is_full
+    assert visualizer is not None and visualizer.history
+    assert degree_snapshot(divisor) == initial_snapshot
+
+
+@pytest.mark.parametrize(
+    ("degrees", "expected_winnable"),
+    [
+        ([("v1", -1), ("v2", 0), ("v3", 0)], False),
+        ([("v1", 1), ("v2", 1), ("v3", 0)], True),
+    ],
+)
+def test_ewd_optimized_shortcuts_record_visualization(
+    simple_graph, degrees, expected_winnable
+):
+    divisor = CFDivisor(simple_graph, degrees)
+    initial_snapshot = degree_snapshot(divisor)
+
+    winnable, reduced, orientation, visualizer = EWD(
+        simple_graph,
+        divisor,
+        optimized=True,
+        visualize=True,
+    )
+
+    assert winnable is expected_winnable
+    assert reduced is None
+    assert orientation is None
+    assert visualizer is not None and visualizer.history
+    assert degree_snapshot(divisor) == initial_snapshot
+
+
+@pytest.mark.parametrize("optimized", [False, True])
+def test_ewd_rejects_disconnected_graph_before_shortcuts(optimized):
+    """Degree/genus shortcuts are invalid across disconnected components."""
+    graph = CFGraph({"a", "b"}, [])
+    divisor = CFDivisor(graph, [("a", -1), ("b", 1)])
+
+    with pytest.raises(ValueError, match="EWD requires a connected graph"):
+        EWD(graph, divisor, optimized=optimized)
+
+    with pytest.raises(ValueError, match="EWD requires a connected graph"):
+        is_winnable(divisor)
 
 
 @pytest.fixture
@@ -178,7 +338,10 @@ def test_is_winnable_example_winnable(sequence_test_initial_divisor):
     """Test is_winnable with a known winnable configuration."""
     # sequence_test_initial_divisor is D = (A:2, B:-3, C:4, E:-1) which test_ewd_example expects to be True
     expected_result = True
+    initial_snapshot = degree_snapshot(sequence_test_initial_divisor)
+
     assert is_winnable(sequence_test_initial_divisor) == expected_result
+    assert degree_snapshot(sequence_test_initial_divisor) == initial_snapshot
 
 
 def test_is_winnable_simple_graph_not_winnable(simple_graph):

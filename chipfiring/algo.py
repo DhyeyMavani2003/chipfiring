@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .CFGraph import CFGraph
+from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
 from .CFDhar import DharAlgorithm
 from .CFOrientation import CFOrientation
@@ -8,7 +8,11 @@ from .CFEWDVisualizer import EWDVisualizer
 
 
 def EWD(
-    graph: CFGraph, divisor: CFDivisor, optimized: bool = False, visualize: bool = False
+    graph: CFGraph,
+    divisor: CFDivisor,
+    optimized: bool = False,
+    visualize: bool = False,
+    q_name: Optional[str] = None,
 ) -> Tuple[bool, Optional[CFDivisor], Optional[CFOrientation], Optional[EWDVisualizer]]:
     """Determine if a given chip-firing configuration is winnable using the Efficient Winnability Detection (EWD) algorithm.
 
@@ -16,14 +20,17 @@ def EWD(
     maximal legal firing sets until no more such sets can be found or the
     configuration becomes q-reduced with respect to a chosen vertex q.
 
-    The vertex 'q' is chosen as the vertex with the minimum degree (most debt)
-    in the initial configuration.
+    If ``q_name`` is supplied, that vertex is used as q. Otherwise q defaults
+    deterministically to the minimum-degree vertex in the initial configuration.
 
     Args:
         graph: The chip-firing graph (CFGraph instance).
         divisor: The initial chip distribution (CFDivisor instance).
         optimized: Whether to run EWD in optimized mode. (default: False). Note: if you choose to run in optimized mode, you might not get the associated induced orientation and q-reduced divisor because of the shortcuts taken by the algorithm to determine winnability.
         visualize: Whether to visualize the EWD algorithm. (default: False).
+        q_name: Optional name of the distinguished vertex. If omitted, EWD
+            preserves its historical behavior and chooses a minimum-degree
+            vertex. The input divisor is never modified.
 
     Returns:
         A tuple containing:
@@ -33,8 +40,8 @@ def EWD(
         - The visualizer object if `visualize` is True, else None.
 
     Raises:
-        ValueError: If the divisor has no degrees mapping, making it impossible
-                    to determine the initial vertex 'q'.
+        ValueError: If the graph is empty or disconnected, or if ``q_name``
+            is not a graph vertex.
         RuntimeError: If the final orientation is not full (some edges remain unoriented).
 
     Example:
@@ -66,7 +73,42 @@ def EWD(
         >>> is_win  # Total degree is negative, so not winnable
         False
         >>> reduced is None and orient is None  # Optimized mode returns None for these
+        True
     """
+    # EWD performs borrowing and firing moves, so run it on a fresh divisor.
+    # Keeping the supplied graph object preserves the graph identity expected
+    # by callers while protecting the caller's degree mapping from mutation.
+    working_divisor = CFDivisor(
+        graph,
+        [
+            (vertex.name, degree)
+            for vertex, degree in divisor.degrees.items()
+        ],
+    )
+
+    if not working_divisor.degrees:
+        raise ValueError("Cannot choose q for a divisor on an empty graph")
+
+    # Every correctness argument used below assumes a connected graph. Check
+    # this before optimized degree/genus shortcuts can return a false result
+    # for components that cannot exchange chips.
+    if not graph.is_connected():
+        raise ValueError("EWD requires a connected graph")
+
+    if q_name is None:
+        # Degree ties are common. Break them by vertex name so the default
+        # source does not depend on set/hash iteration order.
+        q = min(
+            working_divisor.degrees.items(),
+            key=lambda item: (item[1], item[0].name),
+        )[0]
+    else:
+        q = Vertex(q_name)
+        if q not in working_divisor.degrees:
+            raise ValueError(
+                f"Vertex q='{q_name}' not found in the graph of the divisor."
+            )
+
     # Initialize visualizer if requested
     visualizer = EWDVisualizer() if visualize else None
 
@@ -74,37 +116,28 @@ def EWD(
     # With this mode, we use theorems, lemmas, and properties to determine winnability if possible.
     if optimized: 
         # If total degree is negative, return False
-        total_degree = divisor.get_total_degree()
+        total_degree = working_divisor.get_total_degree()
         if total_degree < 0:
             if visualizer:
-                visualizer.add_step(divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree}. Not winnable.", source_function="EWD Optimized Mode Check: Negative total degree implies unwinnable")
+                visualizer.add_step(working_divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree}. Not winnable.", source_function="EWD Optimized Mode Check: Negative total degree implies unwinnable")
             return False, None, None, visualizer
         else:
             if visualizer:
-                visualizer.add_step(divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree}. Continue.", source_function="EWD Optimized Mode Check: Negative total degree implies unwinnable")
+                visualizer.add_step(working_divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree}. Continue.", source_function="EWD Optimized Mode Check: Negative total degree implies unwinnable")
 
-        # Apply Proposition 4.1.14 (2) from Dhyey Mavani's thesis if possible:
-        #   If D is a maximal unwinnable divisor, then deg(D) = g − 1. Thus, deg(D) ≥ g implies D is winnable
+        # Graph Riemann-Roch implies that every divisor of degree at least the
+        # genus has nonnegative rank and is therefore winnable.
         genus = graph.get_genus()
         if total_degree >= genus:
             if visualizer:
-                visualizer.add_step(divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree} and genus is {genus} Winnable.", source_function="EWD Optimized Mode Check: deg(D) ≥ g implies D is winnable (Proposition 4.1.14 (2) from Dhyey Mavani's thesis)")
+                visualizer.add_step(working_divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree} and genus is {genus} Winnable.", source_function="EWD optimized degree bound: deg(D) ≥ g implies winnability by graph Riemann-Roch")
             return True, None, None, visualizer
         else:
             if visualizer:
-                visualizer.add_step(divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree} and genus is {genus}. Continue.", source_function="EWD Optimized Mode Check: deg(D) ≥ g implies D is winnable (Proposition 4.1.14 (2) from Dhyey Mavani's thesis)")
-
-
-    # 1. q is the Vertex object with the minimum degree.
-    # min() is applied to (Vertex, degree) pairs from divisor.degrees.items().
-    # - divisor.degrees.items() yields (Vertex, int) tuples.
-    # - key=lambda item: item[1] tells min to compare items based on their second element (the degree).
-    # - [0] extracts the Vertex object (the first element) from the (Vertex, degree) tuple
-    #   that corresponds to the minimum degree.
-    q = min(divisor.degrees.items(), key=lambda item: item[1])[0]
+                visualizer.add_step(working_divisor, CFOrientation(graph, []), description=f"Total degree is {total_degree} and genus is {genus}. Continue.", source_function="EWD optimized degree bound: deg(D) ≥ g implies winnability by graph Riemann-Roch")
 
     if visualizer:
-        visualizer.add_step(divisor, CFOrientation(graph, []), q=q.name, description="Initial state with q selected.", source_function="EWD")
+        visualizer.add_step(working_divisor, CFOrientation(graph, []), q=q.name, description="Initial state with q selected.", source_function="EWD")
 
     # Apply the reduced matrix optimization to the divisor with respect to q (if optimized is True)
     """
@@ -127,7 +160,7 @@ def EWD(
     """
     
     # Create a DharAlgorithm instance
-    dhar = DharAlgorithm(graph, divisor, q.name, visualizer)
+    dhar = DharAlgorithm(graph, working_divisor, q.name, visualizer)
 
     # 2. Initially run Dhar's to get the set of unburnt vertices and orientation
     unburnt_vertices, orientation = dhar.run()
@@ -185,7 +218,11 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
         divisor2: The second CFDivisor object.
 
     Returns:
-        A tuple containing a boolean indicating if the divisors are linearly equivalent, and the q-reduced divisor if they are.
+        True if the divisors are linearly equivalent, False otherwise.
+
+    Raises:
+        ValueError: If a nontrivial comparison is attempted on a disconnected
+            graph.
 
     Example:
         >>> # Create a simple graph
@@ -244,6 +281,10 @@ def is_winnable(divisor: CFDivisor) -> bool:
     Returns:
         True if the configuration is winnable, False otherwise.
 
+    Raises:
+        ValueError: If the divisor is defined on an empty or disconnected
+            graph.
+
     Example:
         >>> # Create a simple graph
         >>> vertices = {"v1", "v2", "v3"}
@@ -266,20 +307,60 @@ def is_winnable(divisor: CFDivisor) -> bool:
     return is_winnable
 
 
-def q_reduction(divisor: CFDivisor) -> CFDivisor:
+def _resolve_reduction_q_name(
+    divisor: CFDivisor, q_name: Optional[str]
+) -> Optional[str]:
+    """Preserve the historical most-indebted default with a stable tie-break."""
+    if q_name is not None or not divisor.graph.vertices:
+        return q_name
+    return min(
+        divisor.degrees.items(),
+        key=lambda item: (item[1], item[0].name),
+    )[0].name
+
+
+def q_reduction_with_root(
+    divisor: CFDivisor,
+    q_name: Optional[str] = None,
+) -> Tuple[CFDivisor, str]:
+    """Return a q-reduced divisor together with the root used.
+
+    Use this helper when ``q_name`` is omitted and the result will later be
+    checked with :func:`is_q_reduced`; q-reducedness is always relative to a
+    specific root.
+    """
+    resolved_q_name = _resolve_reduction_q_name(divisor, q_name)
+    _, q_reduced_divisor, _, _ = EWD(
+        divisor.graph,
+        divisor,
+        q_name=resolved_q_name,
+    )
+    if q_reduced_divisor is None or resolved_q_name is None:
+        raise ValueError("Failed to compute a valid q-reduced divisor")
+    return q_reduced_divisor, resolved_q_name
+
+
+def q_reduction(divisor: CFDivisor, q_name: Optional[str] = None) -> CFDivisor:
     """Perform a q-reduction on the given divisor.
 
-    A q-reduction is a sequence of legal chip firings that results in a divisor
-    where no set of vertices excluding q can legally fire.
+    The result is linearly equivalent to ``divisor``, is nonnegative away from
+    q, and admits no legal firing of a nonempty subset of vertices excluding q.
+    The reduction may use both lending and borrowing moves.
 
     Args:
         divisor: The initial chip distribution (CFDivisor instance).
+        q_name: Optional name of q. If omitted, the historical most-indebted
+            vertex heuristic is used, with vertex name as a deterministic
+            tie-break. Use :func:`q_reduction_with_root` if the chosen root is
+            needed later.
 
     Returns:
         The q-reduced divisor.
 
     Raises:
-        ValueError: If the EWD algorithm doesn't produce a valid q-reduced divisor.
+        ValueError: If the graph is empty or disconnected, if ``q_name`` is
+            not a graph vertex, or if EWD does not produce a valid q-reduced
+            divisor.
 
     Example:
         >>> # Create a simple graph
@@ -295,27 +376,34 @@ def q_reduction(divisor: CFDivisor) -> CFDivisor:
         >>> # Create a divisor
         >>> divisor = CFDivisor(graph, [("Alice", 2), ("Bob", -3), ("Charlie", 4), ("Elise", -1)])
         >>> # Get q-reduced divisor
-        >>> reduced = q_reduction(divisor)
+        >>> reduced = q_reduction(divisor, q_name="Bob")
         >>> # Check degrees of reduced divisor
         >>> [(v.name, reduced.get_degree(v.name)) for v in sorted(reduced.degrees.keys(), key=lambda v: v.name)]
         [('Alice', 2), ('Bob', 0), ('Charlie', 0), ('Elise', 0)]
     """
-    _, q_reduced_divisor, _, _ = EWD(divisor.graph, divisor)
-    if q_reduced_divisor is None:
-        raise ValueError("Failed to compute a valid q-reduced divisor")
+    q_reduced_divisor, _ = q_reduction_with_root(divisor, q_name=q_name)
     return q_reduced_divisor
 
 
-def is_q_reduced(divisor: CFDivisor) -> bool:
+def is_q_reduced(divisor: CFDivisor, q_name: Optional[str] = None) -> bool:
     """Check if the given divisor is q-reduced.
 
-    A divisor is q-reduced if no subset of vertices excluding q can legally fire.
+    A divisor is q-reduced if it is nonnegative away from q and no nonempty
+    subset of vertices excluding q can legally fire.
 
     Args:
         divisor: The initial chip distribution (CFDivisor instance).
+        q_name: Optional name of q. If omitted, the historical most-indebted
+            vertex heuristic is applied to this divisor. Because q-reducedness
+            is root-relative, pass the root returned by
+            :func:`q_reduction_with_root` when checking a reduction result.
 
     Returns:
         True if the divisor is q-reduced, False otherwise.
+
+    Raises:
+        ValueError: If the graph is empty or disconnected, or if ``q_name`` is
+            not a graph vertex.
 
     Example:
         >>> # Create a simple graph
@@ -330,13 +418,18 @@ def is_q_reduced(divisor: CFDivisor) -> bool:
         >>> graph = CFGraph(vertices, edges)
         >>> # Create a q-reduced divisor
         >>> q_reduced = CFDivisor(graph, [("Alice", 2), ("Bob", 0), ("Charlie", 0), ("Elise", 0)])
-        >>> is_q_reduced(q_reduced)
+        >>> is_q_reduced(q_reduced, q_name="Bob")
         True
         >>> # Create a non-q-reduced divisor
         >>> non_reduced = CFDivisor(graph, [("Alice", 2), ("Bob", -3), ("Charlie", 4), ("Elise", -1)])
-        >>> # This should still be true since q-reduction just transforms it to itself
-        >>> is_q_reduced(non_reduced)
-        True
+        >>> # The divisor changes under q-reduction, so it is not q-reduced.
+        >>> is_q_reduced(non_reduced, q_name="Bob")
+        False
     """
-    _, q_reduced_divisor, _, _ = EWD(divisor.graph, divisor)
+    resolved_q_name = _resolve_reduction_q_name(divisor, q_name)
+    _, q_reduced_divisor, _, _ = EWD(
+        divisor.graph,
+        divisor,
+        q_name=resolved_q_name,
+    )
     return q_reduced_divisor == divisor

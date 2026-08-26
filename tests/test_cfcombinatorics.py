@@ -258,8 +258,7 @@ class TestTreewidthAndBounds:
     def test_scramble_number_upper_bound(self, triangle):
         """Test scramble number upper bound."""
         scramble = scramble_number_upper_bound(triangle)
-        assert scramble >= 1
-        assert scramble <= 3  # Should be reasonable for small graph
+        assert scramble == 3
     
     def test_genus_upper_bound_tree(self, tree_3):
         """Test genus upper bound for tree."""
@@ -269,7 +268,18 @@ class TestTreewidthAndBounds:
     def test_genus_upper_bound_triangle(self, triangle):
         """Test genus upper bound for triangle."""
         genus = genus_upper_bound(triangle)
-        assert genus >= 0  # Genus should be non-negative
+        assert genus == 1
+
+    def test_genus_upper_bound_multigraph(self):
+        banana = CFGraph({"u", "v"}, [("u", "v", 3)])
+        assert genus_upper_bound(banana) == 2
+
+    def test_bounds_reject_disconnected_graphs(self):
+        disconnected = CFGraph({"u", "v"}, [])
+        with pytest.raises(ValueError, match="connected graph"):
+            genus_upper_bound(disconnected)
+        with pytest.raises(ValueError, match="connected graph"):
+            scramble_number_upper_bound(disconnected)
 
 
 class TestConnectivity:
@@ -376,7 +386,7 @@ class TestGonalityBounds:
         """Test gonality bounds for single vertex."""
         single = CFGraph({"0"}, [])
         bounds = gonality_theoretical_bounds(single)
-        assert bounds['trivial_bound'] == 1
+        assert bounds['lower_bound'] == bounds['upper_bound'] == 1
     
     def test_gonality_theoretical_bounds_triangle(self, triangle):
         """Test gonality bounds for triangle."""
@@ -385,16 +395,17 @@ class TestGonalityBounds:
         # Check that all expected bounds are present
         expected_keys = [
             'trivial_lower_bound', 'trivial_upper_bound', 'independence_upper_bound',
-            'treewidth_lower_bound', 'genus_bound', 'scramble_bound', 'connectivity_bound',
-            'lower_bound', 'upper_bound'
+            'treewidth_lower_bound', 'treewidth_upper_estimate',
+            'minimum_degree_bound', 'bramble_order_bound', 'genus_bound',
+            'connectivity_bound', 'lower_bound', 'upper_bound'
         ]
         for key in expected_keys:
             assert key in bounds
         
         # Check reasonableness of bounds
         assert bounds['trivial_lower_bound'] == 1
-        assert bounds['trivial_upper_bound'] == 2  # n-1 = 3-1 = 2
-        assert bounds['lower_bound'] <= bounds['upper_bound']
+        assert bounds['trivial_upper_bound'] == 3
+        assert bounds['lower_bound'] == bounds['upper_bound'] == 2
         assert bounds['independence_upper_bound'] == 2  # Triangle: n - α = 3 - 1 = 2
     
     def test_gonality_theoretical_bounds_path(self, path_4):
@@ -402,9 +413,14 @@ class TestGonalityBounds:
         bounds = gonality_theoretical_bounds(path_4)
         
         assert bounds['trivial_lower_bound'] == 1
-        assert bounds['trivial_upper_bound'] == 3  # n-1 = 4-1 = 3
-        assert bounds['lower_bound'] <= bounds['upper_bound']
+        assert bounds['trivial_upper_bound'] == 4
+        assert bounds['lower_bound'] == bounds['upper_bound'] == 1
         assert bounds['independence_upper_bound'] == 2  # Path of 4 has independence number 2
+
+    def test_gonality_theoretical_bounds_reject_multigraph(self):
+        banana = CFGraph({"u", "v"}, [("u", "v", 3)])
+        with pytest.raises(ValueError, match="simple graph"):
+            gonality_theoretical_bounds(banana)
     
     def test_analyze_graph_properties_triangle(self, triangle):
         """Test graph property analysis for triangle."""
@@ -486,6 +502,8 @@ class TestEdgeCasesAndErrors:
         assert props['num_vertices'] == 2
         assert props['num_edges'] == 3  # Multiple edges counted
         assert props['is_connected']
+        assert props['gonality_bounds'] is None
+        assert 'simple graph' in props['gonality_bounds_unavailable_reason']
 
 
 class TestAdditionalRobustness:
@@ -616,7 +634,7 @@ class TestOctahedronSpecificFunctions:
 
 
 class TestIcosahedronSpecificFunctions:
-    """Test icosahedron-specific theoretical functions."""
+    """Test icosahedron-specific invariant helpers."""
     
     def test_icosahedron_independence_number(self):
         """Test icosahedron independence number function."""
@@ -635,8 +653,9 @@ class TestIcosahedronSpecificFunctions:
         assert isinstance(scramble, dict)
         assert scramble['is_2_uniform']
         assert scramble['scramble_norm'] == 8
-        assert len(scramble['scramble_sets']) == 6
-        assert scramble['vertex_pairs'] == 6
+        assert len(scramble['scramble_sets']) == 30
+        assert scramble['vertex_pairs'] == 30
+        assert scramble['construction_type'] == 'all_edges'
         assert 'description' in scramble
     
     def test_icosahedron_screewidth_bound(self):
@@ -647,39 +666,55 @@ class TestIcosahedronSpecificFunctions:
         
         assert screewidth_info['screewidth_upper_bound'] == 8
         assert screewidth_info['scramble_number_bound'] == 8
-        assert 'scw(I) ≤ ||S|| = 8' in screewidth_info['relation']
-    
-    def test_icosahedron_lemma_3_subgraph_bounds(self):
-        """Test icosahedron Lemma 3 subgraph bounds function."""
-        from chipfiring.CFCombinatorics import icosahedron_lemma_3_subgraph_bounds
-        
-        lemma3_info = icosahedron_lemma_3_subgraph_bounds()
-        
-        assert 'max_outdegree_bound' in lemma3_info
-        assert lemma3_info['independence_number'] == 3
-        assert 'critical_subgraphs' in lemma3_info
-        assert len(lemma3_info['critical_subgraphs']) >= 3
-    
-    def test_icosahedron_dhars_burning_algorithm(self):
-        """Test icosahedron Dhar's burning algorithm function."""
-        from chipfiring.CFCombinatorics import icosahedron_dhars_burning_algorithm
-        
-        dhars_info = icosahedron_dhars_burning_algorithm()
-        
-        assert dhars_info['gonality'] == 9
-        assert dhars_info['proof_complete']
-        assert dhars_info['debt_free_divisor_exists']['degree'] == 9
-        assert dhars_info['no_lower_degree_divisor']['degree'] == 8
+        assert 'sn(I) ≤ scw(I)' in screewidth_info['relation']
+
+    def test_icosahedron_subgraph_outdegree_bounds(self):
+        """Test exhaustive icosahedron subgraph boundary bounds."""
+        from chipfiring.CFCombinatorics import icosahedron_subgraph_outdegree_bounds
+
+        data = icosahedron_subgraph_outdegree_bounds()
+
+        assert data['reference_bounds_verified']
+        assert data['minimum_reference_bound'] == 8
+
+    def test_icosahedron_gonality_proof_summary(self):
+        """Test that published gonality data is labeled as reference data."""
+        from chipfiring.CFCombinatorics import icosahedron_gonality_proof_summary
+
+        summary = icosahedron_gonality_proof_summary()
+
+        assert summary['published_exact_value'] == 9
+        assert summary['computed_by_package'] is False
+
+    def test_deprecated_icosahedron_helpers_remain_importable(self):
+        from chipfiring.CFCombinatorics import (
+            icosahedron_dhars_burning_algorithm,
+            icosahedron_lemma_3_subgraph_bounds,
+        )
+
+        with pytest.deprecated_call():
+            proof = icosahedron_dhars_burning_algorithm()
+        with pytest.deprecated_call():
+            subgraphs = icosahedron_lemma_3_subgraph_bounds()
+
+        assert proof['gonality'] == 9
+        assert proof['computed_by_package'] is False
+        assert proof['debt_free_divisor_exists']['construction']
+        assert proof['debt_free_divisor_exists']['proof_method']
+        assert proof['no_lower_degree_divisor']['reason']
+        assert subgraphs['reference_bounds_verified']
+        assert subgraphs['lemma_statement']
+        assert subgraphs['contributes_to_gonality_proof']
     
     def test_icosahedron_egg_cut_number(self):
         """Test icosahedron egg-cut number function."""
         from chipfiring.CFCombinatorics import icosahedron_egg_cut_number
         
         egg_cut_info = icosahedron_egg_cut_number()
-        
+
         assert egg_cut_info['egg_cut_number'] == 8
-        assert egg_cut_info['lower_bound'] == 3
-        assert egg_cut_info['upper_bound'] == 9
+        assert egg_cut_info['lower_bound'] == 8
+        assert egg_cut_info['upper_bound'] == 8
     
     def test_icosahedron_hitting_set_analysis(self):
         """Test icosahedron hitting set analysis function."""
@@ -687,7 +722,7 @@ class TestIcosahedronSpecificFunctions:
         
         hitting_set_info = icosahedron_hitting_set_analysis()
         
-        assert hitting_set_info['minimum_hitting_set_size'] == 6
+        assert hitting_set_info['minimum_hitting_set_size'] == 9
         assert 'scramble_sets' in hitting_set_info
         assert 'hitting_sets' in hitting_set_info
         assert len(hitting_set_info['hitting_sets']) >= 3
@@ -701,9 +736,9 @@ class TestIcosahedronSpecificFunctions:
         # Check key bounds
         assert bounds['independence_upper_bound'] == 9
         assert bounds['scramble_number_bound'] == 8
-        assert bounds['dhars_algorithm_result'] == 9
+        assert bounds['published_exact_value'] == 9
         assert bounds['screewidth_bound'] == 8
-        assert bounds['lower_bound'] <= bounds['upper_bound']
+        assert bounds['lower_bound'] == bounds['upper_bound'] == 9
 
 
 class TestScrambleNumberTheory:
@@ -721,7 +756,7 @@ class TestScrambleNumberTheory:
             assert len(scramble_set) == 2
         
         # Check construction type
-        assert scramble['construction_type'] == 'opposite_vertex_pairs'
+        assert scramble['construction_type'] == 'all_edges'
     
     def test_scramble_hitting_sets(self):
         """Test hitting set computations for scrambles."""

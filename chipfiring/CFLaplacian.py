@@ -99,43 +99,22 @@ class CFLaplacian:
         """
         resulting_degrees: typing.Dict[Vertex, int] = divisor.degrees.copy()
         
-        # Establish a consistent, sorted order for vertices for matrix/vector operations
+        # Establish a consistent order for applying the sparse matrix rows.
         ordered_vertices = sorted(list(self.graph.vertices), key=lambda v: v.name)
-        num_vertices = len(ordered_vertices)
 
-        if num_vertices == 0:
-            # If there are no vertices, return the original divisor unchanged
-            final_degrees_list = [
-                (vertex.name, degree) for vertex, degree in resulting_degrees.items()
-            ]
-            return CFDivisor(self.graph, final_degrees_list)
-
-        # 1. Convert self.laplacian (Dict[Vertex, defaultdict(int)]) to a numerical matrix L_matrix
-        L_matrix: typing.List[typing.List[int]] = [
-            [0] * num_vertices for _ in range(num_vertices)
-        ]
-        for r_idx, v_row in enumerate(ordered_vertices):
-            for c_idx, v_col in enumerate(ordered_vertices):
-                # self.laplacian[v_row] is a defaultdict(int), so access is safe
-                L_matrix[r_idx][c_idx] = self.laplacian[v_row][v_col]
-
-        # 2. Convert firing_script to a numerical vector s_vector
-        s_vector: typing.List[int] = [0] * num_vertices
-        for idx, v_obj in enumerate(ordered_vertices):
-            s_vector[idx] = firing_script.get_firings(v_obj.name)
-
-        # 3. Calculate Ls_vector using NumPy
-        L_np = np.array(L_matrix)
-        s_np = np.array(s_vector)
-        Ls_vector = L_np.dot(s_np)  # Or L_np @ s_np
-
-        # 4. Update resulting_degrees: D'[v_obj] = D[v_obj] - (Ls_vector)_idx
-        for idx, v_obj in enumerate(ordered_vertices):
+        # Apply only nonzero Laplacian entries with Python integers. This keeps
+        # arbitrary-precision arithmetic and avoids dense O(|V|^2) work on
+        # sparse graphs.
+        for v_obj in ordered_vertices:
+            laplacian_effect = sum(
+                coefficient * firing_script.get_firings(column_vertex.name)
+                for column_vertex, coefficient in self.laplacian[v_obj].items()
+            )
             # It's assumed v_obj from ordered_vertices (derived from self.graph.vertices)
             # will be a key in resulting_degrees (derived from divisor.degrees,
             # which should be for the same graph).
             if v_obj in resulting_degrees:
-                resulting_degrees[v_obj] -= Ls_vector[idx]
+                resulting_degrees[v_obj] -= laplacian_effect
             # else:
                 # This case implies inconsistency between divisor's graph and CFLaplacian's graph.
                 # Current CFDivisor structure ensures degrees are for vertices in its graph.
@@ -171,14 +150,16 @@ class CFLaplacian:
             >>> edges = [("a", "b", 2), ("b", "c", 3)]
             >>> graph = CFGraph(vertices, edges)
             >>> laplacian = CFLaplacian(graph)
+            >>> # Diagonal entries are vertex valences.
             >>> laplacian.get_matrix_entry("a", "a")
-            2  # Diagonal entry: valence of vertex a
+            2
             >>> laplacian.get_matrix_entry("b", "b")
-            5  # Diagonal entry: valence of vertex b (2+3)
+            5
+            >>> # Off-diagonal entries are negative edge valences.
             >>> laplacian.get_matrix_entry("a", "b")
-            -2  # Off-diagonal: negative valence between a and b
+            -2
             >>> laplacian.get_matrix_entry("a", "c")
-            0   # Off-diagonal: a and c are not neighbors
+            0
         """
         v = Vertex(v_name)
         w = Vertex(w_name)

@@ -358,8 +358,10 @@ def gonality(graph: CFGraph, max_gonality: Optional[int] = None,
         >>> edges = [("A", "B", 1), ("B", "C", 1), ("A", "C", 1)]
         >>> graph = CFGraph(vertices, edges)
         >>> result = gonality(graph)
-        >>> print(f"Gonality: {result.gonality}")
-        >>> print(f"Winning strategies: {len(result.winning_strategies)}")
+        >>> result.gonality
+        2
+        >>> len(result.winning_strategies)
+        5
     """
     gonality_calc = CFGonality(graph)
     return gonality_calc.compute_gonality(max_gonality, find_strategies)
@@ -392,7 +394,8 @@ def play_gonality_game(graph: CFGraph, n_chips: int, player_a_placement: CFDivis
         >>> graph = CFGraph(vertices, edges)
         >>> placement = CFDivisor(graph, [("A", 2), ("B", 0), ("C", 0)])
         >>> result = play_gonality_game(graph, 2, placement, "B")
-        >>> print(f"Player A wins: {result.player_a_wins}")
+        >>> result.player_a_wins
+        True
     """
     gonality_calc = CFGonality(graph)
     return gonality_calc.play_gonality_game(n_chips, player_a_placement, player_b_vertex, verbose)

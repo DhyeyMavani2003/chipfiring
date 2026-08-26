@@ -1,3 +1,5 @@
+import random
+
 import pytest
 from chipfiring.CFGraph import CFGraph, Vertex
 from chipfiring.CFDivisor import CFDivisor
@@ -90,6 +92,72 @@ class TestDharAlgorithm:
         dhar.send_debt_to_q()
         for v_name in dhar.configuration.get_v_tilde_names():
             assert dhar.configuration.get_degree_at(v_name) >= 0
+
+    def test_send_debt_to_q_revisits_vertices_made_negative_later(self):
+        """A later borrowing move can put debt back on an earlier vertex."""
+        graph = CFGraph(
+            {"q", "a", "b"},
+            [("q", "a", 1), ("a", "b", 1)],
+        )
+        divisor = CFDivisor(graph, [("q", 1), ("a", 0), ("b", -1)])
+        initial_total = divisor.get_total_degree()
+
+        dhar = DharAlgorithm(graph, divisor, "q")
+        dhar.send_debt_to_q()
+
+        assert divisor.get_degree("a") >= 0
+        assert divisor.get_degree("b") >= 0
+        assert divisor.get_total_degree() == initial_total
+
+    def test_send_debt_to_q_property_on_connected_multigraphs(self):
+        """Debt concentration terminates and is idempotent on varied connected inputs."""
+        rng = random.Random(20260823)
+
+        for case_number in range(150):
+            vertex_count = rng.randint(1, 6)
+            names = [f"v{i}" for i in range(vertex_count)]
+            edge_multiplicities = {}
+
+            # Start with a random spanning tree, then add optional parallel-edge
+            # multiplicities and chords. This guarantees connected, loopless inputs.
+            for i in range(1, vertex_count):
+                parent = rng.randrange(i)
+                edge_multiplicities[(parent, i)] = rng.randint(1, 4)
+            for i in range(vertex_count):
+                for j in range(i + 1, vertex_count):
+                    if (i, j) not in edge_multiplicities and rng.random() < 0.35:
+                        edge_multiplicities[(i, j)] = rng.randint(1, 4)
+
+            edges = [
+                (names[i], names[j], multiplicity)
+                for (i, j), multiplicity in edge_multiplicities.items()
+            ]
+            graph = CFGraph(set(names), edges)
+            q_name = rng.choice(names)
+            degrees = [(name, rng.randint(-8, 8)) for name in names]
+            divisor = CFDivisor(graph, degrees)
+            initial_total = divisor.get_total_degree()
+            dhar = DharAlgorithm(graph, divisor, q_name)
+
+            dhar.send_debt_to_q()
+
+            assert all(
+                dhar.configuration.get_degree_at(name) >= 0
+                for name in dhar.configuration.get_v_tilde_names()
+            ), f"failed generated case {case_number}"
+            assert divisor.get_total_degree() == initial_total
+
+            once_reduced = divisor.degrees.copy()
+            dhar.send_debt_to_q()
+            assert divisor.degrees == once_reduced
+
+    def test_send_debt_to_q_rejects_disconnected_graph(self):
+        graph = CFGraph({"q", "a", "b"}, [("q", "a", 1)])
+        divisor = CFDivisor(graph, [("q", 0), ("a", 0), ("b", -1)])
+        dhar = DharAlgorithm(graph, divisor, "q")
+
+        with pytest.raises(ValueError, match="connected graph"):
+            dhar.send_debt_to_q()
 
     def test_run_simple(self, simple_graph):
         """Test run method on a simple graph."""

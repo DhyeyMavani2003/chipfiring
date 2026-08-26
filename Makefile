@@ -11,10 +11,13 @@ PYTHON_VERSIONS ?= 3.13.3
 RUFF_PYTHON_VERSION ?= py313
 
 PROJECT=$(shell basename $(CURDIR))
-PACKAGE_NAME=`cat .pypi-template | grep "^package_module_name" | cut -d":" -f2 | xargs`
+PACKAGE_NAME=chipfiring
 
 LOG_LEVEL?=ERROR
 SILENT?=yes
+PYTHON?=python
+EXPECTED_DIR=examples/expected
+GENERATED_DIR=$(EXPECTED_DIR)/generated
 
 RUN_CMD?=LOG_LEVEL=$(LOG_LEVEL) python -m $(PACKAGE_NAME)
 RUN_ARGS?=
@@ -102,6 +105,20 @@ coverage: test
 	coverage report
 	coverage lcov
 
+test-local:
+	PYTHONPATH=. $(PYTHON) -m pytest -q
+
+doctest:
+	PYTHONPATH=. $(PYTHON) -m pytest --doctest-modules chipfiring -q
+
+check-example-outputs:
+	mkdir -p $(GENERATED_DIR)
+	PYTHONPATH=. $(PYTHON) examples/graph_orientation_example.py > $(GENERATED_DIR)/graph_orientation_example.txt
+	diff -u $(EXPECTED_DIR)/graph_orientation_example.txt $(GENERATED_DIR)/graph_orientation_example.txt
+	PYTHONPATH=. $(PYTHON) examples/example_sequence_vs_laplacian.py > $(GENERATED_DIR)/example_sequence_vs_laplacian.txt
+	diff -u $(EXPECTED_DIR)/example_sequence_vs_laplacian.txt $(GENERATED_DIR)/example_sequence_vs_laplacian.txt
+	PYTHONPATH=. $(PYTHON) examples/chain_of_cycles_gonality.py --limit 2
+
 lint: env-test
 	ruff check --target-version=$(RUFF_PYTHON_VERSION) .
 
@@ -126,8 +143,8 @@ dist-clean: clean
 clean:
 	find . -type f -name "*.backup" | xargs rm
 
-.PHONY: dist docs test
+.PHONY: dist docs test test-local doctest check-example-outputs
 
-# include optional a personal/local touch
+# Optional local overrides.
 
 -include Makefile.mak

@@ -25,12 +25,26 @@ jobs:
         run: |
           # stop the build if there are Python syntax errors or undefined names
           ruff check --output-format=github --select=E9,F63,F7,F82 --target-version=py38 .
-          # default set of ruff rules with GitHub Annotations
-          ruff check --output-format=github --target-version=py38 .
+          # Keep the project's established baseline stable across Ruff releases.
+          ruff check --output-format=github --select=E4,E7,E9,F --target-version=py38 .
       - name: Test with PyTest and generate coverage report
         run: |
           coverage run -m pytest
           coverage lcov
           coverage report
+      - name: Test package docstrings
+        run: python -m pytest --doctest-modules chipfiring -q
+      - name: Verify saved example outputs
+        run: make check-example-outputs PYTHON=python
+      - name: Build and smoke-test release archives
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m pip install build twine
+          python -m build
+          twine check dist/*
+          python -m venv /tmp/chipfiring-wheel-smoke
+          /tmp/chipfiring-wheel-smoke/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/chipfiring-wheel-smoke/bin/python -c "import pathlib, chipfiring; assert 'site-packages' in pathlib.Path(chipfiring.__file__).parts"
       - name: Coveralls
         uses: coverallsapp/github-action@v2

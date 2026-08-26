@@ -10,8 +10,10 @@ import os
 import sys
 
 project = 'chipfiring'
-copyright = '2025-2025, Dhyey Dharmendrakumar Mavani, Ryan (Tairan) Ji, and Nathan Pflueger'
+copyright = '2025-2026, Dhyey Dharmendrakumar Mavani, Ryan (Tairan) Ji, and Nathan Pflueger'
 author = 'Dhyey Dharmendrakumar Mavani, Ryan (Tairan) Ji, and Nathan Pflueger'
+version = '1.1.4'
+release = '1.1.4'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -60,6 +62,15 @@ autodoc_default_options = {
     'undoc-members': True,
 }
 
+# API documentation does not execute the visualization front end. Mock these
+# imports so Sphinx can document the mathematical modules in a docs-only
+# environment without requiring Dash at build time.
+autodoc_mock_imports = [
+    'dash',
+    'dash_cytoscape',
+    'dash_bootstrap_components',
+]
+
 # MyST settings
 myst_enable_extensions = [
     "amsmath",
@@ -98,7 +109,7 @@ def linkcode_resolve(domain, info):
     if not info['module']:
         return None
     filename = info['module'].replace('.', '/')
-    return f"https://github.com/DhyeyMavani2003/chipfiring/blob/master/{filename}.py"
+    return f"https://github.com/DhyeyMavani2003/chipfiring/blob/main/{filename}.py"
 
 # -- Options for intersphinx -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html#configuration

@@ -137,9 +137,34 @@ def test_apply_laplacian(simple_graph, initial_divisor_simple, firing_script_sim
     assert result_divisor.get_degree("v1") == 2
     assert result_divisor.get_degree("v2") == 3
     assert result_divisor.get_degree("v3") == -2
+    assert all(isinstance(value, int) for value in result_divisor.degrees.values())
     assert (
         result_divisor.get_total_degree() == initial_divisor_simple.get_total_degree()
     )
+
+
+def test_apply_laplacian_preserves_arbitrary_precision_integers():
+    """Firing scripts are integer-valued and must not overflow at int64."""
+    graph = CFGraph({"a", "b"}, [("a", "b", 1)])
+    divisor = CFDivisor(graph, [("a", 0), ("b", 0)])
+    firing_count = 2**63 + 1
+    script = CFiringScript(graph, {"a": firing_count})
+
+    result = CFLaplacian(graph).apply(divisor, script)
+
+    assert result.get_degree("a") == -firing_count
+    assert result.get_degree("b") == firing_count
+
+
+def test_apply_laplacian_empty_graph():
+    graph = CFGraph(set(), [])
+    divisor = CFDivisor(graph, [])
+    script = CFiringScript(graph, {})
+
+    result = CFLaplacian(graph).apply(divisor, script)
+
+    assert result.graph is graph
+    assert result.degrees == {}
 
 
 def test_apply_laplacian_zero_script(simple_graph, initial_divisor_simple):

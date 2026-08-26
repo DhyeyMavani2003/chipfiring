@@ -15,6 +15,9 @@ class GreedyAlgorithm:
             graph: A CFGraph object representing the graph.
             divisor: A CFDivisor object representing the initial chip configuration.
 
+        Raises:
+            ValueError: If ``graph`` is disconnected.
+
         Example:
             >>> G = CFGraph({"A", "B", "C", "D"}, [])
             >>> G.add_edge("A", "B", 1)
@@ -32,6 +35,9 @@ class GreedyAlgorithm:
             >>> all(algorithm.firing_script.get_firings(v) == 0 for v in "ABCD")
             True
         """
+        if not graph.is_connected():
+            raise ValueError("GreedyAlgorithm requires a connected graph")
+
         self.graph = graph
         self.divisor = copy.deepcopy(divisor)
         # Initialize firing script with all vertices at 0
@@ -133,22 +139,33 @@ class GreedyAlgorithm:
             >>> all(algorithm.divisor.get_degree(v) >= 0 for v in "ABCD")
             True
             >>>
-            >>> # Example with an unwinnable configuration (too much debt)
-            >>> divisor2 = CFDivisor(G, [("A", -100), ("B", -100), ("C", -100), ("D", -100)])
-            >>> algorithm2 = GreedyAlgorithm(G, divisor2)
+            >>> # A winnable game may require far more than 10 * |V| moves
+            >>> G2 = CFGraph({"A", "B"}, [("A", "B", 1)])
+            >>> divisor2 = CFDivisor(G2, [("A", -100), ("B", 100)])
+            >>> algorithm2 = GreedyAlgorithm(G2, divisor2)
             >>> winnable2, firing_script2 = algorithm2.play()
-            >>> winnable2  # Should exceed move limit and be unwinnable
+            >>> winnable2
+            True
+            >>> firing_script2.get_firings("A")
+            -100
+            >>>
+            >>> # Example with an unwinnable configuration (too much debt)
+            >>> divisor3 = CFDivisor(G, [("A", -100), ("B", -100), ("C", -100), ("D", -100)])
+            >>> algorithm3 = GreedyAlgorithm(G, divisor3)
+            >>> winnable3, firing_script3 = algorithm3.play()
+            >>> winnable3  # Every vertex is eventually required to borrow
             False
-            >>> firing_script2 is None
+            >>> firing_script3 is None
             True
         """
-        moves = 0
-        # Enforcing a Scalable and Reasonable upper bound
-        max_moves = len(self.graph.vertices) * 10
+        marked_vertices = set()
+        vertex_names = {vertex.name for vertex in self.graph.vertices}
 
         while not self.is_effective():
-            moves += 1
-            if moves > max_moves:
+            # Borrowing once at every vertex has no net effect.  If the game
+            # is still not won after all vertices have been marked, the
+            # greedy criterion certifies that the divisor is unwinnable.
+            if marked_vertices == vertex_names:
                 return False, None
 
             # Find a vertex with negative chips
@@ -162,5 +179,6 @@ class GreedyAlgorithm:
                 break
 
             self.borrowing_move(in_debt_vertex)
+            marked_vertices.add(in_debt_vertex)
 
         return True, self.firing_script

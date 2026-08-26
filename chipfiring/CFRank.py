@@ -17,6 +17,14 @@ from multiprocessing import Pool, cpu_count
 from collections import Counter
 
 
+def _is_rank_candidate_winnable(sub_divisor: CFDivisor) -> bool:
+    """Return whether a rank candidate is winnable in a worker process."""
+    winnable, _, _, _ = EWD(
+        sub_divisor.graph, sub_divisor, optimized=False
+    )
+    return winnable
+
+
 class CFRank:
     """
     A class that holds the result of a rank calculation.
@@ -30,10 +38,14 @@ class CFRank:
         rank (int): The computed rank value, accessible as a property.
 
     Example:
+        >>> from chipfiring import CFGraph, CFDivisor
+        >>> graph = CFGraph({"v"}, [])
+        >>> divisor = CFDivisor(graph, [("v", -1)])
         >>> result = rank(divisor)
-        >>> print(f"The rank is: {result.rank}")
-        >>> for log in result.logs:
-        ...     print(log)
+        >>> result.rank
+        -1
+        >>> result.logs[-1]
+        'Initial divisor is not winnable. So, rank: -1'
     """
 
     def __init__(self):
@@ -68,6 +80,20 @@ class CFRank:
         self.logs = []  # Reset logs for new calculation
         self._divisor = divisor
         graph = divisor.graph
+        riemann_roch_correction = None
+
+        def store_working_rank(working_rank: int) -> None:
+            """Store rank(D), correcting a rank(K-D) computation when necessary."""
+            if riemann_roch_correction is None:
+                self._rank_value = working_rank
+                return
+
+            self._rank_value = working_rank + riemann_roch_correction
+            self.log(
+                "Optimized mode: Applying the Riemann-Roch correction "
+                "rank(D) = rank(K-D) + degree(D) + 1 - genus(G). "
+                f"Corrected rank: {self._rank_value}"
+            )
 
         # 1. Call EWD on the divisor; if unwinnable, return -1
         self.log("Step 1: Checking initial winnability through EWD algorithm...")
@@ -84,10 +110,12 @@ class CFRank:
             )
 
             D = self._divisor
-            # Using Corollary 4.4.3 from Dhyey Mavani's Math thesis:
+            # Graph Riemann-Roch gives r(D) = deg(D) - g when deg(D) > 2g - 2.
             if D.get_total_degree() > 2 * graph.get_genus() - 2:
                 self.log(
-                    "Optimized mode: D has degree > 2g-2. Using Corollary 4.4.3 from Dhyey Mavani's Math thesis to skip step 2, and return rank(D) = degree(D) - genus(G)."
+                    "Optimized mode: Graph Riemann-Roch gives rank(D) = "
+                    "degree(D) - genus(G) when degree(D) > 2g-2; "
+                    "skipping enumeration."
                 )
                 self._rank_value = D.get_total_degree() - graph.get_genus()
                 return self
@@ -100,6 +128,19 @@ class CFRank:
                     "Optimized mode: (K-D) has lower degree than D. Running next step on (K-D)."
                 )
                 self._divisor = K - D
+                riemann_roch_correction = D.get_total_degree() + 1 - graph.get_genus()
+
+                self.log(
+                    "Optimized mode: Checking whether (K-D) is initially winnable."
+                )
+                complementary_winnable, _, _, _ = EWD(
+                    graph, self._divisor, optimized=False
+                )
+                if not complementary_winnable:
+                    self.log("Optimized mode: (K-D) is not winnable. So, rank(K-D): -1")
+                    store_working_rank(-1)
+                    return self
+                self.log("Optimized mode: (K-D) is winnable. Proceeding to step 2.")
             else:
                 self.log(
                     "Optimized mode: (K-D) has degree >= that of D. Running next step on D itself."
@@ -107,6 +148,7 @@ class CFRank:
 
         # 2. Sort the vertices by name
         sorted_vertices = sorted(list(graph.vertices), key=lambda v: v.name)
+        worker_count = max(1, min(cpu_count(), len(sorted_vertices)))
 
         k = 1
         self.log("Step 2: Iteratively removing k chips and checking winnability.")
@@ -135,40 +177,45 @@ class CFRank:
 
             any_unwinnable_found_for_k = False
             num_divisors_processed_for_k = 0
-
-            def _check_winnability(sub_divisor):
-                nonlocal num_divisors_processed_for_k
-                num_divisors_processed_for_k += 1
-                winnable, _, _, _ = EWD(
-                    sub_divisor.graph, sub_divisor, optimized=False
-                )
-                if not winnable:
-                    # Log from the worker process if an unwinnable divisor is found
-                    # This might not be perfectly sequential in the main log, but it's informative
-                    print(
-                        f"    Found unwinnable divisor for k={k}. Terminating pool for this k."
-                    )
-                return winnable
+            pool = None
 
             try:
-                self.log(f"  Starting parallel processing for k={k}...")
-                with Pool(processes=cpu_count()) as pool:
-                    # The number of divisors can be large, so use imap_unordered for lazy evaluation
-                    results_iterator = pool.imap_unordered(
-                        _check_winnability,
-                        generate_sub_divisors_for_k(),
-                    )
+                self.log(
+                    f"  Starting parallel processing for k={k} "
+                    f"with {worker_count} workers..."
+                )
+                pool = Pool(processes=worker_count)
+                # The number of divisors can be large, so use imap_unordered for lazy evaluation
+                results_iterator = pool.imap_unordered(
+                    _is_rank_candidate_winnable,
+                    generate_sub_divisors_for_k(),
+                )
 
-                    for i, winnable_res in enumerate(results_iterator):
-                        self.log(f"    Processed (k={k}, item {i+1}): Winnable -> {winnable_res}")
-                        if not winnable_res:
-                            any_unwinnable_found_for_k = True
-                            pool.terminate()  # Stop processing further items for this k
-                            break
+                for winnable_res in results_iterator:
+                    num_divisors_processed_for_k += 1
+                    self.log(
+                        f"    Processed (k={k}, "
+                        f"item {num_divisors_processed_for_k}): "
+                        f"Winnable -> {winnable_res}"
+                    )
+                    if not winnable_res:
+                        any_unwinnable_found_for_k = True
+                        pool.terminate()
+                        pool.join()
+                        pool = None
+                        break
+
+                if pool is not None:
+                    pool.close()
+                    pool.join()
+                    pool = None
 
                 self.log(f"  Parallel processing finished for k={k}.")
 
             except Exception as e:
+                if pool is not None:
+                    pool.terminate()
+                    pool.join()
                 self.log(
                     f"  Multiprocessing failed for k={k}: {e}. Falling back to sequential execution."
                 )
@@ -178,9 +225,7 @@ class CFRank:
                 self.log(f"  Starting sequential processing for k={k}...")
                 for sub_divisor in generate_sub_divisors_for_k():
                     num_divisors_processed_for_k += 1
-                    winnable_res, _, _, _ = EWD(
-                        sub_divisor.graph, sub_divisor, optimized=False
-                    )
+                    winnable_res = _is_rank_candidate_winnable(sub_divisor)
                     self.log(
                         f"    Processed (k={k}, item {num_divisors_processed_for_k}): Divisor {sub_divisor.degrees_to_str()} -> Winnable: {winnable_res}"
                     )
@@ -193,10 +238,12 @@ class CFRank:
                 self.log(f"  Sequential processing finished for k={k}.")
 
             if any_unwinnable_found_for_k:
+                rank_label = "rank(K-D)" if riemann_roch_correction is not None else "rank(D)"
                 self.log(
-                    f"  For k={k}, an unwinnable configuration was found. Rank: {k-1}"
+                    f"  For k={k}, an unwinnable configuration was found. "
+                    f"{rank_label}: {k-1}"
                 )
-                self._rank_value = k - 1
+                store_working_rank(k - 1)
                 return self
             else:
                 self.log(
@@ -214,8 +261,12 @@ class CFRank:
                  If no logs are available, returns "No calculation logs available."
 
         Example:
+            >>> from chipfiring import CFGraph, CFDivisor
+            >>> graph = CFGraph({"v"}, [])
+            >>> divisor = CFDivisor(graph, [("v", -1)])
             >>> result = rank(divisor)
-            >>> print(result.get_log_summary())
+            >>> "Initial divisor is not winnable" in result.get_log_summary()
+            True
         """
         if not self.logs:
             return "No calculation logs available."
@@ -242,10 +293,8 @@ def rank(divisor: CFDivisor, optimized: bool = False) -> CFRank:
     
     Args:
         divisor: The CFDivisor object for which to calculate the rank.
-        optimized: Whether to use optimized rank calculation. (default: False)
-                   If True, theoretical shortcuts like Corollary 4.4.3 from
-                   Dhyey Mavani's thesis will be used when applicable to speed up
-                   calculations. The log will indicate when these optimizations are used.
+        optimized: Whether to use graph Riemann-Roch shortcuts when applicable.
+                   The log indicates when an optimization is used.
 
     Returns:
         CFRank: An object with the calculated rank accessible via .rank property
@@ -253,30 +302,36 @@ def rank(divisor: CFDivisor, optimized: bool = False) -> CFRank:
                 access the full log summary using .get_log_summary().
 
     Example:
+        >>> from chipfiring import CFGraph, CFDivisor
+        >>> graph = CFGraph({"v"}, [])
+        >>> divisor = CFDivisor(graph, [("v", -1)])
         >>> result = rank(divisor)
-        >>> print(f"Rank: {result.rank}")
-        >>> print(result.get_log_summary())
+        >>> result.rank
+        -1
+        >>> bool(result.logs)
+        True
     """
     return CFRank()._calculate_rank(divisor, optimized)
 
 
 def r(divisor : CFDivisor, optimized: bool = False) -> int:
     """
-    Calculate the rank of the given divisor, as in the funciton "rank." This funcion returns only the
+    Calculate the rank of the given divisor, as in the function ``rank``. This function returns only the
     rank itself, as an integer, without the logs. Implemented as a wrapper around "rank."
 
     Args:
         divisor: The CFDivisor object for which to calculate the rank.
-        optimized: Whether to use optimized rank calculation. (default: False)
-                   If True, theoretical shortcuts like Corollary 4.4.3 from
-                   Dhyey Mavani's thesis will be used when applicable to speed up
-                   calculations. The log will indicate when these optimizations are used.
+        optimized: Whether to use graph Riemann-Roch shortcuts when applicable.
+                   The log indicates when an optimization is used.
 
     Returns:
         int: The rank of the divisor.
 
     Example:
-        >>> result = r(divisor)
-        >>> print(f"Rank: {result}")
+        >>> from chipfiring import CFGraph, CFDivisor
+        >>> graph = CFGraph({"v"}, [])
+        >>> divisor = CFDivisor(graph, [("v", -1)])
+        >>> r(divisor)
+        -1
     """
     return CFRank()._calculate_rank(divisor, optimized).rank

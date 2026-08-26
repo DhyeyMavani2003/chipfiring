@@ -1,20 +1,27 @@
 """
 Platonic solids graph generators for chip firing and gonality studies.
 
-This module provides functions to generate graphs corresponding to the five Platonic solids
-as described in "Chip-firing on the Platonic solids" by Beougher et al.
+This module provides graph generators and gonality helpers for the five
+Platonic solids.
 """
 from __future__ import annotations
-from typing import Dict
+import warnings
+from typing import Any, Dict
 import networkx as nx
 from .CFGraph import CFGraph
 from .CFCombinatorics import (
     independence_number, minimum_degree, bramble_order_lower_bound,
     octahedron_independence_number, octahedron_bramble_construction,
     complete_multipartite_gonality, gonality_theoretical_bounds,
-    icosahedron_independence_number, icosahedron_2_uniform_scramble,
-    icosahedron_screewidth_bound, icosahedron_dhars_burning_algorithm,
+    icosahedron_2_uniform_scramble,
+    icosahedron_screewidth_bound, icosahedron_gonality_proof_summary,
     icosahedron_gonality_theoretical_bounds
+)
+from .CFCombinatorics import (
+    icosahedron_dhars_burning_algorithm as icosahedron_dhars_burning_algorithm,
+)
+from .CFCombinatorics import (
+    icosahedron_independence_number as icosahedron_independence_number,
 )
 
 
@@ -32,7 +39,7 @@ def tetrahedron() -> CFGraph:
         >>> G = tetrahedron()
         >>> len(G.vertices)
         4
-        >>> len(G.edges)
+        >>> G.total_valence
         6
     """
     # Create vertices - CFGraph expects vertex names as strings
@@ -49,7 +56,7 @@ def tetrahedron() -> CFGraph:
 
 def cube() -> CFGraph:
     """
-    Generate the cube graph (octahedral graph).
+    Generate the cube graph.
     
     The cube has 8 vertices and 12 edges. Each vertex has degree 3.
     Vertices can be labeled by binary coordinates (x,y,z) where x,y,z ∈ {0,1}.
@@ -62,7 +69,7 @@ def cube() -> CFGraph:
         >>> G = cube()
         >>> len(G.vertices)
         8
-        >>> len(G.edges)
+        >>> G.total_valence
         12
     """
     # Create vertices with binary coordinates as labels
@@ -113,7 +120,7 @@ def octahedron() -> CFGraph:
         >>> G = octahedron()
         >>> len(G.vertices)
         6
-        >>> len(G.edges)
+        >>> G.total_valence
         12
     """
     vertex_names = [f"v{i}" for i in range(6)]
@@ -151,7 +158,7 @@ def dodecahedron() -> CFGraph:
         >>> G = dodecahedron()
         >>> len(G.vertices)
         20
-        >>> len(G.edges)
+        >>> G.total_valence
         30
     """
     # Use NetworkX to generate the dodecahedral graph, then convert to CFGraph
@@ -182,7 +189,7 @@ def icosahedron() -> CFGraph:
         >>> G = icosahedron()
         >>> len(G.vertices)
         12
-        >>> len(G.edges)
+        >>> G.total_valence
         30
     """
     # Use NetworkX to generate the icosahedral graph, then convert to CFGraph
@@ -216,7 +223,7 @@ def complete_graph(n: int) -> CFGraph:
         >>> G = complete_graph(5)
         >>> len(G.vertices)
         5
-        >>> len(G.edges)
+        >>> G.total_valence
         10
     """
     if n < 1:
@@ -237,8 +244,8 @@ def platonic_solid_gonality_bounds() -> Dict[str, Dict[str, int]]:
     """
     Return known gonality bounds for Platonic solids.
     
-    Based on the paper "Chip-firing on the Platonic solids" by Beougher et al.,
-    this function returns theoretical bounds and exact values where known.
+    Values follow Beougher et al., "Chip-firing on the Platonic solids: a
+    primer for studying graph gonality."
     The gonality of K_n is n-1. Tetrahedron is K4, so its gonality is 3.
     
     Returns:
@@ -265,20 +272,21 @@ def platonic_solid_gonality_bounds() -> Dict[str, Dict[str, int]]:
             'edges': 12
         },
         'octahedron': {
-            'exact': 4,  # Octahedron has gonality 4 (proven in theoretical framework)
+            'exact': 4,
             'lower_bound': 4,
             'upper_bound': 4,
             'vertices': 6,
             'edges': 12
         },
         'dodecahedron': {
-            'lower_bound': 4,  # Theoretical lower bound
-            'upper_bound': 6,  # Theoretical upper bound
+            'exact': 6,
+            'lower_bound': 6,
+            'upper_bound': 6,
             'vertices': 20,
             'edges': 30
         },
         'icosahedron': {
-            'exact': 9,  # Proven using comprehensive theoretical framework
+            'exact': 9,
             'lower_bound': 9,
             'upper_bound': 9,
             'vertices': 12,
@@ -291,7 +299,8 @@ def complete_graph_gonality(n: int) -> int:
     """
     Return the exact gonality of the complete graph Kn.
     
-    For complete graphs, the gonality is known to be n-1.
+    For complete graphs with at least two vertices, the gonality is ``n-1``.
+    The one-vertex graph has gonality 1.
     
     Args:
         n: Number of vertices in Kn
@@ -307,15 +316,17 @@ def complete_graph_gonality(n: int) -> int:
     """
     if n < 1:
         raise ValueError("n must be at least 1")
+    if n == 1:
+        return 1
     return n - 1
 
 
-def verify_octahedron_gonality() -> Dict[str, any]:
+def verify_octahedron_gonality() -> Dict[str, Any]:
     """
     Verify the octahedron gonality using theoretical results.
     
-    This function demonstrates that the octahedron has gonality exactly 4
-    using the theoretical framework from "Chip-firing on the Platonic solids".
+    This function verifies that the octahedron has gonality exactly 4 using
+    its complete multipartite structure and standard graph invariants.
     
     Returns:
         Dict containing verification results and theoretical bounds
@@ -394,7 +405,7 @@ def verify_theoretical_bounds_consistency() -> Dict[str, bool]:
         # Check that specific bounds are reasonable
         n = len(graph.vertices)
         consistent &= (bounds['trivial_lower_bound'] == 1)
-        consistent &= (bounds['trivial_upper_bound'] == n - 1)
+        consistent &= (bounds['trivial_upper_bound'] == n)
         consistent &= (bounds['independence_upper_bound'] <= n)
         consistent &= (bounds['minimum_degree_bound'] >= 1)
         
@@ -403,109 +414,141 @@ def verify_theoretical_bounds_consistency() -> Dict[str, bool]:
     return results
 
 
-def verify_icosahedron_gonality() -> Dict[str, any]:
-    """
-    Verify the icosahedron gonality using theoretical results.
-    
-    This function demonstrates that the icosahedron has gonality exactly 9
-    using the comprehensive theoretical framework from "Chip-firing on the Platonic solids".
-    It integrates independence number theory, scramble theory, Dhar's burning algorithm,
-    and all other theoretical approaches.
-    
-    Returns:
-        Dict containing complete verification results and theoretical analysis
-        
+def icosahedron_gonality_summary() -> Dict[str, Any]:
+    """Return computed invariants and published gonality data for the icosahedron.
+
+    This function validates the package's icosahedron construction, the
+    all-edge scramble, the hitting number, the egg-cut witness, and the
+    subgraph boundary bounds. The exact gonality 9 is explicitly labeled as a
+    published value; this function does not perform an exhaustive gonality
+    computation.
+
     Examples:
-        >>> results = verify_icosahedron_gonality()
-        >>> results['gonality']
+        >>> results = icosahedron_gonality_summary()
+        >>> results['published_exact_gonality']
         9
-        >>> results['independence_number']
-        3
-        >>> results['scramble_norm']
+        >>> results['scramble_data']['scramble_norm']
         8
+        >>> results['consistency_passed']
+        True
     """
     from .CFCombinatorics import (
-        icosahedron_lemma_3_subgraph_bounds,
         icosahedron_egg_cut_number,
-        icosahedron_hitting_set_analysis, independence_number, minimum_degree, maximum_degree
+        icosahedron_hitting_set_analysis,
+        icosahedron_subgraph_outdegree_bounds,
+        independence_number,
+        maximum_degree,
+        minimum_degree,
     )
-    
-    # Generate icosahedron graph
+
     graph = icosahedron()
-    
-    # Calculate basic graph properties
     n_vertices = len(graph.vertices)
     computed_alpha = independence_number(graph)
     min_deg = minimum_degree(graph)
     max_deg = maximum_degree(graph)
-    
-    # Get theoretical results
-    alpha_theoretical = icosahedron_independence_number()  # Should be 3
+    reference = icosahedron_gonality_proof_summary()
     scramble_info = icosahedron_2_uniform_scramble()
     screewidth_info = icosahedron_screewidth_bound()
-    lemma3_info = icosahedron_lemma_3_subgraph_bounds()
-    dhars_info = icosahedron_dhars_burning_algorithm()
+    subgraph_info = icosahedron_subgraph_outdegree_bounds()
     egg_cut_info = icosahedron_egg_cut_number()
     hitting_set_info = icosahedron_hitting_set_analysis()
-    
-    # Comprehensive theoretical bounds
-    theoretical_bounds = icosahedron_gonality_theoretical_bounds()
-    
-    # Verify key theoretical results
-    verification_checks = {
-        'independence_number_matches': computed_alpha == alpha_theoretical,
-        'graph_structure_correct': (n_vertices == 12 and min_deg == max_deg == 5),
-        'scramble_2_uniform': scramble_info['is_2_uniform'],
+    bounds = icosahedron_gonality_theoretical_bounds()
+
+    checks = {
+        'graph_structure_correct': n_vertices == 12 and min_deg == max_deg == 5,
+        'independence_number_is_3': computed_alpha == 3,
+        'all_30_edges_are_scramble_eggs': len(scramble_info['scramble_sets']) == 30,
+        'hitting_number_is_9': scramble_info['hitting_number'] == 9,
+        'egg_cut_number_is_8': egg_cut_info['egg_cut_number'] == 8,
         'scramble_norm_is_8': scramble_info['scramble_norm'] == 8,
-        'screewidth_bound_8': screewidth_info['screewidth_upper_bound'] == 8,
-        'dhars_algorithm_gonality_9': dhars_info['gonality'] == 9,
-        'independence_upper_bound_9': theoretical_bounds['independence_upper_bound'] == 9,
-        'bounds_consistent': theoretical_bounds['lower_bound'] <= theoretical_bounds['upper_bound']
+        'screewidth_is_8': screewidth_info['screewidth'] == 8,
+        'subgraph_bounds_verified': subgraph_info['reference_bounds_verified'],
+        'reference_bounds_are_exact': bounds['lower_bound'] == bounds['upper_bound'] == 9,
     }
-    
-    # Overall verification
-    all_checks_passed = all(verification_checks.values())
-    
-    # Demonstration that scramble number alone cannot determine gonality
-    scramble_vs_gonality_analysis = {
-        'scramble_norm': scramble_info['scramble_norm'],  # 8
-        'actual_gonality': dhars_info['gonality'],        # 9
-        'gap': dhars_info['gonality'] - scramble_info['scramble_norm'],  # 1
-        'conclusion': 'Scramble number (8) < gonality (9), showing scramble bounds are not tight'
-    }
-    
+
     return {
-        'gonality': 9,  # Theoretical result from Dhar's algorithm
+        'published_exact_gonality': reference['published_exact_value'],
+        'value_origin': 'published_reference',
+        'source': reference['source'],
         'graph_properties': {
             'vertices': n_vertices,
             'min_degree': min_deg,
             'max_degree': max_deg,
-            'is_regular': min_deg == max_deg
+            'is_regular': min_deg == max_deg,
         },
+        'independence_number': computed_alpha,
+        'scramble_data': scramble_info,
+        'screewidth_data': screewidth_info,
+        'hitting_set_data': hitting_set_info,
+        'egg_cut_data': egg_cut_info,
+        'subgraph_outdegree_data': subgraph_info,
+        'reference_bounds': bounds,
+        'consistency_checks': checks,
+        'consistency_passed': all(checks.values()),
+    }
+
+
+def verify_icosahedron_gonality() -> Dict[str, Any]:
+    """Return the legacy result schema backed by corrected summary data."""
+    from .CFCombinatorics import (
+        icosahedron_dhars_burning_algorithm,
+        icosahedron_gonality_proof_summary,
+        icosahedron_lemma_3_subgraph_bounds,
+    )
+
+    summary = icosahedron_gonality_summary()
+    reference = icosahedron_gonality_proof_summary()
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', DeprecationWarning)
+        legacy_proof = icosahedron_dhars_burning_algorithm()
+        legacy_subgraphs = icosahedron_lemma_3_subgraph_bounds()
+    bounds = summary['reference_bounds']
+    legacy_checks = {
+        'independence_number_matches': summary['independence_number'] == 3,
+        'graph_structure_correct': summary['consistency_checks']['graph_structure_correct'],
+        'scramble_2_uniform': summary['scramble_data']['is_2_uniform'],
+        'scramble_norm_is_8': summary['scramble_data']['scramble_norm'] == 8,
+        'screewidth_bound_8': summary['screewidth_data']['screewidth'] == 8,
+        'dhars_algorithm_gonality_9': reference['published_exact_value'] == 9,
+        'independence_upper_bound_9': bounds['independence_upper_bound'] == 9,
+        'bounds_consistent': bounds['lower_bound'] <= bounds['upper_bound'],
+    }
+    return {
+        'gonality': summary['published_exact_gonality'],
+        'graph_properties': summary['graph_properties'],
         'independence_analysis': {
-            'computed_independence_number': computed_alpha,
-            'theoretical_independence_number': alpha_theoretical,
-            'independence_upper_bound': n_vertices - alpha_theoretical  # 9
+            'computed_independence_number': summary['independence_number'],
+            'theoretical_independence_number': 3,
+            'independence_upper_bound': bounds['independence_upper_bound'],
         },
         'scramble_theory': {
-            'scramble_construction': scramble_info,
-            'screewidth_bounds': screewidth_info,
-            'hitting_set_analysis': hitting_set_info,
-            'egg_cut_number': egg_cut_info
+            'scramble_construction': summary['scramble_data'],
+            'screewidth_bounds': summary['screewidth_data'],
+            'hitting_set_analysis': summary['hitting_set_data'],
+            'egg_cut_number': summary['egg_cut_data'],
         },
-        'dhars_burning_algorithm': dhars_info,
-        'lemma_3_subgraph_bounds': lemma3_info,
-        'comprehensive_bounds': theoretical_bounds,
-        'verification_checks': verification_checks,
-        'verification_passed': all_checks_passed,
-        'scramble_vs_gonality': scramble_vs_gonality_analysis,
+        'dhars_burning_algorithm': legacy_proof,
+        'lemma_3_subgraph_bounds': legacy_subgraphs,
+        'comprehensive_bounds': bounds,
+        'verification_checks': legacy_checks,
+        'verification_passed': all(legacy_checks.values()),
+        'scramble_vs_gonality': {
+            'scramble_norm': summary['scramble_data']['scramble_norm'],
+            'actual_gonality': summary['published_exact_gonality'],
+            'gap': summary['published_exact_gonality']
+            - summary['scramble_data']['scramble_norm'],
+            'conclusion': (
+                'Scramble number 8 is a strict lower bound for gonality 9'
+            ),
+        },
         'theoretical_conclusion': {
-            'gonality_proven': 9,
-            'independence_bound_tight': theoretical_bounds['independence_upper_bound'] == 9,
-            'dhars_algorithm_confirms': dhars_info['gonality'] == 9,
+            'gonality_proven': summary['published_exact_gonality'],
+            'independence_bound_tight': bounds['independence_upper_bound'] == 9,
+            'dhars_algorithm_confirms': reference['lower_bound'] == 9,
             'scramble_provides_lower_insights': True,
-            'complete_theoretical_framework': all_checks_passed
-        }
+            'complete_theoretical_framework': summary['consistency_passed'],
+        },
+        'summary': summary,
     }
 
 
@@ -527,11 +570,12 @@ def verify_icosahedron_theoretical_bounds_consistency() -> Dict[str, bool]:
             bounds['trivial_upper_bound'] == 11
         ),
         'independence_bound_correct': bounds['independence_upper_bound'] == 9,
+        'published_value_consistent': bounds['published_exact_value'] == 9,
         'dhars_result_consistent': bounds['dhars_algorithm_result'] == 9,
         'scramble_bound_reasonable': bounds['scramble_number_bound'] == 8,
         'bounds_converge_to_9': (
             bounds['independence_upper_bound'] == 9 and
-            bounds['dhars_algorithm_result'] == 9
+            bounds['lower_bound'] == bounds['upper_bound'] == 9
         )
     }
     

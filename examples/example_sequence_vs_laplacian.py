@@ -6,7 +6,20 @@ set_fire operations and a single application of the Laplacian
 with a net firing script.
 """
 
+from __future__ import annotations
+
 from chipfiring import CFGraph, CFDivisor, CFLaplacian, CFiringScript
+
+
+def format_vertex_set(vertices: set[str]) -> str:
+    """Render vertex sets deterministically for saved expected outputs."""
+    return "{" + ", ".join(f"'{vertex}'" for vertex in sorted(vertices)) + "}"
+
+
+def format_script(script: dict[str, int]) -> dict[str, int]:
+    """Render firing scripts with deterministic key order."""
+    return {vertex: script[vertex] for vertex in sorted(script)}
+
 
 def print_divisor_state(label: str, divisor: CFDivisor):
     """Helper function to print the current state of the divisor."""
@@ -51,17 +64,17 @@ def main():
     divisor_seq = CFDivisor(graph, initial_degrees) # Start with a fresh copy
 
     firing_set_1 = {"Alice", "Elise", "Charlie"}
-    print(f"\nApplying set_fire({firing_set_1})...")
+    print(f"\nApplying set_fire({format_vertex_set(firing_set_1)})...")
     divisor_seq.set_fire(firing_set_1)
     print_divisor_state("State after fire 1", divisor_seq)
 
     firing_set_2 = {"Alice", "Elise", "Charlie"}
-    print(f"\nApplying set_fire({firing_set_2})...")
+    print(f"\nApplying set_fire({format_vertex_set(firing_set_2)})...")
     divisor_seq.set_fire(firing_set_2)
     print_divisor_state("State after fire 2", divisor_seq)
 
     firing_set_3 = {"Bob", "Charlie"}
-    print(f"\nApplying set_fire({firing_set_3})...")
+    print(f"\nApplying set_fire({format_vertex_set(firing_set_3)})...")
     divisor_seq.set_fire(firing_set_3)
     final_state_seq = divisor_seq.degrees.copy()
     print_divisor_state("Final State after Sequence", divisor_seq)
@@ -75,7 +88,7 @@ def main():
     script_dict = {"Bob": -1, "Charlie": 1}
     firing_script = CFiringScript(graph, script_dict)
     print("Equivalent Net Firing Script:")
-    print(firing_script.script)
+    print(format_script(firing_script.script))
     print("="*20)
 
     # 6. Create Laplacian
@@ -96,7 +109,7 @@ def main():
     # 8. Compare Final States
     print("Comparing final states...")
     print(f"Sequence Final State: { {v.name: d for v, d in sorted(final_state_seq.items())} }")
-    print(f"Laplacian Final State:{ {v.name: d for v, d in sorted(final_state_lap.items())} }")
+    print(f"Laplacian Final State:{ {v.name: int(d) for v, d in sorted(final_state_lap.items())} }")
 
     if final_state_seq == final_state_lap:
         print("\nSuccess! The final states from both methods are identical.")
@@ -105,4 +118,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()
