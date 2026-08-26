@@ -823,5 +823,80 @@ class TestIcosahedronTheory:
         assert all(checks.values())
 
 
+class TestFindWinningSequence:
+    """Tests for CFGonality._find_winning_sequence and verbose play_gonality_game."""
+
+    def _apply_sequence(self, divisor: CFDivisor, sequence):
+        """Helper: apply a list of single-vertex firings to a fresh copy of divisor."""
+        degrees_copy = [(v.name, deg) for v, deg in divisor.degrees.items()]
+        working = CFDivisor(divisor.graph, degrees_copy)
+        for v_name in sequence:
+            working.set_fire({v_name})
+        return working
+
+    def test_already_effective_returns_empty(self):
+        """An already-effective divisor needs no firings."""
+        vertices = ['A', 'B', 'C']
+        graph = CFGraph(vertices, [('A', 'B', 1), ('B', 'C', 1), ('A', 'C', 1)])
+        divisor = CFDivisor(graph, [('A', 1), ('B', 1), ('C', 0)])
+        solver = CFGonality(graph)
+        assert solver._find_winning_sequence(divisor) == []
+
+    def test_winning_sequence_resolves_debt_triangle(self):
+        """On K3, firing A once should clear the debt at B."""
+        vertices = ['A', 'B', 'C']
+        graph = CFGraph(vertices, [('A', 'B', 1), ('B', 'C', 1), ('A', 'C', 1)])
+        # Player A places 2 chips on A, Player B places -1 on B
+        final_divisor = CFDivisor(graph, [('A', 2), ('B', -1), ('C', 0)])
+        solver = CFGonality(graph)
+        sequence = solver._find_winning_sequence(final_divisor)
+
+        assert len(sequence) >= 1
+        result = self._apply_sequence(final_divisor, sequence)
+        assert all(deg >= 0 for deg in result.degrees.values())
+
+    def test_winning_sequence_resolves_debt_path(self):
+        """On a path A-B-C, the returned sequence should resolve the debt."""
+        vertices = ['A', 'B', 'C']
+        graph = CFGraph(vertices, [('A', 'B', 1), ('B', 'C', 1)])
+        final_divisor = CFDivisor(graph, [('A', 1), ('B', 1), ('C', -1)])
+        solver = CFGonality(graph)
+        sequence = solver._find_winning_sequence(final_divisor)
+
+        assert len(sequence) >= 1
+        result = self._apply_sequence(final_divisor, sequence)
+        assert all(deg >= 0 for deg in result.degrees.values())
+
+    def test_non_winnable_returns_empty(self):
+        """A divisor with overall negative degree cannot be won."""
+        vertices = ['A', 'B', 'C']
+        graph = CFGraph(vertices, [('A', 'B', 1), ('B', 'C', 1), ('A', 'C', 1)])
+        divisor = CFDivisor(graph, [('A', 0), ('B', 0), ('C', -1)])
+        solver = CFGonality(graph)
+        assert solver._find_winning_sequence(divisor) == []
+
+    def test_does_not_mutate_input_divisor(self):
+        """Calling _find_winning_sequence must not modify the input divisor."""
+        vertices = ['A', 'B', 'C']
+        graph = CFGraph(vertices, [('A', 'B', 1), ('B', 'C', 1), ('A', 'C', 1)])
+        divisor = CFDivisor(graph, [('A', 2), ('B', -1), ('C', 0)])
+        snapshot = {v.name: deg for v, deg in divisor.degrees.items()}
+        solver = CFGonality(graph)
+        solver._find_winning_sequence(divisor)
+        after = {v.name: deg for v, deg in divisor.degrees.items()}
+        assert snapshot == after
+
+    def test_play_gonality_game_verbose_returns_sequence(self):
+        """When verbose=True and Player A wins, a winning sequence is reported."""
+        vertices = ['A', 'B', 'C']
+        graph = CFGraph(vertices, [('A', 'B', 1), ('B', 'C', 1), ('A', 'C', 1)])
+        placement = CFDivisor(graph, [('A', 2), ('B', 0), ('C', 0)])
+        solver = CFGonality(graph)
+        result = solver.play_gonality_game(2, placement, 'B', verbose=True)
+        assert result.player_a_wins is True
+        assert isinstance(result.winning_sequence, list)
+        assert len(result.winning_sequence) >= 1
+
+
 if __name__ == '__main__':
     pytest.main([__file__])
