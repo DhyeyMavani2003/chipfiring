@@ -29,7 +29,7 @@ The goal is to find a sequence of moves that makes everyone debt-free. If such a
 - Laplacian matrix computations
 - Linear equivalence checking
 - Set-firing moves
-- Non-mutating winnability predicates and q-reduction with an explicit source
+- Non-mutating algorithms: winnability predicates, q-reduction, Dhar's algorithm, and the greedy solver never modify the divisors passed to them
 - Baker-Norine rank and graph gonality helpers
 - Dhar's burning algorithm and graph orientations
 - Visualization tools for graphs and game states

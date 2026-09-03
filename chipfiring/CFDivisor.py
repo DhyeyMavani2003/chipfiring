@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Tuple, Dict, Set
+from typing import Iterable, Tuple, Dict, Set
 from .CFGraph import CFGraph, Vertex
 
 # TODO: Implement 0-divisors and 1-divisors
@@ -20,13 +20,14 @@ class CFDivisor:
         1
     """
 
-    def __init__(self, graph: CFGraph, degrees: List[Tuple[str, int]]):
+    def __init__(self, graph: CFGraph, degrees: Iterable[Tuple[str, int]]):
         """Initialize the divisor with a graph and list of vertex degrees.
 
         Args:
             graph: A CFGraph object representing the underlying graph
-            degrees: List of tuples (vertex_name, degree) where degree is the number
-                    of chips at the vertex with the given name
+            degrees: Iterable (typically a list) of tuples (vertex_name, degree)
+                    where degree is the number of chips at the vertex with the
+                    given name
 
         Raises:
             ValueError: If a vertex name appears multiple times in degrees
@@ -51,6 +52,9 @@ class CFDivisor:
             0
         """
         self.graph = graph
+        # Materialize the degrees once so that single-pass iterables such as
+        # generators or zip objects are not exhausted by the duplicate check.
+        degrees = list(degrees)
         # Initialize the degrees dictionary with all vertices having degree 0
         self.degrees: Dict[Vertex, int] = {v: 0 for v in graph.vertices}
         self.total_degree: int = 0
@@ -102,6 +106,47 @@ class CFDivisor:
         degrees_list = list(degrees_dict.items()) # Convert dict to list of tuples for constructor
         
         return cls(graph, degrees_list)
+
+    def copy(self) -> "CFDivisor":
+        """Return an independent copy of this divisor on the same graph.
+
+        The copy has its own degree mapping, so lending, borrowing, and set
+        firing on either divisor leave the other unchanged. The underlying
+        ``CFGraph`` object is shared rather than duplicated, so the copy stays
+        attached to the caller's graph (for example for later comparison with
+        :func:`~chipfiring.algo.linear_equivalence`). Use ``copy.deepcopy`` if
+        an independent graph object is also required.
+
+        Returns:
+            A new CFDivisor with the same degrees on the same graph object.
+
+        Example:
+            >>> vertices = {"A", "B", "C"}
+            >>> edges = [("A", "B", 1), ("B", "C", 1), ("A", "C", 1)]
+            >>> graph = CFGraph(vertices, edges)
+            >>> divisor = CFDivisor(graph, [("A", 2), ("B", -1), ("C", 0)])
+            >>> duplicate = divisor.copy()
+            >>> duplicate == divisor
+            True
+            >>> duplicate is divisor
+            False
+            >>> duplicate.graph is graph
+            True
+            >>> # Moves on the copy do not touch the original
+            >>> duplicate.lending_move("A")
+            >>> divisor.get_degree("A")
+            2
+            >>> duplicate.get_degree("A")
+            0
+        """
+        return CFDivisor(
+            self.graph,
+            [(vertex.name, degree) for vertex, degree in self.degrees.items()],
+        )
+
+    def __copy__(self) -> "CFDivisor":
+        """Support ``copy.copy`` with the same-graph semantics of :meth:`copy`."""
+        return self.copy()
 
     def is_effective(self) -> bool:
         """Check if the divisor is effective.
@@ -511,21 +556,10 @@ class CFDivisor:
             if other.degrees[vertex] != degree:
                 return False
 
-        # Check if the graph structures are identical (vertices and edges)
-        if set(self.graph.vertices) != set(other.graph.vertices):
-            return False
-
-        # Compare edges and their weights
-        for v in self.graph.vertices:
-            if v not in other.graph.graph:
-                return False
-            if set(self.graph.graph[v].keys()) != set(other.graph.graph[v].keys()):
-                return False
-            for neighbor, weight in self.graph.graph[v].items():
-                if other.graph.graph[v][neighbor] != weight:
-                    return False
-
-        return True
+        # Check if the graph structures are identical (vertices and edges).
+        # CFGraph equality is structural, so divisors on independently
+        # constructed copies of the same graph compare equal.
+        return self.graph == other.graph
 
     def __add__(self, other: "CFDivisor") -> "CFDivisor":
         """Perform vertex-wise addition of two divisors.

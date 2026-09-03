@@ -418,3 +418,17 @@ def test_apply_reduced_matrix_complex_graph(
         assert (
             result_dict[vertex] == expected_degree
         ), f"For vertex {vertex}, expected {expected_degree} but got {result_dict[vertex]}"
+
+
+def test_get_reduced_matrix_does_not_densify_cached_laplacian():
+    """A read-only query must not insert zero entries into the cached rows."""
+    graph = CFGraph({"a", "b", "c", "d"}, [("a", "b", 1), ("b", "c", 1), ("c", "d", 1)])
+    laplacian = CFLaplacian(graph)
+    rows_before = {v: dict(row) for v, row in laplacian.laplacian.items()}
+
+    reduced = laplacian.get_reduced_matrix(Vertex("a"))
+
+    assert reduced[Vertex("b")][Vertex("d")] == 0
+    assert reduced[Vertex("d")][Vertex("c")] == -1
+    assert {v: dict(row) for v, row in laplacian.laplacian.items()} == rows_before
+    assert Vertex("d") not in laplacian.laplacian[Vertex("b")]

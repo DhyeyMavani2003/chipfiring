@@ -167,6 +167,41 @@ class CFGraph:
         if edges:
             self.add_edges(edges)
 
+    def __eq__(self, other) -> bool:
+        """Return whether two graphs are the same labeled multigraph.
+
+        Two graphs are equal when they have the same vertex names and the
+        same edge multiplicity between every pair of vertices. Equality is
+        structural, so independently constructed or deserialized graphs
+        compare equal; the two objects need not be the same instance.
+
+        Example:
+            >>> first = CFGraph({"A", "B", "C"}, [("A", "B", 2), ("B", "C", 1)])
+            >>> second = CFGraph({"A", "B", "C"}, [("B", "C", 1), ("A", "B", 2)])
+            >>> first == second
+            True
+            >>> first is second
+            False
+            >>> first == CFGraph({"A", "B", "C"}, [("A", "B", 1), ("B", "C", 1)])
+            False
+            >>> first == CFGraph({"A", "B"}, [("A", "B", 2)])
+            False
+        """
+        if self is other:
+            return True
+        if not isinstance(other, CFGraph):
+            return NotImplemented
+        return self.vertices == other.vertices and self.graph == other.graph
+
+    def __hash__(self) -> int:
+        """Hash on the vertex set, which is fixed once a graph is constructed.
+
+        Equal graphs share a vertex set, so equal graphs hash equally. Edges
+        may still be added after construction; keying on the vertex set keeps
+        the hash stable across those additions.
+        """
+        return hash(frozenset(self.vertices))
+
     def is_connected(self) -> bool:
         """Return whether every vertex is reachable from every other vertex.
 
