@@ -11,8 +11,10 @@ class EWDVisualizer:
         self.history = []
 
     def add_step(self, divisor: CFDivisor, orientation: CFOrientation, unburnt_vertices: set = None, firing_set: set = None, q: str = None, description: str = "", source_function: str = None):
-        # Create copies of the divisor and orientation to avoid modifying the original objects
-        divisor_copy = CFDivisor.from_dict(divisor.to_dict())
+        # Snapshot the divisor and orientation so that later moves made by the
+        # algorithm do not alter recorded steps. CFDivisor.copy keeps the
+        # snapshot on the caller's graph object.
+        divisor_copy = divisor.copy()
         orientation_copy = CFOrientation.from_dict(orientation.to_dict())
         
         self.history.append({

@@ -6,7 +6,6 @@ from chipfiring.CFDivisor import CFDivisor
 from chipfiring.CFDhar import DharAlgorithm
 from chipfiring.CFOrientation import CFOrientation
 from chipfiring.CFConfig import CFConfig
-import copy
 
 
 @pytest.fixture
@@ -105,8 +104,13 @@ class TestDharAlgorithm:
         dhar = DharAlgorithm(graph, divisor, "q")
         dhar.send_debt_to_q()
 
-        assert divisor.get_degree("a") >= 0
-        assert divisor.get_degree("b") >= 0
+        working_divisor = dhar.configuration.divisor
+        assert working_divisor.get_degree("a") >= 0
+        assert working_divisor.get_degree("b") >= 0
+        assert working_divisor.get_total_degree() == initial_total
+        assert working_divisor.graph is graph
+        # The caller's divisor is left untouched.
+        assert divisor.get_degree("b") == -1
         assert divisor.get_total_degree() == initial_total
 
     def test_send_debt_to_q_property_on_connected_multigraphs(self):
@@ -137,19 +141,23 @@ class TestDharAlgorithm:
             degrees = [(name, rng.randint(-8, 8)) for name in names]
             divisor = CFDivisor(graph, degrees)
             initial_total = divisor.get_total_degree()
+            initial_degrees = dict(divisor.degrees)
             dhar = DharAlgorithm(graph, divisor, q_name)
 
             dhar.send_debt_to_q()
 
+            working_divisor = dhar.configuration.divisor
             assert all(
                 dhar.configuration.get_degree_at(name) >= 0
                 for name in dhar.configuration.get_v_tilde_names()
             ), f"failed generated case {case_number}"
-            assert divisor.get_total_degree() == initial_total
+            assert working_divisor.get_total_degree() == initial_total
+            # The caller's divisor is never modified.
+            assert divisor.degrees == initial_degrees
 
-            once_reduced = divisor.degrees.copy()
+            once_reduced = working_divisor.degrees.copy()
             dhar.send_debt_to_q()
-            assert divisor.degrees == once_reduced
+            assert working_divisor.degrees == once_reduced
 
     def test_send_debt_to_q_rejects_disconnected_graph(self):
         graph = CFGraph({"q", "a", "b"}, [("q", "a", 1)])
@@ -204,11 +212,13 @@ class TestDharAlgorithm:
 
     def test_maximal_firing_set(self, simple_graph):
         """Test that the algorithm produces a maximal legal firing set."""
-        divisor = CFDivisor(simple_graph, [("A", 2), ("B", 2), ("C", 2), ("D", 2)])
+        divisor = CFDivisor(simple_graph, [("A", 2), ("B", -1), ("C", 2), ("D", 2)])
         dhar = DharAlgorithm(simple_graph, divisor, "A")
         unburnt_vertex_names, _ = dhar.run()
 
-        test_config_obj = CFConfig(copy.deepcopy(divisor), "A")
+        # Check legality against the debt-concentrated working configuration.
+        test_config_obj = dhar.configuration.copy()
+        assert isinstance(test_config_obj, CFConfig)
         if unburnt_vertex_names:
             test_config_obj.set_fire(unburnt_vertex_names)
 

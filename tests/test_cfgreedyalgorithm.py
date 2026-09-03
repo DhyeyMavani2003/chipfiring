@@ -73,6 +73,10 @@ class TestGreedyAlgorithm:
         # Check that the graph and divisor were properly stored
         assert algorithm.graph == simple_graph
         assert algorithm.divisor == divisor
+        # The algorithm plays on a copy that shares the caller's graph object.
+        assert algorithm.divisor is not divisor
+        assert algorithm.divisor.degrees is not divisor.degrees
+        assert algorithm.divisor.graph is simple_graph
 
         # Check that the firing script is initialized with all zeros
         assert isinstance(algorithm.firing_script, CFiringScript)

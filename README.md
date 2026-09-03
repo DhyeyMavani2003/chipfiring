@@ -66,9 +66,16 @@ print(is_q_reduced(bob_reduced, q_name="Bob"))
 ```
 
 The predicate and reduction helpers operate on a copy and do not mutate the
-supplied divisor. If `q_name` is omitted, `q_reduction` preserves the
-historical most-indebted-vertex heuristic. Use `q_reduction_with_root` when the
-automatically chosen root is needed for a later `is_q_reduced` check.
+supplied divisor. The same holds for `DharAlgorithm`, `GreedyAlgorithm`, and
+the rank and gonality helpers: every algorithm works on a private copy that
+stays attached to the caller's graph object, and only the explicit move methods
+(`lending_move`, `borrowing_move`, `set_fire`, `chip_transfer`) change a divisor
+in place. Use `CFDivisor.copy()` when you need an independent divisor for such
+moves. `CFGraph` equality is structural, so `linear_equivalence` also accepts
+divisors on independently constructed copies of the same graph. If `q_name` is
+omitted, `q_reduction` preserves the historical most-indebted-vertex heuristic.
+Use `q_reduction_with_root` when the automatically chosen root is needed for a
+later `is_q_reduced` check.
 
 ## Mathematical Background
 

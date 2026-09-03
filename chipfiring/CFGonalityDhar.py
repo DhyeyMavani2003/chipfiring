@@ -28,7 +28,9 @@ class GonalityDharAlgorithm(DharAlgorithm):
         
         Args:
             graph: A CFGraph object representing the graph
-            initial_divisor: A CFDivisor object representing the initial chip configuration
+            initial_divisor: A CFDivisor object representing the initial chip configuration.
+                             As in DharAlgorithm, the algorithm works on a private copy and
+                             never modifies the caller's divisor.
             q_name: The name of the distinguished vertex (fire source)
         """
         super().__init__(graph, initial_divisor, q_name)

@@ -3,7 +3,6 @@ from .CFGraph import CFGraph, Vertex
 from .CFDivisor import CFDivisor
 import typing
 import itertools
-import copy
 
 class CFConfig:
     """
@@ -11,6 +10,13 @@ class CFConfig:
     and V~ = V - {q}.
     Operations like lending/borrowing can still occur at q, affecting the underlying divisor,
     but the configuration's properties (degree, non-negativity) are defined over V~.
+
+    A CFConfig is a view onto the divisor passed to its constructor: the divisor
+    is held by reference, so the explicit move methods (:meth:`lending_move`,
+    :meth:`borrowing_move`, :meth:`set_fire`) modify that divisor. Pass
+    ``divisor.copy()`` to work on an independent copy, or use :meth:`copy` to
+    duplicate an existing configuration. Queries such as
+    :meth:`is_legal_set_firing` and :meth:`is_superstable` never modify it.
 
     Example:
         >>> vertices = {"A", "B", "C"}
@@ -31,6 +37,8 @@ class CFConfig:
 
         Args:
             divisor: The CFDivisor object (representing chip counts on all vertices V).
+                     It is stored by reference, not copied; the move methods of this
+                     configuration act directly on it.
             q_name: The name of the vertex q to be excluded for configuration properties.
 
         Raises:
@@ -130,15 +138,8 @@ class CFConfig:
         """Checks if two configurations are defined on the same graph G and with the same q."""
         if self.q_vertex != other.q_vertex:
             return False
-        # Structural graph equality check
-        if set(self.graph.vertices) != set(other.graph.vertices):
-            return False
-        for v_node in self.graph.vertices:
-            self_v_neighbors = self.graph.graph.get(v_node, {})
-            other_v_neighbors = other.graph.graph.get(v_node, {})
-            if self_v_neighbors != other_v_neighbors:
-                return False
-        return True
+        # Structural graph equality check (CFGraph equality is structural).
+        return self.graph == other.graph
 
     def __eq__(self, other: "CFConfig") -> bool:
         if not self._is_comparable_to(other):
@@ -394,7 +395,11 @@ class CFConfig:
     
     def copy(self) -> "CFConfig":
         """
-        Returns a deep copy of this CFConfig object, including a deep copy of the underlying divisor.
+        Returns an independent copy of this configuration.
+
+        The underlying divisor is copied with :meth:`CFDivisor.copy`, so the copy
+        has its own degree mapping while sharing the same ``CFGraph`` object.
+        Moves on the copy therefore never affect the original configuration.
 
         Example:
             >>> vertices = {"A", "B", "C"}
@@ -405,5 +410,10 @@ class CFConfig:
             >>> config_copy = config.copy()
             >>> config_copy.get_degree_at("B")
             1
+            >>> config_copy.set_fire({"B", "C"})
+            >>> config.get_degree_at("B")  # The original is unchanged
+            1
+            >>> config_copy.divisor.graph is graph
+            True
         """
-        return CFConfig(copy.deepcopy(self.divisor), self.q_vertex.name)
+        return CFConfig(self.divisor.copy(), self.q_vertex.name)

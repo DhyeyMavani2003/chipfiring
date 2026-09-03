@@ -3,7 +3,6 @@ from .CFGraph import CFGraph
 from .CFDivisor import CFDivisor
 from .CFiringScript import CFiringScript
 from typing import Optional, Tuple
-import copy
 
 
 class GreedyAlgorithm:
@@ -14,6 +13,8 @@ class GreedyAlgorithm:
         Args:
             graph: A CFGraph object representing the graph.
             divisor: A CFDivisor object representing the initial chip configuration.
+                     The algorithm plays on a private copy (on the same graph object);
+                     the caller's divisor is never modified.
 
         Raises:
             ValueError: If ``graph`` is disconnected.
@@ -31,6 +32,11 @@ class GreedyAlgorithm:
             True
             >>> algorithm.divisor == divisor
             True
+            >>> # The algorithm plays on a copy that stays on the caller's graph
+            >>> algorithm.divisor is divisor
+            False
+            >>> algorithm.divisor.graph is G
+            True
             >>> # The firing script is initialized with all zeros
             >>> all(algorithm.firing_script.get_firings(v) == 0 for v in "ABCD")
             True
@@ -39,7 +45,9 @@ class GreedyAlgorithm:
             raise ValueError("GreedyAlgorithm requires a connected graph")
 
         self.graph = graph
-        self.divisor = copy.deepcopy(divisor)
+        # Play on a private copy so the caller's divisor is never modified.
+        # CFDivisor.copy keeps the caller's graph object, unlike deepcopy.
+        self.divisor = divisor.copy()
         # Initialize firing script with all vertices at 0
         self.firing_script = CFiringScript(graph)
 

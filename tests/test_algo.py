@@ -359,3 +359,72 @@ def test_is_winnable_simple_graph_all_zero(simple_graph):
     divisor = CFDivisor(simple_graph, all_zero_degrees)
     expected_result = True
     assert is_winnable(divisor) == expected_result
+
+
+# --- linear_equivalence across distinct graph objects ---
+def test_linear_equivalence_accepts_structurally_equal_graph_objects(
+    sequence_test_graph, sequence_test_initial_divisor
+):
+    """Copies that live on a different CFGraph object are compared, not rejected."""
+    import copy
+
+    from chipfiring import GreedyAlgorithm
+
+    divisor = sequence_test_initial_divisor
+    fired = divisor.copy()
+    fired.set_fire({"Alice", "Elise", "Charlie"})
+    initial_snapshot = degree_snapshot(divisor)
+
+    from_dict = CFDivisor.from_dict(fired.to_dict())
+    deep = copy.deepcopy(fired)
+    rebuilt_graph = CFGraph(
+        {"Alice", "Bob", "Charlie", "Elise"},
+        [
+            ("Alice", "Bob", 1),
+            ("Alice", "Charlie", 1),
+            ("Alice", "Elise", 2),
+            ("Bob", "Charlie", 1),
+            ("Charlie", "Elise", 1),
+        ],
+    )
+    rebuilt = CFDivisor(rebuilt_graph, [(v.name, d) for v, d in fired.degrees.items()])
+    greedy = GreedyAlgorithm(sequence_test_graph, divisor)
+    assert greedy.play()[0] is True
+    _, _, _, visualizer = EWD(sequence_test_graph, divisor, visualize=True, q_name="Bob")
+    history_divisor = visualizer.history[-1]["divisor"]
+
+    for candidate in (from_dict, deep, rebuilt, greedy.divisor, history_divisor):
+        assert candidate == divisor or candidate.get_total_degree() == divisor.get_total_degree()
+        assert linear_equivalence(divisor, candidate) is True
+        assert linear_equivalence(candidate, divisor) is True
+
+    assert from_dict.graph is not sequence_test_graph
+    assert deep.graph is not sequence_test_graph
+    assert degree_snapshot(divisor) == initial_snapshot
+
+
+def test_linear_equivalence_round_trips_through_data_processor(
+    tmp_path, sequence_test_graph, sequence_test_initial_divisor
+):
+    from chipfiring import CFDataProcessor
+
+    processor = CFDataProcessor()
+    path = tmp_path / "divisor.json"
+    processor.to_json(sequence_test_initial_divisor, str(path))
+    loaded = processor.read_json(str(path), "divisor")
+
+    assert loaded.graph is not sequence_test_graph
+    assert linear_equivalence(sequence_test_initial_divisor, loaded) is True
+
+
+def test_linear_equivalence_rejects_different_graph_structure():
+    """Same vertex names but different multiplicities is a different graph."""
+    graph_a = CFGraph({"v1", "v2", "v3"}, [("v1", "v2", 1), ("v2", "v3", 1), ("v1", "v3", 1)])
+    graph_b = CFGraph({"v1", "v2", "v3"}, [("v1", "v2", 2), ("v2", "v3", 1), ("v1", "v3", 1)])
+    graph_c = CFGraph({"v1", "v2"}, [("v1", "v2", 1)])
+    divisor_a = CFDivisor(graph_a, [("v1", 1)])
+    divisor_b = CFDivisor(graph_b, [("v1", 1)])
+    divisor_c = CFDivisor(graph_c, [("v1", 1)])
+
+    assert linear_equivalence(divisor_a, divisor_b) is False
+    assert linear_equivalence(divisor_a, divisor_c) is False
