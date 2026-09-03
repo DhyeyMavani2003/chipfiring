@@ -397,7 +397,8 @@ class CFConfig:
         """
         Returns an independent copy of this configuration.
 
-        The underlying divisor is copied with :meth:`CFDivisor.copy`, so the copy
+        The underlying divisor is copied with
+        :meth:`~chipfiring.CFDivisor.CFDivisor.copy`, so the copy
         has its own degree mapping while sharing the same ``CFGraph`` object.
         Moves on the copy therefore never affect the original configuration.
 

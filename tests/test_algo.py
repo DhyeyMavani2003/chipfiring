@@ -394,7 +394,6 @@ def test_linear_equivalence_accepts_structurally_equal_graph_objects(
     history_divisor = visualizer.history[-1]["divisor"]
 
     for candidate in (from_dict, deep, rebuilt, greedy.divisor, history_divisor):
-        assert candidate == divisor or candidate.get_total_degree() == divisor.get_total_degree()
         assert linear_equivalence(divisor, candidate) is True
         assert linear_equivalence(candidate, divisor) is True
 

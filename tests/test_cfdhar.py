@@ -212,18 +212,22 @@ class TestDharAlgorithm:
 
     def test_maximal_firing_set(self, simple_graph):
         """Test that the algorithm produces a maximal legal firing set."""
-        divisor = CFDivisor(simple_graph, [("A", 2), ("B", -1), ("C", 2), ("D", 2)])
+        # After debt concentration at A the configuration is B=1, C=0, D=2
+        # (D(A) = -1); only {D} can fire legally, and no superset of it can.
+        divisor = CFDivisor(simple_graph, [("A", 0), ("B", -1), ("C", 1), ("D", 2)])
         dhar = DharAlgorithm(simple_graph, divisor, "A")
         unburnt_vertex_names, _ = dhar.run()
 
-        # Check legality against the debt-concentrated working configuration.
-        test_config_obj = dhar.configuration.copy()
-        assert isinstance(test_config_obj, CFConfig)
-        if unburnt_vertex_names:
-            test_config_obj.set_fire(unburnt_vertex_names)
+        assert unburnt_vertex_names == {"D"}
 
-        for v_name in test_config_obj.get_v_tilde_names():
-            assert test_config_obj.get_degree_at(v_name) >= 0
+        # Legality and maximality are judged on the debt-concentrated working
+        # configuration, which is a copy: the caller's divisor is unchanged.
+        working = dhar.configuration
+        assert isinstance(working, CFConfig)
+        assert working.is_legal_set_firing(unburnt_vertex_names)
+        for other in working.get_v_tilde_names() - unburnt_vertex_names:
+            assert not working.is_legal_set_firing(unburnt_vertex_names | {other})
+        assert divisor.get_degree("B") == -1
 
     def test_debt_concentration_with_bob_as_q(self, sequence_test_graph):
         """Test the debt concentration with Bob as distinguished vertex."""

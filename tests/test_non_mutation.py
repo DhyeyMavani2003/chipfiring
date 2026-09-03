@@ -107,10 +107,16 @@ def test_dhar_working_divisor_is_a_same_graph_copy(sequence_graph, indebted_divi
 
 
 def test_dhar_run_is_repeatable_on_the_same_input(sequence_graph, indebted_divisor):
-    first, _ = DharAlgorithm(sequence_graph, indebted_divisor, "Bob").run()
+    """A fresh run on the same input must not see moves made by an earlier instance."""
+    dhar = DharAlgorithm(sequence_graph, indebted_divisor, "Bob")
+    first, _ = dhar.run()
+    assert first == {"Charlie", "Elise"}
+    dhar.legal_set_fire(first)
+    assert dhar.configuration.divisor != indebted_divisor
+
     second, _ = DharAlgorithm(sequence_graph, indebted_divisor, "Bob").run()
 
-    assert first == second
+    assert second == first
 
 
 def test_gonality_dhar_algorithm_does_not_mutate_input():
@@ -195,8 +201,9 @@ def _full_orientation(graph):
         lambda g, d: 3 * d,
         lambda g, d: d.remove_vertex("Elise"),
         lambda g, d: CFDivisor.from_dict(d.to_dict()),
-        lambda g, d: play_gonality_game(g, 2, CFDivisor(g, [("Alice", 2)]), "Bob"),
-        lambda g, d: CFGonality(g).test_n_chip_strategy(2, CFDivisor(g, [("Alice", 1), ("Bob", 1)])),
+        # The indebted divisor has total degree 2, so it is a valid 2-chip placement.
+        lambda g, d: play_gonality_game(g, 2, d, "Bob"),
+        lambda g, d: CFGonality(g).test_n_chip_strategy(2, d),
     ],
     ids=[
         "EWD", "EWD-optimized", "EWD-visualize", "is_winnable", "q_reduction",

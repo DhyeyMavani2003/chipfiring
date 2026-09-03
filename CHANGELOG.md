@@ -8,7 +8,9 @@ All notable changes to this project are documented in this file.
 
 - Stop `DharAlgorithm` (and therefore `GonalityDharAlgorithm`) from rewriting
   the caller's divisor. The algorithm now works on a private copy that shares
-  the caller's graph object and exposes it as `configuration.divisor`.
+  the caller's graph object and exposes it as `configuration.divisor`. Code
+  that read the input divisor after `run()` to obtain the reduced state should
+  read `configuration.divisor` instead.
 - Keep `GreedyAlgorithm` and `CFConfig.copy` on the caller's `CFGraph` object
   instead of deep-copying the graph, so their results stay comparable with the
   original divisor.
@@ -26,13 +28,15 @@ All notable changes to this project are documented in this file.
   on the same graph object.
 - Structural `CFGraph` equality and hashing: two graphs are equal when they have
   the same vertex names and edge multiplicities.
-- Regression tests asserting that every public computation leaves its inputs
-  unchanged, plus copy-semantics and graph-identity tests.
+- Regression tests asserting that the winnability, q-reduction, rank, gonality,
+  Dhar, greedy, configuration, Laplacian, orientation, and visualizer routines
+  leave their inputs unchanged, plus copy-semantics and graph-identity tests.
 
 ### Changed
 
-- Document the by-reference semantics of `CFConfig` and the copy semantics of
-  `DharAlgorithm`, `GreedyAlgorithm`, and the EWD visualizer history.
+- Document the by-reference semantics of `CFConfig`, the copy semantics of
+  `DharAlgorithm` and `GreedyAlgorithm`, and the snapshot semantics of the EWD
+  visualizer history.
 
 ## [1.1.4] - 2026-08-25
 
