@@ -12,8 +12,8 @@ import sys
 project = 'chipfiring'
 copyright = '2025-2026, Dhyey Dharmendrakumar Mavani, Ryan (Tairan) Ji, and Nathan Pflueger'
 author = 'Dhyey Dharmendrakumar Mavani, Ryan (Tairan) Ji, and Nathan Pflueger'
-version = '1.1.4'
-release = '1.1.4'
+version = '1.1.5'
+release = '1.1.5'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
