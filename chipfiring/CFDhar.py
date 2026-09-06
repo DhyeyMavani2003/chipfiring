@@ -38,7 +38,9 @@ class DharAlgorithm:
         Args:
             graph: A CFGraph object representing the graph.
             initial_divisor: A CFDivisor object representing the initial chip configuration on G.
-                             This divisor will be modified by the algorithm (e.g., by send_debt_to_q).
+                             The algorithm works on a private copy (on the same graph
+                             object); the caller's divisor is never modified. The working
+                             divisor is available as ``self.configuration.divisor``.
             q_name: The name of the distinguished vertex (fire source).
             visualizer: An optional EWDVisualizer instance for visualization.
 
@@ -68,10 +70,11 @@ class DharAlgorithm:
         """
         self.graph = graph # Kept for outdegree_S, though CFConfig also has it.
         
-        # The configuration object will manage the state w.r.t q
-        # The initial_divisor passed in IS the underlying divisor for the config.
-        # Operations on self.configuration (like borrowing) will modify initial_divisor.
-        self.configuration = CFConfig(initial_divisor, q_name)
+        # The configuration object manages the working state w.r.t. q. It wraps
+        # a private copy of initial_divisor (same graph object, independent
+        # degrees), so the borrowing and set-firing moves performed by the
+        # algorithm never leak back into the caller's divisor.
+        self.configuration = CFConfig(initial_divisor.copy(), q_name)
         self.q_vertex = self.configuration.q_vertex # Convenience alias
         self.visualizer = visualizer
 
@@ -115,8 +118,9 @@ class DharAlgorithm:
 
     def send_debt_to_q(self) -> None:
         """Concentrate all debt at the distinguished vertex q, making all non-q vertices out of debt.
-        This method modifies self.configuration (and its underlying divisor)
-        so all c(v) for v in V~ are non-negative.
+        This method modifies self.configuration (and its private working
+        divisor) so all c(v) for v in V~ are non-negative. The divisor passed
+        to the constructor is not affected.
 
         The implementation repeatedly borrows at a currently negative non-q
         vertex. Termination follows from the least-action principle for the
@@ -136,7 +140,7 @@ class DharAlgorithm:
             >>> edges = [("A", "B", 1), ("B", "C", 1), ("C", "D", 1), ("D", "A", 1)]
             >>> graph = CFGraph(vertices, edges)
             >>> divisor = CFDivisor(graph, [("A", 2), ("B", -1), ("C", -2), ("D", 1)])
-            >>> dhar = DharAlgorithm(graph, divisor, "A") # dhar.configuration now wraps divisor
+            >>> dhar = DharAlgorithm(graph, divisor, "A") # dhar.configuration wraps a copy of divisor
             >>> # Check initial configuration values in V~
             >>> dhar.configuration.get_degree_at("B")
             -1
@@ -155,6 +159,9 @@ class DharAlgorithm:
             >>> # The distinguished vertex q takes on the debt
             >>> dhar.configuration.get_q_underlying_degree() < initial_q_degree # D(A) should decrease
             True
+            >>> # The divisor passed to the constructor is unchanged
+            >>> divisor.get_degree("B")
+            -1
         """
         # Connectivity is the exact hypothesis needed for the reduced
         # Laplacian argument above. Validate it explicitly so invalid inputs
@@ -211,6 +218,10 @@ class DharAlgorithm:
 
     def run(self) -> Tuple[Set[str], CFOrientation]:
         """Run Dhar's Algorithm to find a maximal legal firing set.
+
+        Debt is first concentrated at q (see :meth:`send_debt_to_q`). All
+        moves act on the algorithm's private working divisor, never on the
+        divisor supplied to the constructor.
 
         Returns:
             A tuple containing:
@@ -303,7 +314,8 @@ class DharAlgorithm:
     def legal_set_fire(self, unburnt_vertex_names: Set[str]):
         """
         Performs a set firing operation on the provided set of unburnt vertex names (from V~).
-        This modifies the underlying divisor of the CFConfig object.
+        This modifies the algorithm's private working divisor
+        (``self.configuration.divisor``), not the divisor supplied to the constructor.
 
         Args:
             unburnt_vertex_names: A set of names of vertices in V~ (typically the result of self.run()).

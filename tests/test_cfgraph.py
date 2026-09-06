@@ -181,3 +181,46 @@ def test_remove_vertex():
     # Test removing non-existent vertex
     with pytest.raises(ValueError):
         graph.remove_vertex("E")
+
+
+def test_graph_equality_is_structural():
+    """Two graphs are equal when vertex names and edge multiplicities agree."""
+    first = CFGraph({"A", "B", "C"}, [("A", "B", 2), ("B", "C", 1)])
+    second = CFGraph({"A", "B", "C"}, [("B", "C", 1), ("A", "B", 2)])
+    built_incrementally = CFGraph({"A", "B", "C"}, [])
+    built_incrementally.add_edge("B", "C", 1)
+    built_incrementally.add_edge("A", "B", 1)
+    built_incrementally.add_edge("A", "B", 1)
+
+    assert first == second
+    assert first is not second
+    assert first == built_incrementally
+    assert not (first != second)
+
+    assert first != CFGraph({"A", "B", "C"}, [("A", "B", 1), ("B", "C", 1)])
+    assert first != CFGraph({"A", "B", "C"}, [("A", "B", 2)])
+    assert first != CFGraph({"A", "B", "C", "D"}, [("A", "B", 2), ("B", "C", 1)])
+    assert first != CFGraph({"A", "B"}, [("A", "B", 2)])
+    assert first != "not a graph"
+
+    round_tripped = CFGraph.from_dict(first.to_dict())
+    assert round_tripped == first
+    assert round_tripped is not first
+
+
+def test_graph_hash_is_consistent_with_equality():
+    """Equal graphs hash equally so graphs remain usable in sets and dicts."""
+    first = CFGraph({"A", "B"}, [("A", "B", 1)])
+    second = CFGraph({"A", "B"}, [("A", "B", 1)])
+    different = CFGraph({"A", "B"}, [("A", "B", 2)])
+
+    assert hash(first) == hash(second)
+    assert len({first, second}) == 1
+    assert len({first, different}) == 2
+    assert {first: "value"}[second] == "value"
+
+    # Adding edges changes equality but not the hash key (the vertex set).
+    before = hash(first)
+    first.add_edge("A", "B", 1)
+    assert hash(first) == before
+    assert first == different

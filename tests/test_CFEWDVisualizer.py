@@ -35,8 +35,8 @@ class TestEWDVisualizer(unittest.TestCase):
         )
         self.assertEqual(len(self.visualizer.history), 1)
         step = self.visualizer.history[0]
-        self.assertIsNot(step["divisor"], self.divisor)  # Check for deep copy
-        self.assertIsNot(step["orientation"], self.orientation)  # Check for deep copy
+        self.assertIsNot(step["divisor"], self.divisor)  # Stored as an independent snapshot
+        self.assertIsNot(step["orientation"], self.orientation)  # Stored as an independent snapshot
         self.assertEqual(step["divisor"].to_dict(), self.divisor.to_dict())
         self.assertEqual(step["orientation"].to_dict(), self.orientation.to_dict())
         self.assertEqual(step["unburnt_vertices"], {"A", "C"})

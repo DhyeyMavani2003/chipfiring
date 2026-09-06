@@ -207,10 +207,13 @@ class CFLaplacian:
         for v in vertices:
             if v != q:
                 reduced_matrix[v] = {}
+                # Read with .get so that this query does not insert zero
+                # entries into the cached defaultdict rows of self.laplacian.
+                row = laplacian.get(v, {})
                 # For each vertex except q, add an entry to the row
                 for w in vertices:
                     if w != q:
-                        reduced_matrix[v][w] = laplacian[v][w]
+                        reduced_matrix[v][w] = row.get(w, 0)
 
         return reduced_matrix
 

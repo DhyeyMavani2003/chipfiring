@@ -107,6 +107,9 @@ def test_cfconfig_copy(config_qA_1):
     assert copied_config is not config_qA_1
     assert copied_config.divisor is not config_qA_1.divisor
     assert copied_config.divisor.degrees is not config_qA_1.divisor.degrees
+    # The copy stays attached to the caller's graph object.
+    assert copied_config.graph is config_qA_1.graph
+    assert copied_config.divisor.graph is config_qA_1.divisor.graph
     # Modify original, copy should not change
     config_qA_1.divisor.degrees[Vertex("B")] = 100
     assert copied_config.get_degree_at("B") == 1

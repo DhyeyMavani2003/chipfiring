@@ -213,6 +213,12 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
 
     This is checked by determining the winnability of their difference divisor (divisor1 - divisor2).
 
+    Both divisors must live on the same graph. Graphs are compared
+    structurally (same vertex names and edge multiplicities), so the two
+    ``CFGraph`` objects need not be the same instance; divisors on
+    independently constructed or deserialized copies of a graph are compared
+    correctly. Neither input is modified.
+
     Args:
         divisor1: The first CFDivisor object.
         divisor2: The second CFDivisor object.
@@ -246,8 +252,15 @@ def linear_equivalence(divisor1: CFDivisor, divisor2: CFDivisor) -> bool:
         >>> # Identical divisors
         >>> linear_equivalence(divisor1, divisor1)  # Same divisor is trivially equivalent
         True
+        >>> # A divisor on an independently constructed copy of the graph
+        >>> divisor5 = CFDivisor.from_dict(divisor2.to_dict())
+        >>> divisor5.graph is graph
+        False
+        >>> linear_equivalence(divisor1, divisor5)
+        True
     """
-    # Condition 1: Divisors must be on the same graph (if not, return False)
+    # Condition 1: Divisors must be on the same graph (if not, return False).
+    # CFGraph equality is structural, so this is not an object-identity test.
     if divisor1.graph != divisor2.graph:
         return False
 
@@ -422,9 +435,11 @@ def is_q_reduced(divisor: CFDivisor, q_name: Optional[str] = None) -> bool:
         True
         >>> # Create a non-q-reduced divisor
         >>> non_reduced = CFDivisor(graph, [("Alice", 2), ("Bob", -3), ("Charlie", 4), ("Elise", -1)])
-        >>> # The divisor changes under q-reduction, so it is not q-reduced.
+        >>> # Its q-reduction differs from it, so it is not q-reduced.
         >>> is_q_reduced(non_reduced, q_name="Bob")
         False
+        >>> non_reduced.get_degree("Bob")  # The input is not modified
+        -3
     """
     resolved_q_name = _resolve_reduction_q_name(divisor, q_name)
     _, q_reduced_divisor, _, _ = EWD(

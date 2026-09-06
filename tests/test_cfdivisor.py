@@ -528,3 +528,56 @@ def test_divisor_equality_different_vertices():
 
     # Different vertex sets should make the divisors unequal
     assert div1 != div2
+
+
+# --- Test copy semantics ---
+def test_copy_shares_graph_and_isolates_degrees(sample_graph):
+    """copy() returns an equal divisor on the SAME graph with its own degrees."""
+    divisor = CFDivisor(sample_graph, [("A", 3), ("B", -1), ("C", 2)])
+
+    duplicate = divisor.copy()
+
+    assert duplicate is not divisor
+    assert duplicate == divisor
+    assert duplicate.graph is sample_graph
+    assert duplicate.degrees is not divisor.degrees
+    assert duplicate.get_total_degree() == divisor.get_total_degree()
+
+    duplicate.lending_move("A")
+    duplicate.set_fire({"B"})
+    assert divisor.get_degree("A") == 3
+    assert divisor.get_degree("B") == -1
+    assert divisor.get_total_degree() == 4
+    assert duplicate != divisor
+
+
+def test_copy_module_uses_same_graph_copy(sample_graph):
+    """copy.copy(divisor) must not share the degrees dict with the original."""
+    import copy
+
+    divisor = CFDivisor(sample_graph, [("A", 1), ("B", 1)])
+    shallow = copy.copy(divisor)
+
+    assert shallow is not divisor
+    assert shallow.degrees is not divisor.degrees
+    assert shallow.graph is sample_graph
+
+    shallow.borrowing_move("C")
+    assert divisor.get_degree("C") == 0
+
+
+def test_constructor_accepts_single_pass_iterables(sample_graph):
+    """Generators and zip objects must not be exhausted by the duplicate check."""
+    names = ["A", "B"]
+    values = [4, -2]
+
+    from_zip = CFDivisor(sample_graph, zip(names, values))
+    from_generator = CFDivisor(sample_graph, ((n, v) for n, v in zip(names, values)))
+    from_list = CFDivisor(sample_graph, list(zip(names, values)))
+
+    assert from_zip == from_list
+    assert from_generator == from_list
+    assert from_zip.get_total_degree() == 2
+
+    with pytest.raises(ValueError, match="Duplicate vertex names"):
+        CFDivisor(sample_graph, (pair for pair in [("A", 1), ("A", 2)]))
